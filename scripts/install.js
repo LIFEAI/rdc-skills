@@ -282,50 +282,66 @@ async function runMigrate(projectRoot) {
 }
 
 // ── Setup interview ───────────────────────────────────────────────────────────
-async function setupInterview() {
+async function setupInterview(detected = {}) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const d = detected; // shorthand
+
+  // Helper: show detected value as default in bracket
+  const q = (label, key, fallback = '') => {
+    const def = d[key] || fallback;
+    return prompt(rl, def ? `  ${label} [${def}]: ` : `  ${label}: `);
+  };
+  const ans = async (label, key, fallback = '') => {
+    const val = await q(label, key, fallback);
+    return val || d[key] || fallback;
+  };
+
   console.log('');
   console.log('  \x1b[35m╔══════════════════════════════════════════╗\x1b[0m');
   console.log('  \x1b[35m║   rdc-skills — Project Setup Interview   ║\x1b[0m');
   console.log('  \x1b[35m╚══════════════════════════════════════════╝\x1b[0m');
   console.log('');
   console.log('  This will generate your project overlay guides and .rdc/config.json.');
-  console.log('  Press Enter to skip any question (use plugin defaults).');
+  if (Object.keys(d).filter(k => !k.startsWith('_')).length > 0) {
+    console.log('  \x1b[32mAuto-detected values shown in [brackets] — press Enter to accept.\x1b[0m');
+  } else {
+    console.log('  Press Enter to skip any question (use plugin defaults).');
+  }
   console.log('');
 
   const answers = {};
 
   // Project basics
-  answers.projectName   = await prompt(rl, '  Project name (e.g. "My SaaS App"): ');
-  answers.projectRoot   = await prompt(rl, '  Absolute path to project root (e.g. C:/Dev/my-app): ');
-  answers.description   = await prompt(rl, '  Short description: ');
-  answers.githubOrg     = await prompt(rl, '  GitHub org/user (e.g. LIFEAI): ');
-  answers.githubRepo    = await prompt(rl, '  GitHub repo name: ');
-  answers.mainBranch    = await prompt(rl, '  Main branch [main]: ')    || 'main';
-  answers.devBranch     = await prompt(rl, '  Dev branch [develop]: ')  || 'develop';
+  answers.projectName   = await ans('Project name', 'projectName');
+  answers.projectRoot   = await ans('Absolute path to project root', 'projectRoot', process.cwd());
+  answers.description   = await ans('Short description', 'description');
+  answers.githubOrg     = await ans('GitHub org/user', 'githubOrg');
+  answers.githubRepo    = await ans('GitHub repo name', 'githubRepo');
+  answers.mainBranch    = await ans('Main branch', 'mainBranch', 'main');
+  answers.devBranch     = await ans('Dev branch', 'devBranch', 'develop');
 
   console.log('');
   console.log('  \x1b[33m-- Database --\x1b[0m');
-  answers.supabaseRef   = await prompt(rl, '  Supabase project ref (e.g. abcdefghij, or blank): ');
-  answers.useWorkItems  = await prompt(rl, '  Use work_items RPC for task tracking? [Y/n]: ');
+  answers.supabaseRef   = await ans('Supabase project ref (blank to skip)', 'supabaseRef');
+  answers.useWorkItems  = await ans('Use work_items RPC for task tracking?', 'useWorkItems', 'Y');
 
   console.log('');
   console.log('  \x1b[33m-- Frontend --\x1b[0m');
-  answers.uiPackage     = await prompt(rl, '  UI package name (e.g. @myorg/ui, or blank for shadcn): ');
-  answers.tailwind      = await prompt(rl, '  Using Tailwind CSS? [Y/n]: ');
+  answers.uiPackage     = await ans('UI package name (blank for shadcn)', 'uiPackage');
+  answers.tailwind      = await ans('Using Tailwind CSS?', 'tailwind', 'Y');
 
   console.log('');
   console.log('  \x1b[33m-- Deployment --\x1b[0m');
-  answers.deployPlatform = await prompt(rl, '  Deploy platform (coolify/vercel/railway/other): ');
-  answers.deployDomain   = await prompt(rl, '  Deploy dashboard URL (e.g. https://deploy.myapp.com): ');
+  answers.deployPlatform = await ans('Deploy platform (coolify/vercel/railway/other)', 'deployPlatform');
+  answers.deployDomain   = await ans('Deploy dashboard URL', 'deployDomain');
 
   console.log('');
   console.log('  \x1b[33m-- Hooks --\x1b[0m');
-  answers.epicScope     = await prompt(rl, '  Folder name to scope stop-hook to (e.g. my-app): ');
+  answers.epicScope     = await ans('Folder name to scope stop-hook to', 'epicScope');
 
   console.log('');
   console.log('  \x1b[33m-- Directory convention --\x1b[0m');
-  answers.useRdcDir     = await prompt(rl, '  Use .rdc/ directory convention? [Y/n]: ');
+  answers.useRdcDir     = await ans('Use .rdc/ directory convention?', 'useRdcDir', 'Y');
 
   rl.close();
 
@@ -417,6 +433,95 @@ After finishing work, output:
   }
 }
 
+// ── Project auto-detection ────────────────────────────────────────────────────
+function detectProjectInfo(projectRoot) {
+  const detected = {};
+
+  // package.json → name, description
+  const pkgPath = path.join(projectRoot, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (pkg.name)        detected.projectName  = pkg.name.replace(/^@[^/]+\//, '');
+      if (pkg.description) detected.description  = pkg.description;
+    } catch {}
+  }
+
+  // git remote → org, repo
+  try {
+    const remote = execSync('git remote get-url origin', { cwd: projectRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
+    const m = remote.match(/[:/]([^/]+)\/([^/.]+)(\.git)?$/);
+    if (m) { detected.githubOrg = m[1]; detected.githubRepo = m[2]; }
+  } catch {}
+
+  // git branches
+  try {
+    const branches = execSync('git branch -a', { cwd: projectRoot, encoding: 'utf8', stdio: 'pipe' });
+    if (/\bdevelop\b/.test(branches)) detected.devBranch = 'develop';
+    if (/\bmain\b/.test(branches))    detected.mainBranch = 'main';
+    else if (/\bmaster\b/.test(branches)) detected.mainBranch = 'master';
+  } catch {}
+
+  // .env.local / apps/**/.env.local → Supabase ref
+  const envCandidates = [
+    path.join(projectRoot, '.env.local'),
+    path.join(projectRoot, '.env'),
+  ];
+  // Also scan apps/* for .env.local
+  const appsDir = path.join(projectRoot, 'apps');
+  if (fs.existsSync(appsDir)) {
+    try {
+      fs.readdirSync(appsDir).forEach(app => {
+        envCandidates.push(path.join(appsDir, app, '.env.local'));
+      });
+    } catch {}
+  }
+  for (const envFile of envCandidates) {
+    if (!fs.existsSync(envFile)) continue;
+    try {
+      const lines = fs.readFileSync(envFile, 'utf8').split('\n');
+      for (const line of lines) {
+        const m = line.match(/NEXT_PUBLIC_SUPABASE_URL\s*=\s*https:\/\/([a-z0-9]+)\.supabase\.co/);
+        if (m) { detected.supabaseRef = m[1]; break; }
+      }
+    } catch {}
+    if (detected.supabaseRef) break;
+  }
+
+  // CLAUDE.md → hook_scope hint (look for folder name pattern)
+  const claudeMd = path.join(projectRoot, 'CLAUDE.md');
+  if (fs.existsSync(claudeMd)) {
+    try {
+      const md = fs.readFileSync(claudeMd, 'utf8');
+      // Look for PROJECT_SCOPE mentions
+      const m = md.match(/PROJECT_SCOPE[^\n]*?['"`]([^'"`]+)['"`]/);
+      if (m) detected.epicScope = m[1];
+    } catch {}
+  }
+
+  // .rdc/config.json already exists → read it for defaults
+  const rdcCfg = path.join(projectRoot, '.rdc', 'config.json');
+  if (fs.existsSync(rdcCfg)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(rdcCfg, 'utf8'));
+      if (cfg.name)               detected.projectName  = cfg.name;
+      if (cfg.hook_scope)         detected.epicScope    = cfg.hook_scope;
+      if (cfg.git?.org)           detected.githubOrg    = cfg.git.org;
+      if (cfg.git?.repo)          detected.githubRepo   = cfg.git.repo;
+      if (cfg.git?.main_branch)   detected.mainBranch   = cfg.git.main_branch;
+      if (cfg.git?.dev_branch)    detected.devBranch    = cfg.git.dev_branch;
+      if (cfg.supabase?.ref)      detected.supabaseRef  = cfg.supabase.ref;
+      detected._alreadyHasConfig = true;
+    } catch {}
+  }
+
+  // Existing guides directory
+  if (fs.existsSync(path.join(projectRoot, '.rdc', 'guides')))  detected.guidesDir = '.rdc/guides';
+  else if (fs.existsSync(path.join(projectRoot, 'docs', 'guides'))) detected.guidesDir = 'docs/guides';
+
+  return detected;
+}
+
 // ── Preflight checks ──────────────────────────────────────────────────────────
 function runPreflight() {
   console.log('');
@@ -437,14 +542,6 @@ function runPreflight() {
     ok('clauth daemon is running');
   } catch {
     warn('clauth daemon not responding — run scripts/restart-clauth.bat to start it');
-  }
-
-  // .rdc/config.json in cwd
-  const cfgPath = path.join(process.cwd(), '.rdc', 'config.json');
-  if (fs.existsSync(cfgPath)) {
-    ok('.rdc/config.json found');
-  } else {
-    info('.rdc/config.json not found — run with --setup to generate one');
   }
 }
 
@@ -493,20 +590,44 @@ async function main() {
   // 4. Preflight checks
   runPreflight();
 
-  // 5. Optional setup interview
-  if (doSetup) {
-    const answers = await setupInterview();
-    const projectRoot = answers.projectRoot || process.cwd();
-    if (answers.projectRoot) {
-      generateOverlayGuides(answers, projectRoot);
-    }
+  // 5. Scan project for existing config (always — used for auto-prompt and prefill)
+  const projectRoot = process.cwd();
+  const detected = detectProjectInfo(projectRoot);
+
+  if (Object.keys(detected).filter(k => !k.startsWith('_')).length > 0) {
+    console.log('');
+    console.log('  \x1b[36mAuto-detected project info:\x1b[0m');
+    if (detected.projectName)  info(`Project name  : ${detected.projectName}`);
+    if (detected.githubOrg)    info(`GitHub        : ${detected.githubOrg}/${detected.githubRepo || '?'}`);
+    if (detected.supabaseRef)  info(`Supabase ref  : ${detected.supabaseRef}`);
+    if (detected.mainBranch)   info(`Branches      : ${detected.mainBranch} / ${detected.devBranch || 'develop'}`);
+    if (detected.guidesDir)    info(`Guides found  : ${detected.guidesDir}`);
+  }
+
+  // 6. Setup interview — explicit flag, or auto-prompt when no config found
+  let runSetup = doSetup;
+
+  if (!runSetup && !detected._alreadyHasConfig) {
+    console.log('');
+    const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const ans = await new Promise(resolve => rl2.question(
+      '  No .rdc/config.json found. Run setup interview now? [Y/n]: ', resolve
+    ));
+    rl2.close();
+    if (ans.trim().toLowerCase() !== 'n') runSetup = true;
+  }
+
+  if (runSetup) {
+    const answers = await setupInterview(detected);
+    const root = answers.projectRoot || projectRoot;
+    generateOverlayGuides(answers, root);
   }
 
   console.log('');
   console.log('  \x1b[32mInstallation complete!\x1b[0m');
   console.log('');
-  if (!doSetup) {
-    console.log('  Tip: run with --setup to generate project overlay guides + .rdc/config.json');
+  if (!runSetup) {
+    console.log('  Tip: run with --setup to re-run the project setup interview');
     console.log('  Tip: run with --migrate <path> to move docs/ dirs to .rdc/ layout');
     console.log('');
   }

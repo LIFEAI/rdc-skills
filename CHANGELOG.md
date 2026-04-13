@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] — 2026-04-13
+
+### Added
+
+#### Intelligent Project Detection (`scripts/install.js`)
+- **`detectProjectInfo(projectRoot)`** — scans `package.json`, git remote, `.env.local` (incl. `apps/**`), `CLAUDE.md`, existing `.rdc/config.json` to auto-populate setup interview defaults
+- **Auto-prompt setup interview** — default install now prompts `"No .rdc/config.json found. Run setup interview now? [Y/n]:"` instead of passive tip
+- **Pre-filled interview** — detected values shown in `[brackets]`; press Enter to accept. Eliminates manual re-entry of already-known project metadata
+- **Detection summary printed** — detected project name, GitHub, Supabase ref, branches, guides dir shown after preflight
+
+#### `/rdc:setup` Skill
+- **New Claude skill** `rdc-setup.md` — instructs Claude to perform a full project scan (15+ file types), emit structured detection summary, generate `.rdc/config.json` and overlay guides, offer docs/ migration, commit result
+- Complements the `install.js` script-level detection with a richer AI-driven scan when running interactively in Claude Code
+- Preserves existing `agent-bootstrap.md` custom sections when updating
+
+---
+
 ## [0.2.0] — 2026-04-13
 
 ### Added
