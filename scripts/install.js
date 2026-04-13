@@ -639,9 +639,14 @@ async function main() {
     console.log('');
   }
   console.log('  Next steps:');
-  console.log('  1. Restart Claude Code (hooks take effect on next launch)');
-  console.log('  2. Run /rdc:status to verify');
-  console.log('  3. Add project overlay guides to .rdc/guides/ (or docs/guides/) if not present');
+  console.log('  1. Open Claude Code in your project root');
+  if (!detected._alreadyHasConfig) {
+  console.log('  2. Run /rdc:setup  ← scans your project and generates .rdc/config.json + guides');
+  console.log('  3. Run /rdc:status to see your work queue and verify everything is wired up');
+  } else {
+  console.log('  2. Run /rdc:status to see your work queue and verify everything is wired up');
+  console.log('     (run /rdc:setup anytime to update your project config)');
+  }
   console.log('');
   console.log('  Docs: https://github.com/LIFEAI/rdc-skills#readme');
   console.log('');
