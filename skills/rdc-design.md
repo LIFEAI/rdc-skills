@@ -4,7 +4,7 @@ description: >-
   Dispatch a design agent for brand palette work, design token editing, OG image
   generation, typography decisions, and visual identity work.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:design — Design Agent
@@ -14,7 +14,7 @@ description: >-
 Read the guide before ANY work:
 ```
 {PROJECT_ROOT}/.rdc/guides/design.md
-(fallback: {PROJECT_ROOT}/docs/guides/design.md)
+(fallback: {PROJECT_ROOT}/.rdc/guides/design.md)
 ```
 
 ## Six Design Principles

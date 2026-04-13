@@ -4,7 +4,7 @@ description: >-
   Show project status — open epics, work items by project, infrastructure
   deployment health, blockers. Quick situational awareness.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:status — Project Dashboard
@@ -77,6 +77,6 @@ description: >-
 ## Rules
 - Keep output concise — this is a glance, not a deep dive
 - Always end with a recommendation for what to work on next
-- After the Recommended Next section, suggest which guide file from `.rdc/guides/` (fallback: `docs/guides/`) the recommended work would need
+- After the Recommended Next section, suggest which guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) the recommended work would need
 - Use database MCP for queries (not raw curl)
 - If infrastructure MCP is unavailable, skip deployment status and note it

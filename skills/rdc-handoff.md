@@ -4,10 +4,10 @@ description: >-
   Create a structured handoff from a planning session to CLI agents. Use when
   the project lead says "hand this off", "give this to the CLI", "tell the CLI agents
   about this", or when a plan/prototype has been finalized and is ready for
-  implementation. Produces: a plan doc in .rdc/plans/ (fallback: docs/plans/), work items in database,
+  implementation. Produces: a plan doc in .rdc/plans/ (fallback: .rdc/plans/), work items in database,
   and a prototype registry entry if applicable.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:handoff — Planning → CLI Bridge
@@ -21,7 +21,7 @@ description: >-
 
 ## What This Skill Produces
 
-1. **Plan doc** → `.rdc/plans/<topic-slug>.md` (fallback: `docs/plans/<topic-slug>.md`)
+1. **Plan doc** → `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md`)
 2. **Database epic + child tasks** (with agent types and guide file refs)
 3. **Prototype registry entry** (if a prototype was built)
 4. **Design context entries** (for decisions made in the session)
@@ -42,7 +42,7 @@ Identify from the conversation:
 ```
 .rdc/plans/<topic-slug>.md
 ```
-(fallback: `docs/plans/<topic-slug>.md` if `.rdc/` does not exist)
+(fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist)
 
 Template:
 ```markdown
@@ -68,7 +68,7 @@ Template:
 
 ### Package 1 — <Name>
 - Agent type: frontend | backend | data | design | infra | content | cs2 | viz
-- Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
+- Guide: .rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md)
 - Files to create/modify: [list]
 - Deliverables: [specific outputs]
 - Depends on: [other packages if sequential]
@@ -110,8 +110,8 @@ SELECT insert_work_item(
   p_description := 'What: <deliverable>
 Where: <files>
 Agent type: <type>
-Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
-Design doc: .rdc/plans/<topic-slug>.md (fallback: docs/plans/<topic-slug>.md)
+Guide: .rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md)
+Design doc: .rdc/plans/<topic-slug>.md (fallback: .rdc/plans/<topic-slug>.md)
 Depends on: <other task if applicable>
 Est: <hours>',
   p_parent_id   := '<epic-uuid>'::uuid,

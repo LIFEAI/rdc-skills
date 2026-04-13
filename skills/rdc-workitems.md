@@ -5,7 +5,7 @@ description: >-
   says "add this to the backlog", "create a ticket for", "mark that done",
   "what's in the queue", "show me open epics", or any work item management.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:workitems — Work Item Management
@@ -15,7 +15,7 @@ description: >-
 1. **Epic first, always.** Never create a task without a parent epic.
 2. **Label everything.** Minimum one system label per item.
 3. **Check first.** `get_open_epics()` before creating anything new.
-4. **Link design docs.** Put `.rdc/plans/` or `.rdc/research/` paths in descriptions (fallback: `docs/plans/` / `docs/research/`).
+4. **Link design docs.** Put `.rdc/plans/` or `.rdc/research/` paths in descriptions (fallback: `.rdc/plans/` / `.rdc/research/`).
 
 ## Read Epics
 
@@ -46,8 +46,8 @@ SELECT insert_work_item(
   p_description := 'What: <deliverable>
 Where: <files to create/modify>
 Agent type: frontend | backend | data | design | infra | content | cs2
-Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
-Design doc: .rdc/plans/<n>.md (fallback: docs/plans/<n>.md, if exists)
+Guide: .rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md)
+Design doc: .rdc/plans/<n>.md (fallback: .rdc/plans/<n>.md, if exists)
 Depends on: <other task title if sequential>
 Est: <hours>',
   p_parent_id   := '<epic-uuid>'::uuid,
@@ -126,4 +126,4 @@ SELECT bump_epic_version('<epic-uuid>'::uuid, '0.2.0', 'What changed', 'planning
 - Never create tasks without a parent epic
 - Never leave labels empty
 - Never write vague titles ("Fix stuff") — be specific
-- Never put design intention in the task — put it in `.rdc/research/` (fallback: `docs/research/`) and link
+- Never put design intention in the task — put it in `.rdc/research/` (fallback: `.rdc/research/`) and link

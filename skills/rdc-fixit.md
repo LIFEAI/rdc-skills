@@ -7,7 +7,7 @@ description: >-
   single-component tweaks, dependency version bumps — anything under 5 files
   and 30 minutes. Anything larger must use rdc:build.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:fixit — Sanctioned Quick Fix

@@ -5,7 +5,7 @@ description: >-
   queries, auth flows, and data fetching. Use when work involves server-side
   logic, API routes, or database operations.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:backend — Backend Agent
@@ -15,7 +15,7 @@ description: >-
 Read the guide before ANY code:
 ```
 {PROJECT_ROOT}/.rdc/guides/backend.md
-(fallback: {PROJECT_ROOT}/docs/guides/backend.md)
+(fallback: {PROJECT_ROOT}/.rdc/guides/backend.md)
 ```
 
 ## Database Client — One Pattern Per Context

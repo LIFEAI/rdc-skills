@@ -7,7 +7,7 @@ description: >-
   to production code. Saves to docs/source/ and registers in prototype_registry.
   This produces reference material only — not production code.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:prototype — Prototype Builder
@@ -86,7 +86,7 @@ const MOCK_DATA = [
  * - Extract <Part> into shared component at src/components/<name>
  *
  * Production agent type: frontend | backend | data | viz
- * Production guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
+ * Production guide: .rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md)
  */
 ```
 

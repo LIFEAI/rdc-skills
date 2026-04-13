@@ -7,7 +7,7 @@ description: >-
   Use when the project lead says "run overnight", "start the overnight build",
   "build while I sleep", or wants to kick off an autonomous multi-epic build session.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:overnight — Overnight Build Supervisor
@@ -56,14 +56,14 @@ Determine which epics to work:
   - `status IN ('todo', 'in_progress')`
   - Order: urgent first, then high, then by `created_at`
 
-Log the epic queue at the start of `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `docs/reports/overnight-<YYYY-MM-DD>.md` if `.rdc/` does not exist).
+Log the epic queue at the start of `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/reports/overnight-<YYYY-MM-DD>.md` if `.rdc/` does not exist).
 
 ## Phase 3 — Epic Loop
 
 For each epic in the queue, run this sequence:
 
 ### 3a. Research (if needed)
-Condition: epic has 0 child tasks AND no matching doc in `.rdc/plans/` (or `docs/plans/` as fallback)
+Condition: epic has 0 child tasks AND no matching doc in `.rdc/plans/` (or `.rdc/plans/` as fallback)
 
 ```
 rdc:preplan <topic> --unattended
@@ -93,7 +93,7 @@ This skill delegates to rdc:build which uses typed agent dispatch. See rdc:build
 rdc:build <epic-id> --unattended
 ```
 
-Agents receive the relevant guide file from `.rdc/guides/` (fallback: `docs/guides/`) based on their work package type.
+Agents receive the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) based on their work package type.
 
 After each wave: check `BUILD_STATUS`. If `escalated: true`, log the escalation
 in the overnight doc and continue — don't stop the loop.
@@ -124,7 +124,7 @@ After all epics are processed:
 
 1. Run `rdc:report --unattended`
 
-2. Write session summary to `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `docs/reports/overnight-<YYYY-MM-DD>.md`):
+2. Write session summary to `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/reports/overnight-<YYYY-MM-DD>.md`):
    ```markdown
    # Overnight Session — YYYY-MM-DD
 

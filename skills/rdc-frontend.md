@@ -5,7 +5,7 @@ description: >-
   Use when the project lead says "build a component", "add a page", "make the UI for",
   or any work involving TSX files, styling, Next.js pages, or animation.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:frontend — Frontend Agent
@@ -15,7 +15,7 @@ description: >-
 Read the guide before ANY code:
 ```
 {PROJECT_ROOT}/.rdc/guides/frontend.md
-(fallback: {PROJECT_ROOT}/docs/guides/frontend.md)
+(fallback: {PROJECT_ROOT}/.rdc/guides/frontend.md)
 ```
 
 ## Before Writing Any Code

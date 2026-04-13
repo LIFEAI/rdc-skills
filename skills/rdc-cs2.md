@@ -5,7 +5,7 @@ description: >-
   memory systems, virtue governance, and domain-specific languages.
   Use when work involves specialized CS 2.0 packages.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:cs2 — CS 2.0 Agent
@@ -15,7 +15,7 @@ description: >-
 Read the guide before ANY code:
 ```
 {PROJECT_ROOT}/.rdc/guides/cs2.md
-(fallback: {PROJECT_ROOT}/docs/guides/cs2.md)
+(fallback: {PROJECT_ROOT}/.rdc/guides/cs2.md)
 ```
 
 Also read the master spec:

@@ -25,7 +25,7 @@ Read these files (all optional — use what exists):
 | `.claude/rules/*.md` | existing rule files, what systems are covered |
 | `docs/guides/agent-bootstrap.md` or `.rdc/guides/agent-bootstrap.md` | existing credentials pattern |
 | `.rdc/config.json` | already configured? just show current state + offer update |
-| `docs/guides/`, `docs/plans/`, `docs/reports/`, `docs/research/` | existing directory structure |
+| `docs/guides/`, `docs/plans/`, `.rdc/guides/`, `.rdc/plans/` | existing directory structure (either layout) |
 | `apps/` or `sites/` | app names, ports from package.json `dev` scripts |
 | `supabase/migrations/` | schema exists? |
 | `tailwind.config.*` | Tailwind confirmed |

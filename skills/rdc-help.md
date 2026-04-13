@@ -17,7 +17,7 @@ description: >-
 | `rdc:plan` | Architecture doc + database epic/tasks from a research doc or direction |
 | `rdc:preplan` | Research best practices before committing to a plan |
 | `rdc:review` | Code quality check — typecheck, lint, test affected packages |
-| `rdc:report` | Session summary → .rdc/reports/ (fallback: docs/reports/) |
+| `rdc:report` | Session summary → .rdc/reports/ (fallback: .rdc/reports/) |
 | `rdc:status` | Current state: open epics, build health, deployment status |
 
 ## Agent Type Skills (dispatched by rdc:build)
@@ -43,7 +43,7 @@ description: >-
 
 ## Guide Files (read by agents — not invoked directly)
 
-Path resolution: check `.rdc/guides/<file>` first; fall back to `docs/guides/<file>` if `.rdc/` does not exist.
+Path resolution: check `.rdc/guides/<file>` first; fall back to `.rdc/guides/<file>` if `.rdc/` does not exist.
 
 | File | For Agent Type |
 |------|---------------|

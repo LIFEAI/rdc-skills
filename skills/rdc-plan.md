@@ -7,7 +7,7 @@ description: >-
   Accepts optional --unattended flag for overnight/automated runs (skips approval,
   creates tasks immediately, returns status block).
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:plan — Architecture & Work Packages
@@ -26,7 +26,7 @@ description: >-
 ## Procedure
 
 1. **Gather inputs:**
-   - Research doc from preplan (if exists): `.rdc/research/<topic>.md` (fallback: `docs/research/<topic>.md`)
+   - Research doc from preplan (if exists): `.rdc/research/<topic>.md` (fallback: `.rdc/research/<topic>.md`)
    - Project lead's architectural direction from conversation
    - Relevant CLAUDE.md files from affected packages
    - Existing Supabase epics: `SELECT get_open_epics()`
@@ -47,10 +47,10 @@ description: >-
    - Each work package = one agent assignment
    - No file overlap between packages
    - Each package has: scope, files to create/modify, test requirements
-   - Assign an agent type to each work package from the typed dispatch table in rdc:build. Include the guide file path (from `.rdc/guides/`, fallback `docs/guides/`) in each work package description.
+   - Assign an agent type to each work package from the typed dispatch table in rdc:build. Include the guide file path (from `.rdc/guides/`, fallback `.rdc/guides/`) in each work package description.
    - Estimate: small (1 agent, <500 LOC), medium (1 agent, 500-1500 LOC), large (needs splitting)
 
-5. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `docs/plans/<topic-slug>.md` if `.rdc/` does not exist):
+5. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist):
    ```markdown
    # Plan: <Topic>
    > Generated: <date> | Epic: <id if exists>
@@ -85,9 +85,9 @@ choose the most conservative/reversible approach and document the decision.
 ## Rules
 - Interactive: ALWAYS get approval before proceeding to build
 - Unattended: proceed immediately without approval
-- Plan doc goes in `.rdc/plans/` (fallback: `docs/plans/` if `.rdc/` does not exist) — not `.planning/`
+- Plan doc goes in `.rdc/plans/` (fallback: `.rdc/plans/` if `.rdc/` does not exist) — not `.planning/`
 - Each work package must be independently executable by an agent
 - No file overlap between work packages
 - Include test requirements in every work package
 - Reference affected CLAUDE.md files in each work package description
-- Reference the relevant guide file from `.rdc/guides/` (fallback: `docs/guides/`) for agent context
+- Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context

@@ -25,13 +25,13 @@ description: >-
 
 Every dispatched agent MUST read two files before starting — in this order:
 1. `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` — credentials, git rules, completion report format
-   (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` if `.rdc/` does not exist)
+   (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` if `.rdc/` does not exist)
 2. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
-   (fallback: `{PROJECT_ROOT}/docs/guides/<type>.md`)
+   (fallback: `{PROJECT_ROOT}/.rdc/guides/<type>.md`)
 
 Include both lines in every agent prompt:
 ```
-"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: docs/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: docs/guides/<type>.md) before starting."
+"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."
 ```
 
 | Agent Type | Guide File | When to dispatch |
@@ -93,7 +93,7 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
-3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `docs/plans/`).
+3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
 
 4. **Read CLAUDE.md files** for all affected packages.
 
@@ -107,7 +107,7 @@ Read the task title and description, then:
 7. **For each wave — dispatch typed agents in parallel:**
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
-     - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: docs/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: docs/guides/<type>.md) before starting."`
+     - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
      - Specific files to create/modify
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`

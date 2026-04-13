@@ -5,7 +5,7 @@ description: >-
   SVG visualizations, and data displays. Use when work involves complex interactive
   diagrams, financial flow visualizations, or data-driven displays.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 
 # rdc:viz — Visualization Agent
@@ -14,8 +14,8 @@ description: >-
 
 Read BOTH guides before ANY code:
 ```
-{PROJECT_ROOT}/.rdc/guides/frontend.md (fallback: {PROJECT_ROOT}/docs/guides/frontend.md)
-{PROJECT_ROOT}/.rdc/guides/design.md (fallback: {PROJECT_ROOT}/docs/guides/design.md)
+{PROJECT_ROOT}/.rdc/guides/frontend.md (fallback: {PROJECT_ROOT}/.rdc/guides/frontend.md)
+{PROJECT_ROOT}/.rdc/guides/design.md (fallback: {PROJECT_ROOT}/.rdc/guides/design.md)
 ```
 
 ## Before Writing Any Code
