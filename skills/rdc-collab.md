@@ -1,7 +1,6 @@
 ---
 name: rdc:collab
-description: Bidirectional collab session with claude.ai — read inbox, do work, write response, loop. Dave can watch and interject.
-user-invocable: true
+description: Bidirectional collab session with claude.ai — read inbox, do work, write response to outbox, loop. Dave watches terminal and can interject.
 ---
 
 # /rdc:collab — Claude Code Collab Session Listener
