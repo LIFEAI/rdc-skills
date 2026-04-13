@@ -3,10 +3,10 @@ name: rdc:report
 description: >-
   Generate a nightly markdown report. Covers: completed work items, open items,
   per-project progress, infrastructure status, git stats, test counts.
-  Writes to docs/reports/YYYY-MM-DD.md. Accepts optional --unattended flag for
+  Writes to .rdc/reports/YYYY-MM-DD.md (fallback: docs/reports/YYYY-MM-DD.md). Accepts optional --unattended flag for
   overnight/automated runs (silent, no interactive output, returns status block).
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:report — Nightly Report
@@ -50,7 +50,7 @@ description: >-
    - List all apps with current status
    - Flag any failures
 
-5. **Write report** to `docs/reports/YYYY-MM-DD.md`:
+5. **Write report** to `.rdc/reports/YYYY-MM-DD.md` (fallback: `docs/reports/YYYY-MM-DD.md` if `.rdc/` does not exist):
    ```markdown
    # Daily Report — YYYY-MM-DD
 
@@ -79,7 +79,7 @@ description: >-
 
 6. **Check if weekly rollup needed** (if today is Sunday):
    - Aggregate daily reports for the week
-   - Write `docs/reports/week-YYYY-WNN.md`
+   - Write `.rdc/reports/week-YYYY-WNN.md` (fallback: `docs/reports/week-YYYY-WNN.md`)
 
 7. **Report results:**
    - Interactive: print summary to conversation
@@ -89,7 +89,7 @@ description: >-
      ```
 
 ## Rules
-- Reports go in `docs/reports/` (create dir if missing)
+- Reports go in `.rdc/reports/` (fallback: `docs/reports/`) — create dir if missing
 - One report per day — overwrite if re-run same day
 - Keep under 100 lines — scannable, not exhaustive
 - Include links to relevant CLAUDE.md files where helpful

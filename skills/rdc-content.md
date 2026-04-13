@@ -4,7 +4,7 @@ description: >-
   Dispatch a content agent for marketing copy, messaging, email templates,
   and audience communications.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:content — Content Agent
@@ -13,7 +13,8 @@ description: >-
 
 Read the guide before writing ANY copy:
 ```
-{PROJECT_ROOT}/docs/guides/content.md
+{PROJECT_ROOT}/.rdc/guides/content.md
+(fallback: {PROJECT_ROOT}/docs/guides/content.md)
 ```
 
 ## Core Message Development

@@ -4,10 +4,10 @@ description: >-
   Create a structured handoff from a planning session to CLI agents. Use when
   the project lead says "hand this off", "give this to the CLI", "tell the CLI agents
   about this", or when a plan/prototype has been finalized and is ready for
-  implementation. Produces: a plan doc in docs/plans/, work items in database,
+  implementation. Produces: a plan doc in .rdc/plans/ (fallback: docs/plans/), work items in database,
   and a prototype registry entry if applicable.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:handoff — Planning → CLI Bridge
@@ -21,7 +21,7 @@ description: >-
 
 ## What This Skill Produces
 
-1. **Plan doc** → `docs/plans/<topic-slug>.md`
+1. **Plan doc** → `.rdc/plans/<topic-slug>.md` (fallback: `docs/plans/<topic-slug>.md`)
 2. **Database epic + child tasks** (with agent types and guide file refs)
 3. **Prototype registry entry** (if a prototype was built)
 4. **Design context entries** (for decisions made in the session)
@@ -40,8 +40,9 @@ Identify from the conversation:
 ### Step 2 — Write the Plan Doc
 
 ```
-docs/plans/<topic-slug>.md
+.rdc/plans/<topic-slug>.md
 ```
+(fallback: `docs/plans/<topic-slug>.md` if `.rdc/` does not exist)
 
 Template:
 ```markdown
@@ -67,7 +68,7 @@ Template:
 
 ### Package 1 — <Name>
 - Agent type: frontend | backend | data | design | infra | content | cs2 | viz
-- Guide: docs/guides/<type>.md
+- Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
 - Files to create/modify: [list]
 - Deliverables: [specific outputs]
 - Depends on: [other packages if sequential]
@@ -96,7 +97,7 @@ SELECT get_open_epics();
 -- Create epic
 SELECT insert_work_item(
   p_title       := 'EPIC: <Topic>',
-  p_description := 'See docs/plans/<topic-slug>.md for full spec.',
+  p_description := 'See .rdc/plans/<topic-slug>.md for full spec.',
   p_item_type   := 'epic',
   p_priority    := 'high',
   p_labels      := ARRAY['<system-label>'],
@@ -109,8 +110,8 @@ SELECT insert_work_item(
   p_description := 'What: <deliverable>
 Where: <files>
 Agent type: <type>
-Guide: docs/guides/<type>.md
-Design doc: docs/plans/<topic-slug>.md
+Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
+Design doc: .rdc/plans/<topic-slug>.md (fallback: docs/plans/<topic-slug>.md)
 Depends on: <other task if applicable>
 Est: <hours>',
   p_parent_id   := '<epic-uuid>'::uuid,
@@ -163,7 +164,7 @@ VALUES
 When complete, tell the project lead:
 ```
 Handoff complete:
-- Plan: docs/plans/<topic-slug>.md
+- Plan: .rdc/plans/<topic-slug>.md
 - Epic: <epic-id> ("<title>")
 - Tasks: <N> tasks created, wave structure: [Wave 1: X, Y | Wave 2: Z]
 - Prototype: registered at docs/source/<file> (if applicable)

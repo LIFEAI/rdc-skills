@@ -24,28 +24,30 @@ description: >-
 ## Agent Types & Guide Files
 
 Every dispatched agent MUST read two files before starting — in this order:
-1. `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` — credentials, git rules, completion report format
-2. `{PROJECT_ROOT}/docs/guides/<type>.md` — role-specific guide
+1. `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` — credentials, git rules, completion report format
+   (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` if `.rdc/` does not exist)
+2. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
+   (fallback: `{PROJECT_ROOT}/docs/guides/<type>.md`)
 
 Include both lines in every agent prompt:
 ```
-"Read {PROJECT_ROOT}/docs/guides/agent-bootstrap.md first, then {PROJECT_ROOT}/docs/guides/<type>.md before starting."
+"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: docs/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: docs/guides/<type>.md) before starting."
 ```
 
 | Agent Type | Guide File | When to dispatch |
 |-----------|-----------|-----------------|
-| `frontend` | `docs/guides/frontend.md` | React components, pages, UI, Tailwind, animation |
-| `backend` | `docs/guides/backend.md` | API routes, server components, database queries, auth |
-| `data` | `docs/guides/data.md` | Migrations, schema changes, RPC functions |
-| `design` | `docs/guides/design.md` | Visual design, brand palettes, OG images, token work |
-| `infra` | `docs/guides/infrastructure.md` | CI/CD, deployment, DNS, SSL |
-| `content` | `docs/guides/content.md` | Marketing copy, messaging, tone |
-| `cs2` | `docs/guides/cs2.md` | CS 2.0 paradigm work (generic) |
-| `hail` | `docs/guides/cs2.md` + `packages/hail/CLAUDE.md` | Grammar, DSL compiler, evolution |
-| `pal` | `docs/guides/cs2.md` + `packages/pal/CLAUDE.md` | Sessions, moment windows, graph memory |
-| `bpmn` | `docs/guides/cs2.md` + `docs/systems/<domain>/flowable-bpmn-architecture.md` | BPMN flows, governance |
-| `virtue` | `docs/guides/cs2.md` + `packages/virtue-engine/CLAUDE.md` | Virtue weights, coherence, certification |
-| `viz` | `docs/guides/frontend.md` + `docs/guides/design.md` | Custom viz components, charts, diagrams |
+| `frontend` | `.rdc/guides/frontend.md` | React components, pages, UI, Tailwind, animation |
+| `backend` | `.rdc/guides/backend.md` | API routes, server components, database queries, auth |
+| `data` | `.rdc/guides/data.md` | Migrations, schema changes, RPC functions |
+| `design` | `.rdc/guides/design.md` | Visual design, brand palettes, OG images, token work |
+| `infra` | `.rdc/guides/infrastructure.md` | CI/CD, deployment, DNS, SSL |
+| `content` | `.rdc/guides/content.md` | Marketing copy, messaging, tone |
+| `cs2` | `.rdc/guides/cs2.md` | CS 2.0 paradigm work (generic) |
+| `hail` | `.rdc/guides/cs2.md` + `packages/hail/CLAUDE.md` | Grammar, DSL compiler, evolution |
+| `pal` | `.rdc/guides/cs2.md` + `packages/pal/CLAUDE.md` | Sessions, moment windows, graph memory |
+| `bpmn` | `.rdc/guides/cs2.md` + `docs/systems/<domain>/flowable-bpmn-architecture.md` | BPMN flows, governance |
+| `virtue` | `.rdc/guides/cs2.md` + `packages/virtue-engine/CLAUDE.md` | Virtue weights, coherence, certification |
+| `viz` | `.rdc/guides/frontend.md` + `.rdc/guides/design.md` | Custom viz components, charts, diagrams |
 
 ### How to classify a task → agent type
 
@@ -91,7 +93,7 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
-3. **Load the plan** (if exists): check `docs/plans/` for matching topic.
+3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `docs/plans/`).
 
 4. **Read CLAUDE.md files** for all affected packages.
 
@@ -105,7 +107,7 @@ Read the task title and description, then:
 7. **For each wave — dispatch typed agents in parallel:**
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
-     - `"Read {PROJECT_ROOT}/docs/guides/agent-bootstrap.md first, then {PROJECT_ROOT}/docs/guides/<type>.md before starting."`
+     - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: docs/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: docs/guides/<type>.md) before starting."`
      - Specific files to create/modify
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`

@@ -4,7 +4,7 @@ description: >-
   Dispatch a data agent for database migrations, schema changes, RPC function
   creation, field schema seeding, and database operations.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:data — Data Agent
@@ -13,7 +13,8 @@ description: >-
 
 Read the guide before ANY operations:
 ```
-{PROJECT_ROOT}/docs/guides/data.md
+{PROJECT_ROOT}/.rdc/guides/data.md
+(fallback: {PROJECT_ROOT}/docs/guides/data.md)
 ```
 
 ## Migration Pattern

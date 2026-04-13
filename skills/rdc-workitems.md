@@ -5,7 +5,7 @@ description: >-
   says "add this to the backlog", "create a ticket for", "mark that done",
   "what's in the queue", "show me open epics", or any work item management.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:workitems — Work Item Management
@@ -15,7 +15,7 @@ description: >-
 1. **Epic first, always.** Never create a task without a parent epic.
 2. **Label everything.** Minimum one system label per item.
 3. **Check first.** `get_open_epics()` before creating anything new.
-4. **Link design docs.** Put `docs/plans/` or `docs/research/` paths in descriptions.
+4. **Link design docs.** Put `.rdc/plans/` or `.rdc/research/` paths in descriptions (fallback: `docs/plans/` / `docs/research/`).
 
 ## Read Epics
 
@@ -30,7 +30,7 @@ SELECT get_open_epics(p_label_filter := 'custom-label');
 ```sql
 SELECT insert_work_item(
   p_title       := 'EPIC: Clear descriptive title',
-  p_description := 'What and why. Reference docs/plans/<n>.md if applicable.',
+  p_description := 'What and why. Reference .rdc/plans/<n>.md if applicable.',
   p_item_type   := 'epic',
   p_priority    := 'high',
   p_labels      := ARRAY['system-label'],
@@ -46,8 +46,8 @@ SELECT insert_work_item(
   p_description := 'What: <deliverable>
 Where: <files to create/modify>
 Agent type: frontend | backend | data | design | infra | content | cs2
-Guide: docs/guides/<type>.md
-Design doc: docs/plans/<n>.md (if exists)
+Guide: .rdc/guides/<type>.md (fallback: docs/guides/<type>.md)
+Design doc: .rdc/plans/<n>.md (fallback: docs/plans/<n>.md, if exists)
 Depends on: <other task title if sequential>
 Est: <hours>',
   p_parent_id   := '<epic-uuid>'::uuid,
@@ -110,15 +110,15 @@ SELECT bump_epic_version('<epic-uuid>'::uuid, '0.2.0', 'What changed', 'planning
 
 | Type | Guide | Use For |
 |------|-------|---------|
-| `frontend` | docs/guides/frontend.md | React, pages, UI, Tailwind |
-| `backend` | docs/guides/backend.md | API routes, database, auth |
-| `data` | docs/guides/data.md | Migrations, schema, RPC |
-| `design` | docs/guides/design.md | Brand, palette, OG images |
-| `infra` | docs/guides/infrastructure.md | CI/CD, deploy, DNS |
-| `content` | docs/guides/content.md | Copy, messaging, tone |
-| `cs2` | docs/guides/cs2.md | CS 2.0 paradigm |
-| `hail` | docs/guides/cs2.md + packages/hail/CLAUDE.md | Grammar, DSL |
-| `viz` | docs/guides/frontend.md + design.md | Custom visualizations |
+| `frontend` | .rdc/guides/frontend.md | React, pages, UI, Tailwind |
+| `backend` | .rdc/guides/backend.md | API routes, database, auth |
+| `data` | .rdc/guides/data.md | Migrations, schema, RPC |
+| `design` | .rdc/guides/design.md | Brand, palette, OG images |
+| `infra` | .rdc/guides/infrastructure.md | CI/CD, deploy, DNS |
+| `content` | .rdc/guides/content.md | Copy, messaging, tone |
+| `cs2` | .rdc/guides/cs2.md | CS 2.0 paradigm |
+| `hail` | .rdc/guides/cs2.md + packages/hail/CLAUDE.md | Grammar, DSL |
+| `viz` | .rdc/guides/frontend.md + design.md | Custom visualizations |
 
 ## What NOT to Do
 
@@ -126,4 +126,4 @@ SELECT bump_epic_version('<epic-uuid>'::uuid, '0.2.0', 'What changed', 'planning
 - Never create tasks without a parent epic
 - Never leave labels empty
 - Never write vague titles ("Fix stuff") — be specific
-- Never put design intention in the task — put it in `docs/research/` and link
+- Never put design intention in the task — put it in `.rdc/research/` (fallback: `docs/research/`) and link

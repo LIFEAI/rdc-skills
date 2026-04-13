@@ -39,6 +39,25 @@ curl -s -H "Authorization: Bearer $KEY" https://api.example.com/...
 
 ---
 
+## Project Directory Convention
+
+This plugin uses the `.rdc/` directory convention. Check for it first:
+
+```bash
+# Check if .rdc/ exists at project root
+ls {PROJECT_ROOT}/.rdc/config.json 2>/dev/null && echo "using .rdc/" || echo "using docs/ fallback"
+```
+
+**Path resolution rule:**
+- Guides: `{PROJECT_ROOT}/.rdc/guides/` → fallback: `{PROJECT_ROOT}/docs/guides/`
+- Plans: `{PROJECT_ROOT}/.rdc/plans/` → fallback: `{PROJECT_ROOT}/docs/plans/`
+- Reports: `{PROJECT_ROOT}/.rdc/reports/` → fallback: `{PROJECT_ROOT}/docs/reports/`
+- Research: `{PROJECT_ROOT}/.rdc/research/` → fallback: `{PROJECT_ROOT}/docs/research/`
+
+If `.rdc/config.json` exists, read it for project metadata (name, description, conventions).
+
+---
+
 ## Database Access — Check Project Overlay
 
 The project overlay guide will specify:
@@ -112,6 +131,7 @@ If you discover that fixing your assigned task would also require changing files
 
 ## Now read your role-specific guide
 
-Path: Look in the project's documentation directory for `<type>.md` (e.g., `frontend.md`, `backend.md`, `data.md`)
+Path: `{PROJECT_ROOT}/.rdc/guides/<type>.md` (e.g., `frontend.md`, `backend.md`, `data.md`)
+Fallback: `{PROJECT_ROOT}/docs/guides/<type>.md` if `.rdc/` does not exist.
 
-The project overlay will specify the exact location.
+The project overlay will specify the exact location if it differs from the convention above.

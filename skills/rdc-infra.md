@@ -4,7 +4,7 @@ description: >-
   Dispatch an infrastructure agent for deployments, DNS configuration,
   SSL, environment variables, build config, and CI/CD operations.
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:infra — Infrastructure Agent
@@ -13,7 +13,8 @@ description: >-
 
 Read the guide before ANY operations:
 ```
-{PROJECT_ROOT}/docs/guides/infrastructure.md
+{PROJECT_ROOT}/.rdc/guides/infrastructure.md
+(fallback: {PROJECT_ROOT}/docs/guides/infrastructure.md)
 ```
 
 ## Rule 1: Never Work Around Broken Infrastructure

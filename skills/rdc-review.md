@@ -7,7 +7,7 @@ description: >-
   --unattended flag for overnight/automated runs (auto-fixes everything fixable,
   escalates judgment calls to advisor, returns status block).
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:review — Quality Gate

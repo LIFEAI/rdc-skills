@@ -6,7 +6,7 @@ description: >-
   Produces a research doc — no decisions, no code. Accepts optional --unattended
   flag for overnight/automated runs (skips clarifying questions, returns status block).
 ---
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md` first.
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/docs/guides/agent-bootstrap.md`).
 
 
 # rdc:preplan — Research Before Planning
@@ -35,9 +35,9 @@ description: >-
 
 3. **Codebase analysis** — what do we already have?
    - Search relevant packages for existing code
-   - Check `docs/research/` for prior research on this topic
+   - Check `.rdc/research/` for prior research on this topic (fallback: `docs/research/`)
    - Check `docs/archive/` for historical work
-   - Research agents should read relevant guides from `docs/guides/`
+   - Research agents should read relevant guides from `.rdc/guides/` (fallback: `docs/guides/`)
    - Check work items for related epics
    - Read relevant CLAUDE.md files
 
@@ -46,7 +46,7 @@ description: >-
 
 5. **Surface unknowns** — what questions remain unanswered?
 
-6. **Write research doc** to `docs/research/<topic-slug>.md`:
+6. **Write research doc** to `.rdc/research/<topic-slug>.md` (fallback: `docs/research/<topic-slug>.md` if `.rdc/` does not exist):
    ```markdown
    # Research: <Topic>
    > Generated: <date> | Requested by: Project Lead
