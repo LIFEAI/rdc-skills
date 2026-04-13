@@ -572,6 +572,20 @@ async function main() {
     process.exit(1);
   }
 
+  // 0. Pull latest from git
+  try {
+    const before = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
+    execSync('git pull --ff-only', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' });
+    const after  = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
+    if (before !== after) {
+      ok(`[0/3] Updated     — ${before.slice(0,7)} → ${after.slice(0,7)}`);
+    } else {
+      ok(`[0/3] Up to date  — ${after.slice(0,7)}`);
+    }
+  } catch {
+    warn('[0/3] git pull failed — installing from local copy');
+  }
+
   // 1. Skills
   const skillCount = copyDir(skillsSrc, skillsDst, '.md');
   ok(`[1/3] Skills      — ${skillCount} file(s) → ${skillsDst}`);
