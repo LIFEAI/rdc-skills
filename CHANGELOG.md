@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] — 2026-04-13
+
+### Added
+
+#### `.rdc/` Project Directory Convention
+- **`.rdc/config.json` schema** — project metadata: name, hook_scope, git config, Supabase ref, credential provider, repo list, path overrides, constraints
+- **Standardised paths**: `.rdc/guides/`, `.rdc/plans/`, `.rdc/reports/`, `.rdc/research/`, `.rdc/state/`
+- All 20 skills updated to read from `.rdc/` with fallback to legacy `docs/` structure for existing projects
+- `guides/agent-bootstrap.md` updated to instruct agents to check `.rdc/config.json` for project metadata
+
+#### Installer (`scripts/install.js`)
+- **`--migrate <path>` flag** — interactive wizard: scans for `docs/guides/`, `docs/plans/`, `docs/reports/`, `docs/research/`; offers to move each to `.rdc/`; merges files if destination already exists; auto-detects GitHub org/repo from git remote
+- **`--setup` generates `.rdc/config.json`** from interview answers in addition to `docs/guides/agent-bootstrap.md`
+- **Preflight checks** — Node ≥ 18 (hard error), clauth daemon ping (warn), `.rdc/config.json` presence check (suggest `--setup`)
+- **Multi-project support** — each project carries its own `.rdc/` committed to git; skills are global, intelligence travels with the repo
+
+#### Multi-Repo Support
+- `config.json` `repos[]` array — primary + satellite repos listed with roles
+- One project, many repos: monorepo root holds `.rdc/config.json`, lists satellite repo paths
+
+---
+
 ## [0.1.0] — 2026-04-13
 
 ### Added
