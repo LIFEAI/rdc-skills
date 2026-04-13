@@ -1,92 +1,162 @@
 # Install rdc-skills plugin to Claude Code
 # Windows PowerShell script
+#
+# Usage:
+#   ./install.ps1                  # standard install
+#   ./install.ps1 -SkipHooks       # skip hooks registration (e.g. if you manage hooks manually)
+#   ./install.ps1 -ClaudeHome <path>  # custom CLAUDE_HOME
 
 param(
-    [string]$claudeHome = $env:CLAUDE_HOME,
-    [switch]$force = $false
+    [string]$ClaudeHome = "",
+    [switch]$SkipHooks = $false,
+    [switch]$Force = $false
 )
 
-# Detect CLAUDE_HOME if not provided
-if (-not $claudeHome) {
-    $claudeHome = Join-Path $env:USERPROFILE ".claude"
+# Detect CLAUDE_HOME
+if (-not $ClaudeHome) {
+    $ClaudeHome = Join-Path $env:USERPROFILE ".claude"
 }
 
-# Resolve script location
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptDir
+$repoRoot  = Split-Path -Parent $scriptDir
 
-Write-Host "rdc-skills Installer" -ForegroundColor Green
-Write-Host "===================" -ForegroundColor Green
+Write-Host ""
+Write-Host "  rdc-skills Installer" -ForegroundColor Green
+Write-Host "  ====================" -ForegroundColor Green
+Write-Host ""
+Write-Host "  CLAUDE_HOME : $ClaudeHome" -ForegroundColor Cyan
+Write-Host "  Plugin root : $repoRoot" -ForegroundColor Cyan
 Write-Host ""
 
-# Check CLAUDE_HOME exists
-if (-not (Test-Path $claudeHome)) {
-    Write-Host "ERROR: CLAUDE_HOME does not exist: $claudeHome" -ForegroundColor Red
-    Write-Host "       Create it first: mkdir `"$claudeHome`"" -ForegroundColor Yellow
+if (-not (Test-Path $ClaudeHome)) {
+    Write-Host "  ERROR: CLAUDE_HOME not found: $ClaudeHome" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "CLAUDE_HOME: $claudeHome" -ForegroundColor Cyan
+# ── 1. Skills ────────────────────────────────────────────────────────────────
 
-# Create skills directory
-$skillsDir = Join-Path $claudeHome "skills" "user"
+$skillsDir = Join-Path $ClaudeHome "skills" "user"
 if (-not (Test-Path $skillsDir)) {
     New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
-    Write-Host "✓ Created skills directory: $skillsDir" -ForegroundColor Green
-} else {
-    Write-Host "✓ Skills directory exists: $skillsDir" -ForegroundColor Green
 }
 
-# Copy skills
 $srcSkills = Join-Path $repoRoot "skills"
-if (Test-Path $srcSkills) {
-    $skillFiles = Get-ChildItem -Path $srcSkills -Filter "*.md" -ErrorAction SilentlyContinue
-    foreach ($file in $skillFiles) {
-        $dest = Join-Path $skillsDir $file.Name
-        Copy-Item -Path $file.FullName -Destination $dest -Force
-        Write-Host "  → $($file.Name)" -ForegroundColor DarkGreen
-    }
-    if ($skillFiles.Count -eq 0) {
-        Write-Host "  (no skills yet — guides to be added by WP2 agent)" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  ✓ Copied $($skillFiles.Count) skill(s)" -ForegroundColor Green
-    }
+$skillFiles = Get-ChildItem -Path $srcSkills -Filter "*.md" -ErrorAction SilentlyContinue
+foreach ($f in $skillFiles) {
+    Copy-Item -Path $f.FullName -Destination (Join-Path $skillsDir $f.Name) -Force
 }
+Write-Host "  [1/3] Skills      ✓  $($skillFiles.Count) file(s) → $skillsDir" -ForegroundColor Green
 
-# Create hooks directory
-$hooksDir = Join-Path $claudeHome "hooks"
+# ── 2. Hooks (files) ─────────────────────────────────────────────────────────
+
+$hooksDir = Join-Path $ClaudeHome "hooks"
 if (-not (Test-Path $hooksDir)) {
     New-Item -ItemType Directory -Path $hooksDir -Force | Out-Null
-    Write-Host "✓ Created hooks directory: $hooksDir" -ForegroundColor Green
-} else {
-    Write-Host "✓ Hooks directory exists: $hooksDir" -ForegroundColor Green
 }
 
-# Copy hooks
-$srcHooks = Join-Path $repoRoot "hooks"
+$srcHooks  = Join-Path $repoRoot "hooks"
 $hookFiles = Get-ChildItem -Path $srcHooks -Filter "*.js" -ErrorAction SilentlyContinue
-foreach ($file in $hookFiles) {
-    $dest = Join-Path $hooksDir $file.Name
-    Copy-Item -Path $file.FullName -Destination $dest -Force
-    Write-Host "  → $($file.Name)" -ForegroundColor DarkGreen
+foreach ($f in $hookFiles) {
+    Copy-Item -Path $f.FullName -Destination (Join-Path $hooksDir $f.Name) -Force
 }
-if ($hookFiles.Count -gt 0) {
-    Write-Host "  ✓ Copied $($hookFiles.Count) hook(s)" -ForegroundColor Green
+Write-Host "  [2/3] Hook files  ✓  $($hookFiles.Count) file(s) → $hooksDir" -ForegroundColor Green
+
+# ── 3. Register hooks in settings.json ───────────────────────────────────────
+
+if ($SkipHooks) {
+    Write-Host "  [3/3] Hook wiring ⏭  skipped (--SkipHooks)" -ForegroundColor DarkGray
+} else {
+    $settingsPath = Join-Path $ClaudeHome "settings.json"
+
+    # Load existing settings (or start fresh)
+    if (Test-Path $settingsPath) {
+        $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+    } else {
+        $settings = [PSCustomObject]@{}
+    }
+
+    # Build hooks block — all paths use forward slashes for cross-platform compat
+    $hooksBase = $hooksDir.Replace("\", "/")
+
+    $hooksConfig = [PSCustomObject]@{
+        SessionStart = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-cwd.js`"" },
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-stale-work-items.js`""; statusMessage = "Checking for stale work items..." }
+                )
+            }
+        )
+        PreToolUse = @(
+            [PSCustomObject]@{
+                matcher = "Bash"
+                hooks   = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/require-work-item-on-commit.js`"" }
+                )
+            }
+        )
+        PostToolUse = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-services.js`"" }
+                )
+            }
+        )
+        PreCompact = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/precompact-log.js`"" }
+                )
+            }
+        )
+        PostCompact = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/postcompact-log.js`"" },
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/restart-brief.js`""; statusMessage = "Writing restart brief..." }
+                )
+            }
+        )
+        Stop = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." },
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." },
+                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
+                )
+            }
+        )
+    }
+
+    # Add/replace hooks key
+    if ($settings.PSObject.Properties["hooks"]) {
+        $settings.hooks = $hooksConfig
+    } else {
+        $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooksConfig -Force
+    }
+
+    # Write back with 2-space indent
+    $settings | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding UTF8
+    Write-Host "  [3/3] Hook wiring ✓  registered in $settingsPath" -ForegroundColor Green
 }
 
+# ── Summary ───────────────────────────────────────────────────────────────────
+
 Write-Host ""
-Write-Host "Installation Complete" -ForegroundColor Green
-Write-Host "=====================" -ForegroundColor Green
+Write-Host "  Installation complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "1. Create project-specific guides in your codebase:"
-Write-Host "   - docs/guides/agent-bootstrap.md (required — credentials, git rules)"
-Write-Host "   - docs/guides/frontend.md (if building UI)"
-Write-Host "   - docs/guides/backend.md (if building APIs)"
-Write-Host "   - docs/guides/data.md (if doing DB work)"
+Write-Host "  Next steps:" -ForegroundColor Yellow
+Write-Host "  1. Create project overlay guides (required for project-specific context):"
+Write-Host "     docs/guides/agent-bootstrap.md  ← credentials, git rules, Supabase ref"
+Write-Host "     docs/guides/frontend.md          ← your design system rules"
+Write-Host "     docs/guides/backend.md           ← your API/DB patterns"
+Write-Host "     docs/guides/data.md              ← your migration patterns"
 Write-Host ""
-Write-Host "2. Use rdc-skills/guides/*.md as starting point templates for your project overlays"
+Write-Host "  2. Use rdc-skills/guides/*.md as starting-point templates"
 Write-Host ""
-Write-Host "3. Run /rdc:status in Claude Code to verify setup"
+Write-Host "  3. Restart Claude Code so hook changes take effect"
 Write-Host ""
-Write-Host "For help: https://github.com/LIFEAI/rdc-skills#readme" -ForegroundColor Cyan
+Write-Host "  4. Run /rdc:status in Claude Code to verify"
+Write-Host ""
+Write-Host "  Docs: https://github.com/LIFEAI/rdc-skills#readme" -ForegroundColor Cyan
+Write-Host ""
