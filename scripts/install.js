@@ -3,12 +3,16 @@
  * rdc-skills installer (Node.js — works from bash, PowerShell, or cmd)
  *
  * Usage:
- *   node scripts/install.js
+ *   node scripts/install.js                        ← run from inside your project
+ *   node scripts/install.js --project /path/to/project
  *   node scripts/install.js --skip-hooks
  *   node scripts/install.js --claude-home /path/to/.claude
- *   node scripts/install.js --setup          ← interactive setup interview
- *   node scripts/install.js --migrate .      ← migrate docs/ dirs to .rdc/
+ *   node scripts/install.js --setup                ← interactive setup interview
+ *   node scripts/install.js --migrate .            ← migrate docs/ dirs to .rdc/
  *   node scripts/install.js --migrate /path/to/project
+ *
+ * NOTE: Run from inside your project root, or pass --project <path>.
+ * The installer scans that directory to auto-detect project config.
  */
 
 const fs       = require('fs');
@@ -26,6 +30,8 @@ const doMigrate   = migrateIdx >= 0;
 const migratePath = doMigrate ? (args[migrateIdx + 1] || process.cwd()) : null;
 const homeIdx     = args.indexOf('--claude-home');
 const claudeHome  = homeIdx >= 0 ? args[homeIdx + 1] : path.join(os.homedir(), '.claude');
+const projectIdx  = args.indexOf('--project');
+const projectArg  = projectIdx >= 0 ? path.resolve(args[projectIdx + 1]) : null;
 
 const repoRoot  = path.resolve(__dirname, '..');
 const skillsSrc = path.join(repoRoot, 'skills');
@@ -313,7 +319,7 @@ async function setupInterview(detected = {}) {
 
   // Project basics
   answers.projectName   = await ans('Project name', 'projectName');
-  answers.projectRoot   = await ans('Absolute path to project root', 'projectRoot', process.cwd());
+  answers.projectRoot   = await ans('Absolute path to project root', 'projectRoot', projectArg || process.cwd());
   answers.description   = await ans('Short description', 'description');
   answers.githubOrg     = await ans('GitHub org/user', 'githubOrg');
   answers.githubRepo    = await ans('GitHub repo name', 'githubRepo');
@@ -591,7 +597,8 @@ async function main() {
   runPreflight();
 
   // 5. Scan project for existing config (always — used for auto-prompt and prefill)
-  const projectRoot = process.cwd();
+  const projectRoot = projectArg || process.cwd();
+  if (projectArg) info(`Project root  : ${projectRoot}`);
   const detected = detectProjectInfo(projectRoot);
 
   if (Object.keys(detected).filter(k => !k.startsWith('_')).length > 0) {
