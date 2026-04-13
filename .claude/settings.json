@@ -1,0 +1,15 @@
+{
+  "projectName": "rdc-skills plugin development",
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(bash:*)",
+      "Bash(git:*)",
+      "Bash(npm:*)"
+    ]
+  },
+  "hooks": {
+    "enableStopHook": true,
+    "stopHookPath": "hooks/no-stop-open-epics.js"
+  }
+}
