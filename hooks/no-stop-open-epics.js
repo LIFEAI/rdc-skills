@@ -24,12 +24,12 @@ const path = require('path');
 
 // ── Config — override these per project ──────────────────────────────────────
 
-const SUPABASE_URL = process.env.SUPABASE_URL || readEnvVar('NEXT_PUBLIC_SUPABASE_URL');
 const PROJECT_SCOPE = 'regen-root'; // only block in sessions inside this folder name
 const ENV_PATHS = [
   'C:/Dev/regen-root/apps/rdc-marketing-engine/.env.local',
   'C:/Dev/regen-root/.env.local',
 ];
+const SUPABASE_URL = process.env.SUPABASE_URL || readEnvVar('NEXT_PUBLIC_SUPABASE_URL');
 
 function readEnvVar(key) {
   for (const p of ENV_PATHS) {
