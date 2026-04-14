@@ -138,10 +138,19 @@ Read the task title and description, then:
      BUILD_STATUS: { wave, tasks_done, tasks_failed, commits, escalated: true }
      ```
 
-10. **After all waves:**
+10. **Final verification gate (mandatory — before marking epic done):**
+    Invoke `rdc:verify` (see `rdc-verify.md`) across every package/app touched in this build.
+    The Iron Law: **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
+    - Run `npx vitest run --dir <pkg>` fresh for each touched package
+    - Run `npx tsc --noEmit --project <pkg>/tsconfig.json` for each
+    - Read the full output — zero failures, zero type errors
+    - If any step fails: fix and re-run the entire gate. Do not skip.
+    - NEVER `pnpm build` / `pnpm test` / `pnpm -r` (crashes machine)
+
+11. **After verification passes:**
     - Push all commits: `git push origin {development-branch}`
     - Update epic version: `bump_epic_version()`
-    - Report summary
+    - Report summary with verification evidence quoted
 
 ## Agent TDD Requirements
 

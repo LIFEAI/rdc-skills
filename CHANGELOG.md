@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] — 2026-04-14
+
+### Added
+
+#### `rdc:verify` — Verification Gate Skill
+- New skill `skills/rdc-verify.md` — evidence-before-claims verification gate adapted from obra/superpowers `verification-before-completion` pattern
+- **Iron Law**: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE — no "should", no "probably", no reasoning from memory
+- **Stack-specific commands**: `npx vitest run --dir <pkg>` + `npx tsc --noEmit --project <pkg>/tsconfig.json`
+- **Explicit ban**: `pnpm build` / `pnpm test` / `pnpm -r` — crashes machine (800MB/process)
+- Rationalization prevention table, required output format with quoted evidence
+
+### Changed
+
+#### `rdc:build` — Mandatory Final Verification Phase
+- New step 10: invoke `rdc:verify` across every package/app touched before marking epic done
+- Step 11: push + version bump + summary **only after** verification evidence passes
+
+#### `rdc:review` — Verification Gate Before CLEAN Verdict
+- New step 9: invoke `rdc:verify` after fixes land — no CLEAN verdict without fresh vitest + tsc output quoted in report
+- If verify fails → loop back, fix, re-run (never emit CLEAN optimistically)
+
+---
+
 ## [0.3.0] — 2026-04-13
 
 ### Added

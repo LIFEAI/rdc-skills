@@ -77,7 +77,12 @@ description: >-
    - If unclear → report (interactive) or flag in REVIEW_STATUS (unattended)
    - Never silently leave orphaned tasks
 
-9. **Fix issues found:**
+9. **Verification gate — invoke `rdc:verify`:**
+   After any fixes land, run the verify gate on every touched package. See `rdc-verify.md`.
+   **Iron Law: no CLEAN verdict without fresh evidence.** Quote the vitest + tsc output in the report.
+   If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.
+
+10. **Fix issues found:**
    - Failing tests → fix and commit
    - Export conflicts → resolve and commit
    - Missing version bumps → bump and commit
@@ -89,7 +94,7 @@ description: >-
      two most likely fix paths. Resume with advisor's recommendation.
      If advisor unavailable: take the most conservative path, flag in status block.
 
-10. **Report:**
+11. **Report:**
     - Interactive:
       ```
       ## Review Results
