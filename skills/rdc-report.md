@@ -1,10 +1,7 @@
 ---
 name: rdc:report
 description: >-
-  Generate a nightly markdown report. Covers: completed work items, open items,
-  per-project progress, infrastructure status, git stats, test counts.
-  Writes to .rdc/reports/YYYY-MM-DD.md (fallback: .rdc/reports/YYYY-MM-DD.md). Accepts optional --unattended flag for
-  overnight/automated runs (silent, no interactive output, returns status block).
+  Usage `rdc:report [--unattended]` — nightly markdown report, writes to .rdc/reports/YYYY-MM-DD.md. Covers completed/open work items, per-project progress, infra status, git stats, test counts.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

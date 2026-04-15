@@ -1,6 +1,7 @@
 ---
 name: rdc:collab
-description: Bidirectional collab session with claude.ai — read inbox, do work, write response to outbox, loop. Dave watches terminal and can interject.
+description: >-
+  Usage `rdc:collab --session <id>` — bidirectional relay with claude.ai. Read inbox, do work, write outbox, loop. Dave watches terminal and can interject.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

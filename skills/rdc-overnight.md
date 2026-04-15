@@ -1,11 +1,7 @@
 ---
 name: rdc:overnight
 description: >-
-  Unattended overnight build supervisor. Orchestrates the full rdc:* skill suite
-  (preplan → plan → build → review → report) in --unattended mode across all
-  high-priority epics. Uses the advisor tool for escalation when stuck.
-  Use when the project lead says "run overnight", "start the overnight build",
-  "build while I sleep", or wants to kick off an autonomous multi-epic build session.
+  Usage `rdc:overnight [epic-id|label=X]` — unattended overnight supervisor, chains preplan → plan → build → review → report across all high-priority epics in --unattended mode. Use for "run overnight", "build while I sleep".
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

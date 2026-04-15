@@ -1,10 +1,7 @@
 ---
 name: rdc:preplan
 description: >-
-  Research best practices, analyze codebase, compare approaches, surface unknowns
-  BEFORE committing to a plan. Use when starting something new or unfamiliar.
-  Produces a research doc — no decisions, no code. Accepts optional --unattended
-  flag for overnight/automated runs (skips clarifying questions, returns status block).
+  Usage `rdc:preplan <topic> [--unattended]` — research best practices, analyze codebase, compare approaches, surface unknowns before committing to a plan. Produces a research doc. No decisions, no code.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

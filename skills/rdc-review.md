@@ -1,11 +1,7 @@
 ---
 name: rdc:review
 description: >-
-  Review all recent work — run tests across modified packages, check for export
-  conflicts, type errors, stale docs, and incomplete implementations. Fix issues
-  found. Use after a build session or before merging to main. Accepts optional
-  --unattended flag for overnight/automated runs (auto-fixes everything fixable,
-  escalates judgment calls to advisor, returns status block).
+  Usage `rdc:review [--unattended]` — tests, typecheck, stale docs, export conflicts across modified packages. Fixes issues found. Use after a build session or before merging to main.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

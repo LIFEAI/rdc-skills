@@ -1,98 +1,79 @@
 ---
 name: rdc:help
 description: >-
-  Show all available rdc:* skills and what each one does. Use when the project lead
-  asks "what skills do you have", "what commands are available", "how do I",
-  or when you need to decide which skill to invoke for a given task.
+  Usage `rdc:help` or `rdc` — selection menu of all rdc:* skills with their full argument syntax. Use when unsure which command to invoke or what args it takes.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
-> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
 
-# rdc:help — Skill Index
+# rdc:help — Command Reference
 
-## Workflow Skills (orchestrators)
+Print the full usage menu below verbatim, then ask the project lead which command to run.
 
-| Skill | When to Use |
-|-------|-------------|
-| `rdc:overnight` | Unattended overnight build — works all urgent/high epics autonomously |
-| `rdc:build` | Execute a specific epic or topic — dispatches typed agents |
-| `rdc:plan` | Architecture doc + database epic/tasks from a research doc or direction |
-| `rdc:preplan` | Research best practices before committing to a plan |
-| `rdc:review` | Code quality check — typecheck, lint, test affected packages |
-| `rdc:report` | Session summary → .rdc/reports/ (fallback: .rdc/reports/) |
-| `rdc:status` | Current state: open epics, build health, deployment status |
+## Workflow — the RDC loop
 
-## Agent Type Skills (dispatched by rdc:build)
+| Command | Usage |
+|---|---|
+| `rdc:preplan` | `rdc:preplan <topic> [--unattended]` — research, no code |
+| `rdc:plan` | `rdc:plan <topic> [--unattended]` — architecture + epic/tasks |
+| `rdc:build` | `rdc:build <epic-id\|topic> [--unattended]` — dispatch agents, commit, close items |
+| `rdc:review` | `rdc:review [--unattended]` — typecheck, tests, fix, commit |
+| `rdc:report` | `rdc:report [--unattended]` — write `.rdc/reports/YYYY-MM-DD.md` |
+| `rdc:overnight` | `rdc:overnight [epic-id\|label=X]` — chain preplan→plan→build→review→report |
+| `rdc:status` | `rdc:status` — read-only dashboard |
+| `rdc:fixit` | `rdc:fixit <description>` — bypass the loop, <5 files / <30 min |
 
-| Skill | When to Use |
-|-------|-------------|
-| `rdc:frontend` | React components, pages, Tailwind, animation, UI library |
-| `rdc:backend` | API routes, server components, database queries, auth |
-| `rdc:data` | Migrations, schema changes, RPC functions, field schema seeding |
-| `rdc:design` | Brand tokens, OG images, typography, design system |
-| `rdc:infra` | CI/CD deploys, DNS, SSL, env vars, build config |
-| `rdc:content` | Marketing copy, email templates, messaging |
-| `rdc:cs2` | HAIL, Quad Pixel, AEMG, Virtue Engine, PAL, CS 2.0 packages |
-| `rdc:viz` | Custom viz: charts, SVG diagrams, data visualizations, etc. |
+## Ops
 
-## Planning ↔ CLI Bridge Skills
+| Command | Usage |
+|---|---|
+| `rdc:deploy` | `rdc:deploy <slug> [build-id]` · `rdc:deploy new <slug>` · `rdc:deploy diagnose <slug>` · `rdc:deploy audit [--fix]` |
+| `rdc:release` | `rdc:release <repo> [version]` · `rdc:release <repo> --patch\|--minor\|--major` · `rdc:release <repo> --dry-run` |
+| `rdc:verify` | `rdc:verify <package>` — post-build verification gate |
+| `rdc:setup` | `rdc:setup` — install/repair rdc-skills + hooks |
 
-| Skill | When to Use |
-|-------|-------------|
-| `rdc:handoff` | Finalize a session → plan doc + database work items for CLI |
-| `rdc:prototype` | Build a JSX prototype for review before production implementation |
-| `rdc:workitems` | Create/update/query database work items |
+## Planning ↔ CLI bridge
 
-## Guide Files (read by agents — not invoked directly)
+| Command | Usage |
+|---|---|
+| `rdc:handoff` | `rdc:handoff <topic>` — finalize plan → work items for CLI |
+| `rdc:prototype` | `rdc:prototype <description>` — JSX mock for review |
+| `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
+| `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
 
-Path resolution: check `.rdc/guides/<file>` first; fall back to `.rdc/guides/<file>` if `.rdc/` does not exist.
+## Agent-type skills (dispatched by rdc:build, not invoked directly)
 
-| File | For Agent Type |
-|------|---------------|
-| `.rdc/guides/frontend.md` | frontend, viz |
-| `.rdc/guides/backend.md` | backend |
-| `.rdc/guides/data.md` | data |
-| `.rdc/guides/design.md` | design, viz |
-| `.rdc/guides/infrastructure.md` | infra |
-| `.rdc/guides/content.md` | content |
-| `.rdc/guides/cs2.md` | cs2, hail, pal, virtue |
+`rdc:frontend` · `rdc:backend` · `rdc:data` · `rdc:design` · `rdc:infra` · `rdc:content` · `rdc:cs2` · `rdc:viz`
 
-## Decision Tree
+Each agent reads `.rdc/guides/agent-bootstrap.md` first, then its role guide (e.g. `frontend.md`).
+
+## Decision tree
 
 ```
 Project lead says → invoke
 ─────────────────────────────────────────────────
-"build it" / "go" / "execute"        → rdc:build <topic>
-"run overnight" / "build while I sleep" → rdc:overnight
-"research this" / "how do others do" → rdc:preplan <topic>
-"plan this out" / "architect"        → rdc:plan <topic>
-"what's the status" / "how are we"   → rdc:status
-"write a report" / "summarize session" → rdc:report
-"hand this off" / "give to agents"   → rdc:handoff
-"show me what it looks like"         → rdc:prototype
-"add to backlog" / "create a ticket" → rdc:workitems
-"what commands" / "what skills"      → rdc:help
+"research this" / "how do others do"    → rdc:preplan <topic>
+"plan this out" / "architect"           → rdc:plan <topic>
+"build it" / "go" / "execute"           → rdc:build <topic>
+"run overnight" / "while I sleep"       → rdc:overnight
+"quick fix" / "hotfix" / "typo"         → rdc:fixit <desc>
+"review" / "is it clean"                → rdc:review
+"report" / "summarize"                  → rdc:report
+"status" / "where are we"               → rdc:status
+"deploy" / "ship"                       → rdc:deploy <slug>
+"release" / "publish"                   → rdc:release <repo>
+"hand this off" / "give to agents"      → rdc:handoff
+"show me what it looks like"            → rdc:prototype
+"add to backlog" / "create a ticket"    → rdc:workitems
+"what commands" / "what skills"         → rdc:help
 ```
 
-## Key Infrastructure
+## Hard rules (apply everywhere)
 
-| Resource | Purpose |
-|----------|---------|
-| Project Root | `{PROJECT_ROOT}` |
-| Database URL | Configured per project |
-| Deployment System | Configured per project |
-| Credential Daemon | `http://127.0.0.1:52437` |
-| Dev Branch | `{development-branch}` |
-| Prod Branch | `{production-branch}` |
-
-## Rules That Apply Everywhere
-
-- NEVER run `pnpm build` — crashes the system
-- NEVER overlap agents on the same files
-- NEVER push to production from agent sessions
-- ALWAYS update work items in real time
-- ALWAYS read the guide file before starting agent work
-- ALWAYS check prototype_registry before building from scratch
+- NEVER `pnpm build` — crashes the machine. Typecheck with `npx tsc --noEmit`.
+- NEVER commit to `main` without explicit approval. Default branch is `develop`.
+- NEVER overlap agents on the same files.
+- ALWAYS update work items in real time via RPCs (see `.claude/rules/work-items-rpc.md`).
+- ALWAYS credentials via clauth daemon: `curl -s http://127.0.0.1:52437/get/<service>`.

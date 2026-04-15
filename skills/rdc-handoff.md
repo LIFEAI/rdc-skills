@@ -1,11 +1,7 @@
 ---
 name: rdc:handoff
 description: >-
-  Create a structured handoff from a planning session to CLI agents. Use when
-  the project lead says "hand this off", "give this to the CLI", "tell the CLI agents
-  about this", or when a plan/prototype has been finalized and is ready for
-  implementation. Produces: a plan doc in .rdc/plans/ (fallback: .rdc/plans/), work items in database,
-  and a prototype registry entry if applicable.
+  Usage `rdc:handoff <topic>` — structured handoff from planning session to CLI agents. Produces plan doc in .rdc/plans/, work items in DB, prototype registry entry if applicable. Use when plan/prototype is finalized and ready for implementation.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

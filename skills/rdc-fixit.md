@@ -1,11 +1,7 @@
 ---
 name: rdc:fixit
 description: >-
-  Sanctioned bypass for quick fixes that don't warrant a full epic. Creates a
-  minimal work item, makes the fix, commits, and closes the item. The ONLY
-  alternative to rdc:build. Use for typos, config patches, emergency hotfixes,
-  single-component tweaks, dependency version bumps — anything under 5 files
-  and 30 minutes. Anything larger must use rdc:build.
+  Usage `rdc:fixit <description>` — sanctioned bypass for quick fixes under 5 files / 30 min. Creates minimal work item, makes fix, commits, closes. The ONLY alternative to rdc:build. For typos, config patches, hotfixes, dep bumps.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

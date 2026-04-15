@@ -1,9 +1,7 @@
 ---
 name: rdc:workitems
 description: >-
-  Create, update, and manage work items in the database. Use when the project lead
-  says "add this to the backlog", "create a ticket for", "mark that done",
-  "what's in the queue", "show me open epics", or any work item management.
+  Usage `rdc:workitems <action> [args]` — create, update, query work items via Supabase RPCs. Actions: add, update, done, list, epics. Use for "add to backlog", "mark done", "show open epics", any work item CRUD.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

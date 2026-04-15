@@ -1,10 +1,7 @@
 ---
 name: rdc:build
 description: >-
-  Execute a plan or epic — dispatch typed agents with role-specific guides,
-  commit, push, update work items. The build engine. Use after rdc:plan or
-  when the project lead says "build it". Accepts an epic ID or topic name. Accepts
-  optional --unattended flag for overnight/automated runs.
+  Usage `rdc:build <epic-id|topic> [--unattended]` — dispatch typed agents from an epic, commit, push, update work items. The build engine. Use after rdc:plan or when the project lead says "build it".
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

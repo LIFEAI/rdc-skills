@@ -1,8 +1,7 @@
 ---
 name: rdc:status
 description: >-
-  Show project status — open epics, work items by project, infrastructure
-  deployment health, blockers. Quick situational awareness.
+  Usage `rdc:status` — open epics, work items by project, Coolify health, blockers, next recommended action. Read-only situational awareness.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

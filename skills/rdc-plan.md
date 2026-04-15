@@ -1,11 +1,7 @@
 ---
 name: rdc:plan
 description: >-
-  Take research findings or an epic and produce an architecture document with
-  design decisions, tradeoffs, and work packages. Creates Supabase epics/tasks.
-  Use after rdc:preplan or when the project lead gives clear architectural direction.
-  Accepts optional --unattended flag for overnight/automated runs (skips approval,
-  creates tasks immediately, returns status block).
+  Usage `rdc:plan <topic> [--unattended]` — architecture doc with design decisions, tradeoffs, work packages. Creates Supabase epics/tasks. Use after rdc:preplan or when given clear architectural direction.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
