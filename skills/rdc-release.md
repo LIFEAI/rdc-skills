@@ -1,7 +1,7 @@
 ---
 name: rdc:release
 description: >-
-  `rdc:release <repo> [version]` · `rdc:release <repo> --patch|--minor|--major` · `rdc:release <repo> --dry-run` — Atomic release: bump → commit → tag → push → wait CI → install → verify → restart. Known repos: clauth, rdc-skills, regen-media, gws. No user handoff.
+  Atomic release. Usage `rdc:release <repo> [version]` or `rdc:release <repo> --patch|--minor|--major` or `rdc:release <repo> --dry-run` — bump, commit, tag, push, wait CI, install, verify, restart. Known repos: clauth, rdc-skills, regen-media, gws. No user handoff.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -1,7 +1,7 @@
 ---
 name: rdc:deploy
 description: >-
-  `rdc:deploy <slug> [build-id]` · `rdc:deploy new <slug>` · `rdc:deploy diagnose <slug>` · `rdc:deploy audit [--fix]` — Coolify operations with type checklists, DNS decision tree, and mandatory post-deploy gate. Checklist-only output.
+  Coolify ops. Usage `rdc:deploy <slug> [build-id]` or `rdc:deploy new <slug>` or `rdc:deploy diagnose <slug>` or `rdc:deploy audit [--fix]` — type checklists, DNS decision tree, mandatory post-deploy gate. Checklist-only output.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
