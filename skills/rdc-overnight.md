@@ -29,6 +29,20 @@ description: >-
 
 ## Phase 1 — Pre-flight
 
+**First action — set the overnight sentinel** so the `no-stop-open-epics` Stop hook engages (interactive sessions are not gated by it):
+
+```bash
+mkdir -p C:/Dev/regen-root/.rdc && touch C:/Dev/regen-root/.rdc/overnight.lock
+```
+
+**Last action at end of run (success OR failure) — remove the sentinel:**
+
+```bash
+rm -f C:/Dev/regen-root/.rdc/overnight.lock
+```
+
+If the sentinel file does not exist, the Stop hook will NOT block — which means interactive sessions stop freely and only `rdc:overnight` is held to the "drain the queue" contract.
+
 Before touching any code, verify the environment is safe:
 
 1. **Clauth daemon alive:**

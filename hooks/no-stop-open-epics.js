@@ -25,6 +25,7 @@ const path = require('path');
 // ── Config — override these per project ──────────────────────────────────────
 
 const PROJECT_SCOPE = 'regen-root'; // only block in sessions inside this folder name
+const OVERNIGHT_SENTINEL = 'C:/Dev/regen-root/.rdc/overnight.lock'; // only fire when this exists
 const ENV_PATHS = [
   'C:/Dev/regen-root/apps/rdc-marketing-engine/.env.local',
   'C:/Dev/regen-root/.env.local',
@@ -73,6 +74,13 @@ async function main() {
   const cwd = event.cwd || process.cwd();
   const normalised = cwd.replace(/\\/g, '/').toLowerCase();
   if (!normalised.includes(PROJECT_SCOPE.toLowerCase())) {
+    process.exit(0);
+  }
+
+  // Overnight gate — only block when rdc:overnight is actively running.
+  // The overnight skill creates this sentinel at start and removes it on exit.
+  // Interactive sessions never see this file, so they stop freely.
+  if (!fs.existsSync(OVERNIGHT_SENTINEL)) {
     process.exit(0);
   }
 
