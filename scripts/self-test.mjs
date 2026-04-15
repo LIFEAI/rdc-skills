@@ -28,9 +28,17 @@
 //   2 = runner crashed (unreadable dirs, etc.)
 //   3 = plugin manifest missing (distinct from skill failures)
 
-import { readFileSync, readdirSync, existsSync, writeFileSync, renameSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadAllManifests } from "./lib/manifest-schema.mjs";
+import { runManifest } from "./lib/runner.mjs";
+import {
+  generateRunId,
+  createSupabaseTestBranch,
+  deleteSupabaseTestBranch,
+  removeWorktree,
+} from "./lib/sandbox.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
@@ -54,8 +62,12 @@ const args = new Set(argv);
 const STRICT = args.has("--strict");
 const JSON_OUT = args.has("--json");
 const FIX = args.has("--fix");
+const TIER2 = args.has("--tier2");
+const QUICK = args.has("--quick");
 const skillArgIdx = argv.indexOf("--skill");
 const ONLY_SKILL = skillArgIdx >= 0 ? argv[skillArgIdx + 1] : null;
+const parallelArgIdx = argv.indexOf("--parallel");
+const PARALLEL = parallelArgIdx >= 0 ? Math.max(1, parseInt(argv[parallelArgIdx + 1], 10) || 3) : 3;
 
 // Track files modified by --fix so caller can git diff
 const FIXED_FILES = [];
@@ -475,6 +487,168 @@ function auditOrphanHooks(results) {
   return findings;
 }
 
+// ─── Tier 2 behavioral runner ──────────────────────────────────────────────
+
+async function runPool(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function lane() {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      try {
+        results[i] = await worker(items[i], i);
+      } catch (e) {
+        results[i] = { pass: false, error: e?.message || String(e) };
+      }
+    }
+  }
+  const lanes = Array.from({ length: Math.min(concurrency, items.length) }, () => lane());
+  await Promise.all(lanes);
+  return results;
+}
+
+async function runTier2() {
+  console.log("\nrdc-skills self-test — Tier 2 (behavioral)\n");
+
+  // Load manifests
+  let all = loadAllManifests();
+  if (ONLY_SKILL) {
+    all = all.filter((m) => m.manifest && m.manifest.skill === ONLY_SKILL);
+  }
+  if (QUICK) {
+    all = all.filter((m) => !(m.manifest?.fixture?.slow === true));
+  }
+
+  if (all.length === 0) {
+    console.log("No manifests found in skills/tests/.");
+    console.log("(Tier 2 will run once WP6/WP7 land baseline manifests.)");
+    process.exit(STRICT ? 1 : 0);
+  }
+
+  // Reject invalid manifests up front
+  const invalid = all.filter((m) => !m.ok);
+  const valid = all.filter((m) => m.ok);
+  for (const m of invalid) {
+    console.error(`SKIP ${m.file}: ${m.errors.map((e) => `${e.path}: ${e.msg}`).join("; ")}`);
+  }
+  if (valid.length === 0) {
+    console.error("No valid manifests to run.");
+    process.exit(1);
+  }
+
+  const runId = generateRunId();
+  console.log(`runId: ${runId}`);
+  console.log(`manifests: ${valid.length} valid, ${invalid.length} invalid`);
+  console.log(`parallel: ${PARALLEL}${QUICK ? "  quick" : ""}`);
+
+  // Create Supabase branch (retry 3x with backoff). On failure, warn + skip.
+  let supabaseBranch = null;
+  let supabaseErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      supabaseBranch = await createSupabaseTestBranch(runId);
+      break;
+    } catch (e) {
+      supabaseErr = e;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+    }
+  }
+  if (!supabaseBranch) {
+    console.error(`WARN: Supabase branch create failed after 3 attempts: ${supabaseErr?.message || "unknown"}`);
+    if (STRICT) {
+      console.error("--strict set → exiting with code 1");
+      process.exit(1);
+    }
+    console.error("Proceeding without Supabase branch — work_items assertions will see empty deltas.");
+  }
+
+  // Run
+  const toRun = valid.map((m) => m.manifest);
+  const started = Date.now();
+  let results;
+  try {
+    results = await runPool(toRun, PARALLEL, async (manifest) => {
+      return await runManifest(manifest, {
+        runId,
+        supabaseBranchRef: supabaseBranch?.branchId || null,
+      });
+    });
+  } finally {
+    // Teardown — always
+    for (const r of results || []) {
+      if (r && r.skill) {
+        try { removeWorktree(runId, r.skill); } catch {}
+      }
+    }
+    if (supabaseBranch) {
+      try { await deleteSupabaseTestBranch(supabaseBranch.branchId); } catch {}
+    }
+  }
+
+  const totalDuration = Date.now() - started;
+
+  // Report
+  const pad = (s, n) => String(s) + " ".repeat(Math.max(0, n - String(s).length));
+  console.log("\n" + pad("skill", 24) + pad("status", 10) + pad("duration", 12) + "failures");
+  console.log("─".repeat(90));
+  let failed = 0;
+  let errored = 0;
+  for (const r of results) {
+    if (r.error) {
+      errored++;
+      console.log(pad(r.skill || "?", 24) + pad("ERROR", 10) + pad("-", 12) + r.error);
+      continue;
+    }
+    const status = r.pass ? "pass" : "FAIL";
+    if (!r.pass) failed++;
+    const dur = `${r.duration_ms}ms`;
+    const fs = (r.failures || []).map((f) => `${f.predicate}: ${f.message}`).join("; ") || "";
+    console.log(pad(r.skill, 24) + pad(status, 10) + pad(dur, 12) + fs);
+  }
+  console.log("─".repeat(90));
+  console.log(
+    `total: ${results.length}  |  pass: ${results.length - failed - errored}  |  fail: ${failed}  |  error: ${errored}  |  wall: ${totalDuration}ms`,
+  );
+
+  // JSON dump
+  try {
+    const REPORTS_DIR = resolve(REPO_ROOT, ".rdc", "reports");
+    if (!existsSync(REPORTS_DIR)) mkdirSync(REPORTS_DIR, { recursive: true });
+    const iso = new Date().toISOString().replace(/[:.]/g, "-");
+    const reportPath = join(REPORTS_DIR, `self-test-tier2-${iso}.json`);
+    writeFileSync(
+      reportPath,
+      JSON.stringify(
+        {
+          run_id: runId,
+          started_at: new Date(started).toISOString(),
+          duration_ms: totalDuration,
+          parallel: PARALLEL,
+          quick: QUICK,
+          supabase_branch: supabaseBranch?.branchId || null,
+          summary: {
+            total: results.length,
+            pass: results.length - failed - errored,
+            fail: failed,
+            error: errored,
+          },
+          results,
+          invalid_manifests: invalid.map((m) => ({ file: m.file, errors: m.errors })),
+        },
+        null,
+        2,
+      ),
+    );
+    console.log(`\nreport: ${reportPath}`);
+  } catch (e) {
+    console.error(`WARN: failed to write JSON report: ${e.message}`);
+  }
+
+  if (errored > 0) process.exit(2);
+  process.exit(failed > 0 ? 1 : 0);
+}
+
 function main() {
   // Plugin manifest pass first — can short-circuit with exit 3
   const manifestAudit = auditPluginManifest();
@@ -651,9 +825,16 @@ function main() {
   process.exit(exitCode);
 }
 
-try {
-  main();
-} catch (e) {
-  console.error(`FATAL: ${e.stack || e.message}`);
-  process.exit(2);
+if (TIER2) {
+  runTier2().catch((e) => {
+    console.error(`FATAL: ${e.stack || e.message}`);
+    process.exit(2);
+  });
+} else {
+  try {
+    main();
+  } catch (e) {
+    console.error(`FATAL: ${e.stack || e.message}`);
+    process.exit(2);
+  }
 }
