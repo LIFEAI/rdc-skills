@@ -1,0 +1,24 @@
+name: self-test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  tier1:
+    name: Tier 1 static lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run rdc:self-test --strict (Tier 1)
+        # Tier 2 requires headless claude + Supabase branches — not available in CI.
+        # Tier 1 catches the backtick-drift + frontmatter class of bugs.
+        run: node scripts/self-test.mjs --strict

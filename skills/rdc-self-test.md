@@ -1,7 +1,7 @@
 ---
 name: rdc:self-test
 description: >-
-  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint. Run before every release.
+  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix] [--tier2] [--parallel <n>] [--quick]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint; Tier 2 behavioral runs via headless claude in isolated worktrees + Supabase branch. Run before every release.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -22,7 +22,7 @@ description: >-
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | 📋 planned, see `.rdc/plans/skill-self-test-tier-2.md` |
+| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live, see `.rdc/plans/skill-self-test-tier-2.md` |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Procedure (Tier 1)
@@ -64,6 +64,43 @@ description: >-
    Failures: <list>
    Verdict: PASS | FAIL
    ```
+
+## Procedure (Tier 2)
+
+Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
+
+1. **Prerequisites:**
+   - `claude` CLI on PATH (headless mode: `claude --print`)
+   - clauth daemon unlocked (`curl -s http://127.0.0.1:52437/ping`)
+   - Supabase MCP reachable (runner creates a throwaway test branch)
+   - Clean git tree in `rdc-skills` (worktrees are added under `.rdc/sandbox/<run-id>/`)
+
+2. **Run:**
+   ```bash
+   node scripts/self-test.mjs --tier2                    # all skills with manifests
+   node scripts/self-test.mjs --tier2 --skill rdc:build  # single skill
+   node scripts/self-test.mjs --tier2 --parallel 3       # up to 3 skills in parallel
+   node scripts/self-test.mjs --tier2 --quick            # skip long-running assertions
+   ```
+
+3. **What it does:**
+   - Runs Tier 1 as a pre-gate (fails fast if static lint fails)
+   - Creates one Supabase test branch for the run
+   - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes `claude --print` with the skill prompt, waits for exit
+   - Asserts per the skill's manifest: exit code, files touched, commits made, stdout patterns
+   - Cleans up worktrees + deletes the Supabase branch at the end (even on failure)
+
+4. **Reports:**
+   - `.rdc/reports/self-test-tier2-<iso>.json` — full per-skill result, findings, timings
+   - Exit codes: `0` pass, `1` fail (one or more skills failed assertions), `2` runner error (couldn't set up sandbox / branch)
+
+5. **Adding a new manifest:**
+   - Create `skills/tests/<skill>.test.json` (one per skill, colocated)
+   - Validate the shape against the schema at `scripts/lib/manifest-schema.mjs`
+   - Test it in isolation: `node scripts/self-test.mjs --tier2 --skill rdc:name`
+   - Commit the manifest alongside any skill body changes
+
+> **Note:** `work_items_created` assertions are currently stubbed — the runner does not yet wire Supabase branch reads back into the assertion path. Avoid that assertion key until the wiring lands; use `files_touched`, `commits_made`, `exit_code`, and `stdout_matches` instead.
 
 ## Rules
 - Run Tier 1 **before every `rdc:release rdc-skills`** — it catches the backtick-drift class of bugs that break the skill menu silently.
