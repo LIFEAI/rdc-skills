@@ -1,8 +1,3 @@
----
-name: rdc:verify
-description: Verification gate — no completion claims without fresh evidence. Run at end of build, or invoke from review.
----
-
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.

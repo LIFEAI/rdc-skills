@@ -1,10 +1,3 @@
----
-name: rdc:design
-description: >-
-  Dispatch a design agent for brand palette work, design token editing, OG image
-  generation, typography decisions, and visual identity work.
----
-
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.

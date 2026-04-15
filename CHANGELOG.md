@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.6.0 — Plugin conversion + agent-hide
+
+### Added
+
+- **Claude Code plugin format.** New `.claude-plugin/plugin.json` manifest at repo root (name, version, description, author, homepage, repository) plus `.claude-plugin/marketplace.json` declaring this repo as a single-plugin marketplace pointing at itself (`source: "."`). Matches the schema used by `hookify`, `commit-commands`, `huggingface-skills`, and other official Anthropic plugins — directories (`skills/`, `hooks/`, `commands/`, `agents/`) are auto-discovered by convention, no explicit path keys needed.
+- **New install path.**
+  ```
+  /plugin marketplace add LIFEAI/rdc-skills
+  /plugin install rdc-skills
+  ```
+  All 16 user-invocable skills load automatically via Claude Code's plugin runtime — no copy scripts, no `~/.claude/skills/user/` writes.
+
+### Changed
+
+- **10 agent-type skills moved out of `skills/` into `guides/agents/`** (Thread D). Reclaims slots in the Claude Code skill menu cap. Agent playbooks (frontend, backend, data, design, infrastructure, content, cs2, viz, setup, verify) are now dispatched internally by `rdc:build` and are no longer user-invocable slash commands.
+- **README install section rewritten** to lead with `/plugin install`. Legacy PowerShell/Bash install path documented under "Legacy install (deprecated)".
+
+### Deprecated
+
+- `scripts/install.ps1`, `scripts/install.sh`, `scripts/install.js` — deprecation headers added. These will be **removed in v0.7.0**. Migrate to `/plugin install rdc-skills`.
+
+---
+
 ## [0.4.0] — 2026-04-14
 
 ### Added

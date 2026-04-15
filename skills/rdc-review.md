@@ -78,8 +78,8 @@ description: >-
    - If unclear → report (interactive) or flag in REVIEW_STATUS (unattended)
    - Never silently leave orphaned tasks
 
-9. **Verification gate — invoke `rdc:verify`:**
-   After any fixes land, run the verify gate on every touched package. See `rdc-verify.md`.
+9. **Verification gate — dispatch the verify agent:**
+   After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.
    **Iron Law: no CLEAN verdict without fresh evidence.** Quote the vitest + tsc output in the report.
    If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.
 

@@ -141,7 +141,7 @@ Read the task title and description, then:
      ```
 
 10. **Final verification gate (mandatory — before marking epic done):**
-    Invoke `rdc:verify` (see `rdc-verify.md`) across every package/app touched in this build.
+    Dispatch the verify agent (see `guides/agents/verify.md`) across every package/app touched in this build.
     The Iron Law: **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
     - Run `npx vitest run --dir <pkg>` fresh for each touched package
     - Run `npx tsc --noEmit --project <pkg>/tsconfig.json` for each

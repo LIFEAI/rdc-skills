@@ -47,21 +47,22 @@ All skills have been converted from project-specific to generic/portable:
     ├── rdc-fixit.md (105 lines)
     ├── rdc-status.md (82 lines)
     ├── rdc-report.md (97 lines)
-    ├── rdc-verify.md (132 lines) [new — evidence-before-claims gate]
-    ├── rdc-setup.md (274 lines) [new — AI-driven project scan + config gen]
     ├── rdc-collab.md (174 lines) [new — claude.ai ↔ Claude Code relay]
     ├── rdc-handoff.md (172 lines)
     ├── rdc-prototype.md (144 lines)
     ├── rdc-workitems.md (129 lines)
-    ├── rdc-help.md (93 lines)
-    ├── rdc-frontend.md (93 lines)
-    ├── rdc-backend.md (105 lines)
-    ├── rdc-cs2.md (59 lines)
-    ├── rdc-data.md (89 lines)
-    ├── rdc-design.md (79 lines)
-    ├── rdc-infra.md (81 lines)
-    ├── rdc-content.md (96 lines)
-    └── rdc-viz.md (109 lines)
+    └── rdc-help.md (93 lines)
+└── guides/agents/     (agent-only playbooks — dispatched by rdc:build, not user-invocable)
+    ├── frontend.md
+    ├── backend.md
+    ├── cs2.md
+    ├── data.md
+    ├── design.md
+    ├── infrastructure.md
+    ├── content.md
+    ├── viz.md
+    ├── setup.md
+    └── verify.md
 ```
 
 ## Skill Categories
@@ -76,19 +77,19 @@ All skills have been converted from project-specific to generic/portable:
 - rdc:status — project dashboard
 - rdc:report — nightly report
 
-### Agent Types (8)
-- rdc:frontend — React, UI, Tailwind
-- rdc:backend — API, database, auth
-- rdc:data — migrations, schema
-- rdc:design — brand, tokens
-- rdc:infra — deployment, CI/CD
-- rdc:content — copy, messaging
-- rdc:cs2 — paradigm-level work
-- rdc:viz — visualizations
+### Agent Guides (10, in `guides/agents/`) — [agent-only — dispatched by rdc:build, not user-invocable]
+- frontend — React, UI, Tailwind
+- backend — API, database, auth
+- data — migrations, schema
+- design — brand, tokens
+- infrastructure — deployment, CI/CD
+- content — copy, messaging
+- cs2 — paradigm-level work
+- viz — visualizations
+- setup — project scan + .rdc/config.json generation
+- verify — evidence-before-claims verification gate
 
-### Utility (3)
-- rdc:verify — evidence-before-claims verification gate (no CLEAN without fresh test output)
-- rdc:setup — AI-driven project scan + .rdc/config.json generation
+### Utility (1)
 - rdc:collab — bidirectional claude.ai ↔ Claude Code relay via file transport
 
 ### Bridge (3)

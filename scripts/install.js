@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * DEPRECATED as of v0.6.0 — use /plugin install rdc-skills.
+ * Will be removed in v0.7.0. See README.md "Install" section.
+ *
  * rdc-skills installer (Node.js — works from bash, PowerShell, or cmd)
  *
  * Usage:
@@ -654,13 +657,8 @@ async function main() {
   }
   console.log('  Next steps:');
   console.log('  1. Open Claude Code in your project root');
-  if (!detected._alreadyHasConfig) {
-  console.log('  2. Run /rdc:setup  ← scans your project and generates .rdc/config.json + guides');
-  console.log('  3. Run /rdc:status to see your work queue and verify everything is wired up');
-  } else {
   console.log('  2. Run /rdc:status to see your work queue and verify everything is wired up');
-  console.log('     (run /rdc:setup anytime to update your project config)');
-  }
+  console.log('     (project setup is handled internally — the setup agent guide lives at guides/agents/setup.md)');
   console.log('');
   console.log('  Docs: https://github.com/LIFEAI/rdc-skills#readme');
   console.log('');

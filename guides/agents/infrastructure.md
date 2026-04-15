@@ -1,10 +1,3 @@
----
-name: rdc:infra
-description: >-
-  Dispatch an infrastructure agent for deployments, DNS configuration,
-  SSL, environment variables, build config, and CI/CD operations.
----
-
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.

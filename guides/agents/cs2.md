@@ -1,11 +1,3 @@
----
-name: rdc:cs2
-description: >-
-  Dispatch a CS 2.0 agent for paradigm work — grammar evolution, data primitives,
-  memory systems, virtue governance, and domain-specific languages.
-  Use when work involves specialized CS 2.0 packages.
----
-
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.

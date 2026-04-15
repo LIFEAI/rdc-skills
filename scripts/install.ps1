@@ -1,3 +1,6 @@
+# DEPRECATED as of v0.6.0 — use /plugin install rdc-skills.
+# Will be removed in v0.7.0. See README.md "Install" section.
+#
 # Install rdc-skills plugin to Claude Code
 # Windows PowerShell script
 #

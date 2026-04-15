@@ -2,6 +2,28 @@
 
 This directory contains a generic, project-agnostic version of the RDC (Research, Design, Code) skill suite. All skills have been extracted from a reference implementation and genericized for use in any monorepo project.
 
+## Install
+
+RDC Skills is distributed as a Claude Code plugin. From any Claude Code session:
+
+```
+/plugin marketplace add LIFEAI/rdc-skills
+/plugin install rdc-skills
+```
+
+That's it — all 16 user-invocable skills (rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report, rdc:collab, rdc:handoff, rdc:prototype, rdc:workitems, rdc:help, rdc:deploy, rdc:release, rdc:self-test) become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
+
+### Legacy install (deprecated)
+
+The pre-v0.6.0 install path used PowerShell/Bash scripts that copied files into `~/.claude/skills/user/`:
+
+```
+scripts/install.ps1   # Windows
+scripts/install.sh    # macOS / Linux
+```
+
+These scripts are **deprecated as of v0.6.0** and will be removed in v0.7.0. Migrate to the plugin install path above. Existing installs continue to work until you run the uninstall script or upgrade.
+
 ## Path Variables
 
 Throughout the skills, the following substitutions have been made to make them portable:
@@ -21,14 +43,15 @@ Throughout the skills, the following substitutions have been made to make them p
 ### Orchestration Skills (workflow drivers)
 - rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report
 
-### Agent Type Skills (dispatched by rdc:build)
-- rdc:frontend, rdc:backend, rdc:data, rdc:design, rdc:infra, rdc:content, rdc:cs2, rdc:viz
+### Agent Guides (dispatched by rdc:build, not user-invocable)
+Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
+- frontend, backend, data, design, infrastructure, content, cs2, viz, setup, verify
 
 ### Bridge Skills (Planning → CLI)
 - rdc:handoff, rdc:prototype, rdc:workitems
 
 ### Utility Skills
-- rdc:setup, rdc:verify, rdc:collab
+- rdc:collab
 
 ### Reference
 - rdc:help
@@ -84,21 +107,23 @@ skills/
   rdc-fixit.md         (quick-fix bypass)
   rdc-status.md        (project dashboard)
   rdc-report.md        (nightly report)
-  rdc-verify.md        (evidence-before-claims verification gate)
-  rdc-setup.md         (AI-driven project scan + .rdc/config.json generation)
   rdc-collab.md        (bidirectional claude.ai ↔ Claude Code relay)
   rdc-handoff.md       (planning → work items)
   rdc-prototype.md     (build JSX prototype)
   rdc-workitems.md     (work item management)
   rdc-help.md          (skill index)
-  rdc-frontend.md      (React, UI, Tailwind)
-  rdc-backend.md       (API routes, database, auth)
-  rdc-data.md          (migrations, schema, RPC)
-  rdc-design.md        (brand, tokens, design)
-  rdc-infra.md         (deployment, CI/CD, DNS)
-  rdc-content.md       (copy, messaging, tone)
-  rdc-cs2.md           (paradigm-level work)
-  rdc-viz.md           (visualizations, charts, SVG)
+
+guides/agents/         (agent-only playbooks — dispatched by rdc:build, not user-invocable)
+  frontend.md          (React, UI, Tailwind)
+  backend.md           (API routes, database, auth)
+  data.md              (migrations, schema, RPC)
+  design.md            (brand, tokens, design)
+  infrastructure.md    (deployment, CI/CD, DNS)
+  content.md           (copy, messaging, tone)
+  cs2.md               (paradigm-level work)
+  viz.md               (visualizations, charts, SVG)
+  setup.md             (project scan + .rdc/config.json generation)
+  verify.md            (evidence-before-claims verification gate)
 ```
 
 ## Quick Start

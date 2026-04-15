@@ -31,8 +31,6 @@ Print the full usage menu below verbatim, then ask the project lead which comman
 |---|---|
 | `rdc:deploy` | `rdc:deploy <slug> [build-id]` · `rdc:deploy new <slug>` · `rdc:deploy diagnose <slug>` · `rdc:deploy audit [--fix]` |
 | `rdc:release` | `rdc:release <repo> [version]` · `rdc:release <repo> --patch\|--minor\|--major` · `rdc:release <repo> --dry-run` |
-| `rdc:verify` | `rdc:verify <package>` — post-build verification gate |
-| `rdc:setup` | `rdc:setup` — install/repair rdc-skills + hooks |
 
 ## Planning ↔ CLI bridge
 
@@ -43,11 +41,22 @@ Print the full usage menu below verbatim, then ask the project lead which comman
 | `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
 | `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
 
-## Agent-type skills (dispatched by rdc:build, not invoked directly)
+## Agent guides (dispatched by rdc:build, not user-invocable)
 
-`rdc:frontend` · `rdc:backend` · `rdc:data` · `rdc:design` · `rdc:infra` · `rdc:content` · `rdc:cs2` · `rdc:viz`
+These live under `guides/agents/` — they are role playbooks the build skill spawns as sub-agents. You do NOT invoke them directly.
 
-Each agent reads `.rdc/guides/agent-bootstrap.md` first, then its role guide (e.g. `frontend.md`).
+- `guides/agents/frontend.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/backend.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/data.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/design.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/infrastructure.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/content.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/cs2.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/viz.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/setup.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+- `guides/agents/verify.md` — [agent-only — dispatched by rdc:build, not user-invocable]
+
+Each agent reads `.rdc/guides/agent-bootstrap.md` first, then its role guide.
 
 ## Decision tree
 
