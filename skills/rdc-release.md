@@ -1,10 +1,7 @@
 ---
 name: rdc:release
 description: >-
-  Atomic release for LIFEAI packages (clauth, rdc-skills, regen-media, etc.):
-  bump → commit → tag → push → wait for CI → install → verify → restart if
-  needed. One command, no handoff. Use EVERY TIME a LIFEAI source repo needs
-  publishing. Supersedes the manual "bump and ask Dave to install" pattern.
+  `rdc:release <repo> [version]` · `rdc:release <repo> --patch|--minor|--major` · `rdc:release <repo> --dry-run` — Atomic release: bump → commit → tag → push → wait CI → install → verify → restart. Known repos: clauth, rdc-skills, regen-media, gws. No user handoff.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

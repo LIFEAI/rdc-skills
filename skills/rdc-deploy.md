@@ -1,11 +1,7 @@
 ---
 name: rdc:deploy
 description: >-
-  Deploy, diagnose, audit, or create Coolify apps. Replaces the standalone
-  coolify-deploy skill. Four modes: deploy [build-id], new-app, diagnose, audit.
-  Enforces type-specific checklists (Next.js / Vite / static / standalone),
-  DNS decision tree, and mandatory post-deploy gate. Output contract: checklist
-  only, no narration. Use for ANY Coolify operation.
+  `rdc:deploy <slug> [build-id]` · `rdc:deploy new <slug>` · `rdc:deploy diagnose <slug>` · `rdc:deploy audit [--fix]` — Coolify operations with type checklists, DNS decision tree, and mandatory post-deploy gate. Checklist-only output.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -34,7 +34,7 @@ if [ -d "$REPO_ROOT/skills" ]; then
         if [ -f "$skill" ]; then
             cp "$skill" "$SKILLS_DIR/"
             echo "  → $(basename "$skill")"
-            ((SKILL_COUNT++))
+            SKILL_COUNT=$((SKILL_COUNT + 1))
         fi
     done
     if [ $SKILL_COUNT -gt 0 ]; then
@@ -57,7 +57,7 @@ for hook in "$REPO_ROOT"/hooks/*.js; do
         cp "$hook" "$HOOKS_DIR/"
         chmod +x "$HOOKS_DIR/$(basename "$hook")"
         echo "  → $(basename "$hook")"
-        ((HOOK_COUNT++))
+        HOOK_COUNT=$((HOOK_COUNT + 1))
     fi
 done
 if [ $HOOK_COUNT -gt 0 ]; then
