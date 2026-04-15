@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 0.6.1 — Tier 2 stability + rdc:watch session watcher
+
+### Added
+
+- **`rdc:watch` skill.** Initializes a session log and opens a static HTML viewer that tails Claude activity live via `fetch()` polling. Zero infra — pure filesystem + `.rdc/session-log/current.log` + `viewer.html`. New skill at `skills/rdc-watch.md`, init helper at `scripts/watch-init.mjs`, viewer asset at `assets/watcher/viewer.html`. Dark terminal theme, color-coded event kinds (`dispatch`/`commit`/`test`/`error`/`note`/`banner`), auto-scroll, stall detection.
+- **Tier 2 behavioral harness (WP1–WP9).** Full work-item delta wiring through PostgREST, 13 baseline test manifests, Tier 2 runner, CI workflow, skill documentation.
+
+### Fixed
+
+- **Windows spawn streaming.** `scripts/lib/runner.mjs` now passes `--verbose` alongside `--output-format stream-json` so Claude emits events to stdout on Windows. Without it, stream-json output was buffered/empty.
+- **Main-db sandbox mode.** Tier 2 runner supports free, read-only sandbox mode against the main Supabase project so behavioral tests don't accrue hourly branch costs.
+
+---
+
 ## v0.6.0 — Plugin conversion + agent-hide
 
 ### Added
