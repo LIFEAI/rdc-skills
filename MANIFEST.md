@@ -1,9 +1,10 @@
 # RDC Skills Library — Manifest
 
 **Created:** 2026-04-13  
+**Last updated:** 2026-04-15  
 **Source:** Regen Root project `.claude/skills/user/`  
-**Files:** 20 skill files (2,167 lines total)  
-**Size:** 420K  
+**Files:** 23 skill files (2,773 lines total)  
+**Size:** ~480K  
 
 ## Generic Conversion Summary
 
@@ -38,25 +39,28 @@ All skills have been converted from project-specific to generic/portable:
 ├── README.md (this quick reference)
 ├── MANIFEST.md (this file)
 └── skills/
-    ├── rdc-build.md (161 lines) [+TDD enforcement]
+    ├── rdc-build.md (172 lines) [+TDD enforcement, +verify gate]
     ├── rdc-plan.md (93 lines)
     ├── rdc-preplan.md (83 lines)
-    ├── rdc-review.md (112 lines) [+test coverage delta]
+    ├── rdc-review.md (117 lines) [+test coverage delta, +verify gate]
     ├── rdc-overnight.md (195 lines)
     ├── rdc-fixit.md (105 lines)
     ├── rdc-status.md (82 lines)
     ├── rdc-report.md (97 lines)
-    ├── rdc-handoff.md (171 lines)
+    ├── rdc-verify.md (132 lines) [new — evidence-before-claims gate]
+    ├── rdc-setup.md (274 lines) [new — AI-driven project scan + config gen]
+    ├── rdc-collab.md (174 lines) [new — claude.ai ↔ Claude Code relay]
+    ├── rdc-handoff.md (172 lines)
     ├── rdc-prototype.md (144 lines)
     ├── rdc-workitems.md (129 lines)
-    ├── rdc-help.md (91 lines)
-    ├── rdc-frontend.md (92 lines)
-    ├── rdc-backend.md (104 lines)
-    ├── rdc-cs2.md (58 lines)
-    ├── rdc-data.md (88 lines)
-    ├── rdc-design.md (78 lines)
-    ├── rdc-infra.md (80 lines)
-    ├── rdc-content.md (95 lines)
+    ├── rdc-help.md (93 lines)
+    ├── rdc-frontend.md (93 lines)
+    ├── rdc-backend.md (105 lines)
+    ├── rdc-cs2.md (59 lines)
+    ├── rdc-data.md (89 lines)
+    ├── rdc-design.md (79 lines)
+    ├── rdc-infra.md (81 lines)
+    ├── rdc-content.md (96 lines)
     └── rdc-viz.md (109 lines)
 ```
 
@@ -81,6 +85,11 @@ All skills have been converted from project-specific to generic/portable:
 - rdc:content — copy, messaging
 - rdc:cs2 — paradigm-level work
 - rdc:viz — visualizations
+
+### Utility (3)
+- rdc:verify — evidence-before-claims verification gate (no CLEAN without fresh test output)
+- rdc:setup — AI-driven project scan + .rdc/config.json generation
+- rdc:collab — bidirectional claude.ai ↔ Claude Code relay via file transport
 
 ### Bridge (3)
 - rdc:handoff — planning → work items

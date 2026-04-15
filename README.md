@@ -16,7 +16,7 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-20 skills organized into 4 categories:
+23 skills organized into 5 categories:
 
 ### Orchestration Skills (workflow drivers)
 - rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report
@@ -26,6 +26,9 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ### Bridge Skills (Planning → CLI)
 - rdc:handoff, rdc:prototype, rdc:workitems
+
+### Utility Skills
+- rdc:setup, rdc:verify, rdc:collab
 
 ### Reference
 - rdc:help
@@ -81,6 +84,9 @@ skills/
   rdc-fixit.md         (quick-fix bypass)
   rdc-status.md        (project dashboard)
   rdc-report.md        (nightly report)
+  rdc-verify.md        (evidence-before-claims verification gate)
+  rdc-setup.md         (AI-driven project scan + .rdc/config.json generation)
+  rdc-collab.md        (bidirectional claude.ai ↔ Claude Code relay)
   rdc-handoff.md       (planning → work items)
   rdc-prototype.md     (build JSX prototype)
   rdc-workitems.md     (work item management)
