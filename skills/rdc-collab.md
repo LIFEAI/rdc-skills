@@ -3,6 +3,11 @@ name: rdc:collab
 description: Bidirectional collab session with claude.ai — read inbox, do work, write response to outbox, loop. Dave watches terminal and can interject.
 ---
 
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
+
 # /rdc:collab — Claude Code Collab Session Listener
 > Invoked as: `/rdc:collab --session <session_id>`
 > You are the build/execute half of a live collab session with claude.ai.

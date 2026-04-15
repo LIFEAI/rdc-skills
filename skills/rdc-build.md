@@ -7,6 +7,11 @@ description: >-
   optional --unattended flag for overnight/automated runs.
 ---
 
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
+
 # rdc:build — Typed Agent Dispatch Engine
 
 ## When to Use

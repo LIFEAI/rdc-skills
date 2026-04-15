@@ -7,6 +7,11 @@ description: >-
   implementation. Produces: a plan doc in .rdc/plans/ (fallback: .rdc/plans/), work items in database,
   and a prototype registry entry if applicable.
 ---
+
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
 

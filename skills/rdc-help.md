@@ -6,6 +6,11 @@ description: >-
   or when you need to decide which skill to invoke for a given task.
 ---
 
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
+
 # rdc:help — Skill Index
 
 ## Workflow Skills (orchestrators)

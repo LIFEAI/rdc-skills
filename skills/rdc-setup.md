@@ -4,6 +4,11 @@ description: Intelligent project setup — scan existing files, detect config, g
 user-invocable: true
 ---
 
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
+
 # /rdc:setup — Intelligent Project Setup
 
 Scan the current project, detect all existing configuration, and generate (or update) `.rdc/config.json` and overlay guides. Works on both new and existing projects.
