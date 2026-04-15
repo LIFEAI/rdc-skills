@@ -20,6 +20,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const SANDBOX_ROOT = join(REPO_ROOT, ".rdc-sandbox");
 const SUPABASE_PROJECT_REF = "uvojezuorjgqzmhhgluu";
+const MAIN_DB_PROJECT_REF = "uvojezuorjgqzmhhgluu";
+const MAIN_DB_API_URL = `https://${MAIN_DB_PROJECT_REF}.supabase.co`;
 const SUPABASE_MGMT_API = "https://api.supabase.com";
 const CLAUTH_URL = "http://127.0.0.1:52437";
 const STALE_AGE_HOURS = 1;
@@ -349,9 +351,69 @@ export async function deleteSupabaseTestBranch(branchId) {
   }
 }
 
+// ---------- anon key + sandbox ref resolver ----------
+
+/**
+ * Fetch the main-db anon key. Tries env var first, then clauth daemon.
+ * Returns null on any failure — never throws.
+ */
+export async function fetchSupabaseAnonKey() {
+  if (process.env.SUPABASE_ANON_KEY) return process.env.SUPABASE_ANON_KEY;
+  try {
+    const res = await fetch(`${CLAUTH_URL}/get/supabase-anon`);
+    if (!res.ok) {
+      console.error(`fetchSupabaseAnonKey: clauth HTTP ${res.status}`);
+      return null;
+    }
+    const body = await res.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return body.trim() || null;
+    }
+    if (typeof parsed === "string") return parsed || null;
+    return parsed?.value || parsed?.key || parsed?.token || null;
+  } catch (e) {
+    console.error(`fetchSupabaseAnonKey: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Resolve the sandbox ref for a test run. Three modes:
+ *   1. supervisor — SANDBOX_BRANCH_REF env var already set by parent
+ *   2. main-db    — default; read-only assertions against prod, no branch
+ *   3. branch     — createSupabaseTestBranch (requireBranch=true)
+ */
+export async function resolveSandboxRef({ runId, requireBranch = false } = {}) {
+  if (process.env.SANDBOX_BRANCH_REF) {
+    const branchId = process.env.SANDBOX_BRANCH_REF;
+    const apiUrl = process.env.SANDBOX_API_URL || null;
+    const anonKey = process.env.SANDBOX_ANON_KEY || null;
+    if (!apiUrl || !anonKey) {
+      console.error(
+        `resolveSandboxRef: supervisor mode missing ${!apiUrl ? "SANDBOX_API_URL " : ""}${!anonKey ? "SANDBOX_ANON_KEY" : ""}`.trim(),
+      );
+    }
+    return { branchId, apiUrl, anonKey, mode: "supervisor" };
+  }
+
+  if (requireBranch) {
+    const branch = await createSupabaseTestBranch(runId);
+    return { ...branch, mode: "branch" };
+  }
+
+  const anonKey = await fetchSupabaseAnonKey();
+  console.log(
+    `sandbox: main-db mode — assertions read prod, no writes, no branch created (anonKey ${anonKey ? "resolved" : "missing"})`,
+  );
+  return { branchId: null, apiUrl: MAIN_DB_API_URL, anonKey, mode: "main-db" };
+}
+
 // ---------- self-test ----------
 
-if (import.meta.url === `file://${process.argv[1]}` || import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}`) {
+if (process.argv[1] && (import.meta.url === `file://${process.argv[1]}` || import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}`)) {
   const runId = generateRunId();
   console.log(`runId: ${runId}`);
   const stale = listStaleWorktrees();

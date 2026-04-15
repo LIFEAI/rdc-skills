@@ -93,10 +93,16 @@ function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
     let stderr = "";
     let child;
     try {
+      // shell: true is required on Windows so `.cmd`/`.bat` shims (npm global
+      // wrappers like `claude`) resolve. On Unix shell: true routes through sh,
+      // which is harmless here. Because the shell interprets args, we wrap the
+      // prompt with JSON.stringify so spaces/quotes/metacharacters in the
+      // fixture prompt become a single shell-quoted token.
+      const safePrompt = JSON.stringify(prompt ?? "");
       child = spawn(
         claudeBin,
-        ["--print", prompt, "--output-format", "stream-json"],
-        { cwd, env, shell: false, windowsHide: true },
+        ["--print", safePrompt, "--output-format", "stream-json"],
+        { cwd, env, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
       );
     } catch (e) {
       resolve({ exit: -1, stdout: "", stderr: `spawn failed: ${e.message}`, timedOut: false });
@@ -268,11 +274,15 @@ export async function runManifest(manifest, opts = {}) {
   const headBefore = snapshotHead(worktree.path);
   const wiCountBefore = await fetchWorkItemsCount(supabaseBranchRef);
 
-  const env = {
-    ...process.env,
-    ...(manifest.fixture?.env || {}),
-    RDC_TEST: "1",
-  };
+  // Start from process.env but scrub any inherited CLAUDE_* vars — the child
+  // claude process should not see parent session context. Then set RDC_TEST
+  // and overlay fixture env.
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("CLAUDE_")) delete env[key];
+  }
+  env.RDC_TEST = "1";
+  Object.assign(env, manifest.fixture?.env || {});
 
   let spawnRes;
   try {
