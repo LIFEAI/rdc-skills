@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:prototype",
+  "description": "Prototype produces a JSX/TSX reference file in docs/source/ and a registry entry; local-only under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:prototype a tiny Card component with a title prop for the sandbox",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

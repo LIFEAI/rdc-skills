@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:review",
+  "description": "Review runs tsc + lint gates in read-only mode under RDC_TEST; no external writes.",
+  "fixture": {
+    "prompt": "rdc:review --unattended",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

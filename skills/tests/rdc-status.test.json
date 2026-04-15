@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:status",
+  "description": "Status is read-only: prints kanban + health, makes no commits.",
+  "fixture": {
+    "prompt": "rdc:status",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

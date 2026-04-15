@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:workitems",
+  "description": "Workitems list action is read-only — queries epics via RPC, no commits.",
+  "fixture": {
+    "prompt": "rdc:workitems epics",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

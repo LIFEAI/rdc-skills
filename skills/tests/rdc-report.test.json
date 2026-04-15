@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:report",
+  "description": "Report writes a dated markdown file to .rdc/reports/ and emits a verdict line.",
+  "fixture": {
+    "prompt": "rdc:report --unattended",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

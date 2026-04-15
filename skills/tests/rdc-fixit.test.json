@@ -1,0 +1,21 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:fixit",
+  "description": "Fixit applies a trivial typo fix, commits locally, emits verdict.",
+  "fixture": {
+    "prompt": "rdc:fixit fix typo in sandbox README: change 'Helo' to 'Hello'",
+    "precondition_files": [
+      {
+        "path": "README.sandbox.md",
+        "content": "# Sandbox\n\nHelo world\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 1, "message_matches": "[Ff]ix" },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

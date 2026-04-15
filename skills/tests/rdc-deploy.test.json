@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:deploy",
+  "description": "Deploy in diagnose mode is read-only — registry SELECT + health probe, no Coolify mutations.",
+  "fixture": {
+    "prompt": "rdc:deploy diagnose rdc-marketing-engine",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

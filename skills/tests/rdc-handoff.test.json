@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:handoff",
+  "description": "Handoff writes a plan doc to .rdc/plans/ and records work items via RPC; no push under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:handoff sandbox-stub add a no-op /ping route to the sandbox app",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

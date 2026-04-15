@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:plan",
+  "description": "Plan produces an architecture doc and epic/task structure under RDC_TEST without pushing.",
+  "fixture": {
+    "prompt": "rdc:plan add a /health endpoint to rdc-marketing-engine --unattended",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

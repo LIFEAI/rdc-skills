@@ -39,7 +39,7 @@ const TOP_LEVEL_FIELDS = new Set([
   "teardown",
 ]);
 
-const FIXTURE_FIELDS = new Set(["prompt", "precondition_files", "env"]);
+const FIXTURE_FIELDS = new Set(["prompt", "precondition_files", "env", "slow"]);
 
 const ASSERTION_FIELDS = new Set([
   "exit_code",

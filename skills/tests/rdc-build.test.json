@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:build",
+  "description": "Build dispatches typed agents against a seeded epic; local commits allowed, push short-circuited under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:build label=self-test-sandbox --unattended",
+    "precondition_files": [
+      {
+        "path": ".rdc/epics/self-test-sandbox.md",
+        "content": "# Epic: self-test sandbox\n\nTrivial epic used only by the Tier 2 runner. One task: touch `sandbox.txt` with a single line.\n\n## Tasks\n- [ ] Write 'hello from sandbox' to `sandbox.txt`\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" },
+    "slow": true
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0, "message_matches": "." },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

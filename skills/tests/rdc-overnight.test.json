@@ -1,0 +1,21 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:overnight",
+  "description": "Overnight supervisor chains preplan/plan/build/review/report in unattended mode under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:overnight label=self-test-sandbox",
+    "precondition_files": [
+      {
+        "path": ".rdc/epics/self-test-sandbox.md",
+        "content": "# Epic: self-test sandbox\n\nSingle trivial task: write 'ok' to `sandbox.txt`.\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" },
+    "slow": true
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

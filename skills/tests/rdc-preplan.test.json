@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:preplan",
+  "description": "Research-only preplan produces findings without committing code or creating work items.",
+  "fixture": {
+    "prompt": "rdc:preplan add a rate limiter to the clauth daemon --unattended",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

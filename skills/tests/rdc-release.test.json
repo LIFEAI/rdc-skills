@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:release",
+  "description": "Release dry-run walks the checklist; all destructive steps (tag push, publish, install, restart) short-circuit under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:release rdc-skills --dry-run",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}
