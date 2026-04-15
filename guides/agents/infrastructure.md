@@ -4,6 +4,8 @@
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This guide honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag — Coolify deploys, DNS writes, CF cache purges, container restarts, and `git push` are all skipped. Registry SELECTs, health checks, and git reads run normally.
+
 
 # rdc:infra — Infrastructure Agent
 
@@ -53,8 +55,8 @@ Without watch_paths, every push rebuilds all apps.
 
 1. Look up deployment registry for existing entry
 2. Check for Coolify UUID (if exists)
-3. Set watch_paths per app type
-4. Deploy and verify health
+3. Set watch_paths per app type *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping Coolify config write`)*
+4. Deploy and verify health *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping Coolify deploy`)*
 5. Update deployment_registry in database
 
 ## Environment Tiers
@@ -76,4 +78,4 @@ Without watch_paths, every push rebuilds all apps.
 - MCP connectors first, credential daemon second
 - Never print credential keys to stdout
 - If daemon is down: report BLOCKED, do not work around it
-- Push after every logical block
+- Push after every logical block *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*

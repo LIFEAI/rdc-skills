@@ -10,6 +10,8 @@ description: >-
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:fixit — Sanctioned Quick Fix
 
@@ -78,7 +80,11 @@ Do the minimal work. Scope creep rule: if you discover the fix requires more tha
 ```bash
 git add <specific files only — never git add -A for a fixit>
 git commit -m "fix(<scope>): <description>"
-git push origin {development-branch}
+if [ "$RDC_TEST" != "1" ]; then
+  git push origin {development-branch}
+else
+  echo "[RDC_TEST] skipping git push origin {development-branch}"
+fi
 ```
 
 ### 6. Close and clean up

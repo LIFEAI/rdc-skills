@@ -8,6 +8,8 @@ description: >-
 > Checklist-only output. No tool-call narration. No raw git/npm/CI dumps.
 > One checklist upfront, updated in place, shown again at end with 1-line verdict.
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls (git tag push, CI poll, npm publish verification, global install, daemon restart) short-circuit under the flag — the checklist still runs, but each destructive step echoes `[RDC_TEST] skipping <step>` instead of mutating external state.
+
 # rdc:release — Atomic LIFEAI Package Release
 
 ## Purpose
@@ -75,10 +77,16 @@ rdc:release: <repo> vX.Y.Z → vA.B.C
 cd <source_path>
 git add package.json
 git commit -m "chore(release): vA.B.C"
-git tag vA.B.C
-git push && git push --tags
+if [ "$RDC_TEST" != "1" ]; then
+  git tag vA.B.C
+  git push && git push --tags
+else
+  echo "[RDC_TEST] skipping git tag + git push --tags"
+fi
 ```
 Never `--no-verify`. Never `--force`. If pre-commit hook fails, fix root cause, don't skip.
+
+*Under `$RDC_TEST=1`, sections 3 (CI poll), 4 (npm registry poll), 5 (install), 6 (verify install), 7 (post-install), and 8 (smoke test) are also skipped — echo `[RDC_TEST] skipping <section>` for each and mark the checklist line as `[~]`.*
 
 ### 3. CI poll (for repos with GH Actions publish)
 ```bash

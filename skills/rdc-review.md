@@ -10,6 +10,8 @@ description: >-
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:review — Quality Gate
 
@@ -114,5 +116,5 @@ description: >-
 - Interactive: fix what you can, flag what needs decision
 - Unattended: fix everything fixable; escalate judgment calls to advisor
 - Each fix is a separate commit (not batched)
-- Always push fixes to origin after committing
+- Always push fixes to origin after committing *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
 - Unattended: NEVER pause for input

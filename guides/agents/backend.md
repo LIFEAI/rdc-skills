@@ -4,6 +4,8 @@
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This guide honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:backend — Backend Agent
 
@@ -98,5 +100,5 @@ Use the schema table to drive form rendering instead.
 - NEVER run `pnpm build`
 - NEVER overlap with other agents on the same files
 - Update work items in real time — not batch at end
-- Push after each logical block
+- Push after each logical block *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
 - Write tests FIRST — red → implement → green

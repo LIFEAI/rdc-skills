@@ -8,6 +8,8 @@ description: >-
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:build — Typed Agent Dispatch Engine
 
@@ -129,7 +131,7 @@ Read the task title and description, then:
 
 9. **As agents complete:**
    - Verify commit landed on the development branch
-   - Push to origin
+   - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
    - Set work item to `done` with notes
    - Continue to next wave
 
@@ -150,7 +152,14 @@ Read the task title and description, then:
     - NEVER `pnpm build` / `pnpm test` / `pnpm -r` (crashes machine)
 
 11. **After verification passes:**
-    - Push all commits: `git push origin {development-branch}`
+    - Push all commits:
+      ```bash
+      if [ "$RDC_TEST" != "1" ]; then
+        git push origin {development-branch}
+      else
+        echo "[RDC_TEST] skipping git push origin {development-branch}"
+      fi
+      ```
     - Update epic version: `bump_epic_version()`
     - Report summary with verification evidence quoted
 

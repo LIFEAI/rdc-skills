@@ -4,6 +4,8 @@
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This guide honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:frontend — Frontend Agent
 
@@ -85,6 +87,6 @@ Never hardcode hex values in components. Always use CSS variables from the app's
 - NEVER run `pnpm build` — crashes the system; code only
 - NEVER overlap with other agents on the same files
 - NEVER modify files outside your assigned scope
-- After completing: commit with descriptive message, push
+- After completing: commit with descriptive message, push *(skip push if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
 - Update work item to `done` via `update_work_item_status()`
 - Write tests FIRST — red → implement → green

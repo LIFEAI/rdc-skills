@@ -10,6 +10,8 @@ description: >-
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
+
 
 # rdc:overnight — Overnight Build Supervisor
 
@@ -128,7 +130,11 @@ Check `REVIEW_STATUS.verdict`:
 
 After each epic (pass or fail):
 ```bash
-git push origin {development-branch}
+if [ "$RDC_TEST" != "1" ]; then
+  git push origin {development-branch}
+else
+  echo "[RDC_TEST] skipping git push origin {development-branch}"
+fi
 ```
 
 This ensures every epic's work is saved regardless of what comes next.
@@ -169,7 +175,11 @@ After all epics are processed:
 
 3. Final push:
    ```bash
-   git push origin {development-branch}
+   if [ "$RDC_TEST" != "1" ]; then
+     git push origin {development-branch}
+   else
+     echo "[RDC_TEST] skipping final git push origin {development-branch}"
+   fi
    ```
 
 ## Escalation Protocol
