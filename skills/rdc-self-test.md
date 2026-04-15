@@ -1,7 +1,7 @@
 ---
 name: rdc:self-test
 description: >-
-  Usage `rdc:self-test [--strict] [--skill <name>] [--json]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules exist, output contract banner. Tier 1 static lint. Run before every release.
+  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint. Run before every release.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -36,22 +36,27 @@ description: >-
    - `0` = all skills pass
    - `1` = at least one FAIL or (in `--strict` mode) at least one WARN
    - `2` = runner itself crashed (e.g., skills dir unreadable)
+   - `3` = `.claude-plugin/plugin.json` missing entirely (distinct from skill failures)
 
 3. **Common findings and fixes:**
 
-   | Finding | Cause | Fix |
-   |---------|-------|-----|
-   | `description starts with backtick` | Folded scalar YAML starts with `` ` `` — Claude Code parser drops it | Rewrite description to start with a word. See `rdc-deploy.md`, `rdc-release.md` for examples. |
-   | `description missing Usage marker` | Skill lacks `` Usage `rdc:name <args>` `` in description | Front-load the arg contract in the description. |
-   | `name mismatch` | frontmatter `name:` doesn't match filename | Rename one to match the other. |
-   | `referenced guide not found` | Skill body links to a guide that doesn't exist in `guides/` | Create the guide or fix the link. |
-   | `referenced rule not found in regen-root` | Skill links to a rule file that isn't present | Verify the rule name; usually a typo. |
-   | `body missing OUTPUT CONTRACT banner` | Skill skipped the standard banner | Add the banner from `guides/output-contract.md`. |
+   | Finding code | Cause | Fix |
+   |---|---|---|
+   | `description-backtick-leading` | Folded YAML starts with `` ` `` — parser drops skill | Rewrite description to start with a word |
+   | `usage-marker-missing` | No `` Usage `rdc:name <args>` `` in description | Front-load arg contract |
+   | `usage-marker-mismatch` | `Usage` line references a different skill's name (copy-paste drift) | Fix the skill name in the Usage marker |
+   | `name-filename-mismatch` | frontmatter `name:` ≠ filename | `--fix` auto-renames; or rewrite name |
+   | `guide-not-found` / `rule-not-found` / `hook-not-found` | Dead reference in skill body | Create file or fix link |
+   | `banner-missing` | Skill missing OUTPUT CONTRACT banner | `--fix` auto-inserts |
+   | `manifest-missing` / `manifest-version-mismatch` | `.claude-plugin/plugin.json` missing or out-of-sync with `package.json` | Create/update manifest |
+   | `duplicate-skill-name` / `skill-guide-filename-collision` | Two skills claim same name, or skill collides with agent guide | Rename one |
+   | `orphan-hook` | File under `hooks/` isn't referenced by any skill, settings.json, or plugin.json | Wire it up or delete |
 
 4. **Flags:**
    - `--strict` — promotes warnings to failures (use in CI and before release)
    - `--skill <name>` — run against a single skill (e.g. `--skill rdc:build`)
-   - `--json` — machine-readable output, for piping into CI reporting
+   - `--json` — machine-readable schema v2 (per-skill `findings[]` with `code` + `level`, plugin_manifest block, global_findings, summary.exit_code). Consumed by Tier 2 runner as pre-gate.
+   - `--fix` — auto-repair fixable findings: insert missing OUTPUT CONTRACT banner, rename files to match frontmatter name. Prints `FIXED:` lines + touched file list so you can git diff + commit. Backtick-leading descriptions are NOT auto-fixed (need human rewrite).
 
 5. **Report to the project lead:**
    ```
