@@ -1,0 +1,350 @@
+{
+  "run_id": "2026-04-15-03fe36",
+  "started_at": "2026-04-15T22:36:03.463Z",
+  "duration_ms": 11919,
+  "parallel": 3,
+  "quick": false,
+  "supabase_branch": null,
+  "summary": {
+    "total": 13,
+    "pass": 0,
+    "fail": 13,
+    "error": 0
+  },
+  "results": [
+    {
+      "skill": "rdc:build",
+      "pass": false,
+      "duration_ms": 2491,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "commits_made",
+          "message": "commits_made.message_matches /./ did not match any commit"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-build"
+    },
+    {
+      "skill": "rdc:deploy",
+      "pass": false,
+      "duration_ms": 1704,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-deploy"
+    },
+    {
+      "skill": "rdc:fixit",
+      "pass": false,
+      "duration_ms": 1138,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "commits_made",
+          "message": "commits_made: expected >= 1, got 0"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-fixit"
+    },
+    {
+      "skill": "rdc:handoff",
+      "pass": false,
+      "duration_ms": 2188,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-handoff"
+    },
+    {
+      "skill": "rdc:overnight",
+      "pass": false,
+      "duration_ms": 1665,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-overnight"
+    },
+    {
+      "skill": "rdc:plan",
+      "pass": false,
+      "duration_ms": 955,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-plan"
+    },
+    {
+      "skill": "rdc:preplan",
+      "pass": false,
+      "duration_ms": 2187,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-preplan"
+    },
+    {
+      "skill": "rdc:prototype",
+      "pass": false,
+      "duration_ms": 1580,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-prototype"
+    },
+    {
+      "skill": "rdc:release",
+      "pass": false,
+      "duration_ms": 1075,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-release"
+    },
+    {
+      "skill": "rdc:report",
+      "pass": false,
+      "duration_ms": 2232,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-report"
+    },
+    {
+      "skill": "rdc:review",
+      "pass": false,
+      "duration_ms": 1714,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-review"
+    },
+    {
+      "skill": "rdc:status",
+      "pass": false,
+      "duration_ms": 1056,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-status"
+    },
+    {
+      "skill": "rdc:workitems",
+      "pass": false,
+      "duration_ms": 608,
+      "observed": {
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "\nspawn error: spawn claude ENOENT",
+        "files_modified": [],
+        "commits": [],
+        "work_items_delta": [],
+        "timed_out": false
+      },
+      "failures": [
+        {
+          "predicate": "exit_code",
+          "message": "exit_code expected 0, got -1"
+        },
+        {
+          "predicate": "stdout_contains",
+          "message": "stdout_contains: missing substrings: \"Verdict\""
+        }
+      ],
+      "worktree": "C:/Dev/rdc-skills/.rdc-sandbox/2026-04-15-03fe36/rdc-workitems"
+    }
+  ],
+  "invalid_manifests": []
+}

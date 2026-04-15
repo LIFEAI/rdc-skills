@@ -571,7 +571,7 @@ async function runTier2() {
     results = await runPool(toRun, PARALLEL, async (manifest) => {
       return await runManifest(manifest, {
         runId,
-        supabaseBranchRef: supabaseBranch?.branchId || null,
+        supabaseBranchRef: supabaseBranch || null,
       });
     });
   } finally {

@@ -21,7 +21,8 @@
 
 import { spawn, execFileSync } from "node:child_process";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createWorktree } from "./sandbox.mjs";
 import { evaluateAssertions } from "./assertions.mjs";
 
@@ -124,16 +125,103 @@ function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
   });
 }
 
-// work_items delta is only meaningful if we have a Supabase branch connection.
-// We accept a `supabaseBranchRef` hint for future wiring. For now, when unset,
-// we return an empty delta — assertions on work_items will see zero rows. This
-// keeps the runner functional in environments without a branch (e.g. dry-run).
-async function fetchWorkItemsDelta(_supabaseBranchRef, _snapshotCount) {
-  return [];
+// ─── work_items fetch (live) ────────────────────────────────────────────────
+//
+// These helpers talk to the Supabase PostgREST endpoint on the branch created
+// by sandbox.createSupabaseTestBranch. They never throw — on any error (missing
+// creds, network, bad response) they log a one-line warning and return a safe
+// empty value so the runner degrades gracefully in environments without a
+// live branch.
+//
+// supabaseBranchRef shape: { branchId, connectionString, apiUrl, anonKey }
+
+/** Parse a PostgREST Content-Range header like "0-0/42" → 42. "*\/0" → 0. */
+export function parseContentRange(header) {
+  if (typeof header !== "string" || header.length === 0) return 0;
+  const m = header.match(/\/(\d+|\*)\s*$/);
+  if (!m) return 0;
+  if (m[1] === "*") return 0;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : 0;
 }
 
-async function fetchWorkItemsCount(_supabaseBranchRef) {
-  return 0;
+function hasBranchCreds(ref) {
+  return !!(ref && typeof ref === "object" && ref.apiUrl && ref.anonKey);
+}
+
+export async function fetchWorkItemsCount(supabaseBranchRef) {
+  if (!hasBranchCreds(supabaseBranchRef)) {
+    if (supabaseBranchRef) {
+      console.error(
+        "fetchWorkItemsCount: supabaseBranchRef missing apiUrl/anonKey — returning 0",
+      );
+    }
+    return 0;
+  }
+  const { apiUrl, anonKey } = supabaseBranchRef;
+  try {
+    const res = await fetch(`${apiUrl}/rest/v1/work_items?select=id`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        Prefer: "count=exact",
+        Range: "0-0",
+        "Range-Unit": "items",
+      },
+    });
+    if (!res.ok && res.status !== 206) {
+      console.error(
+        `fetchWorkItemsCount: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      );
+      return 0;
+    }
+    const cr = res.headers.get("content-range") || res.headers.get("Content-Range");
+    return parseContentRange(cr || "");
+  } catch (e) {
+    console.error(`fetchWorkItemsCount: ${e.message}`);
+    return 0;
+  }
+}
+
+/**
+ * Fetch metadata for the N newest work_items created since the snapshot.
+ * Returns an array of { id, status, labels } (matching the shape consumed by
+ * assertions.checkWorkItemsCreated). Never throws.
+ */
+export async function fetchWorkItemsDelta(supabaseBranchRef, snapshotCount) {
+  if (!hasBranchCreds(supabaseBranchRef)) return [];
+  const currentCount = await fetchWorkItemsCount(supabaseBranchRef);
+  const delta = currentCount - (Number(snapshotCount) || 0);
+  if (delta <= 0) return [];
+
+  const { apiUrl, anonKey } = supabaseBranchRef;
+  try {
+    const url =
+      `${apiUrl}/rest/v1/work_items` +
+      `?select=id,status,labels&order=created_at.desc&limit=${delta}`;
+    const res = await fetch(url, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+    });
+    if (!res.ok) {
+      console.error(
+        `fetchWorkItemsDelta: HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      );
+      return [];
+    }
+    const body = await res.json();
+    if (!Array.isArray(body)) return [];
+    return body.map((wi) => ({
+      id: wi?.id,
+      status: wi?.status,
+      labels: Array.isArray(wi?.labels) ? wi.labels : [],
+    }));
+  } catch (e) {
+    console.error(`fetchWorkItemsDelta: ${e.message}`);
+    return [];
+  }
 }
 
 export async function runManifest(manifest, opts = {}) {
@@ -234,4 +322,87 @@ export async function runManifest(manifest, opts = {}) {
     failures,
     worktree: worktree.path,
   };
+}
+
+// ─── self-test ──────────────────────────────────────────────────────────────
+
+const __isMain = (() => {
+  try {
+    return fileURLToPath(import.meta.url) === resolve(process.argv[1] || "");
+  } catch {
+    return false;
+  }
+})();
+
+if (__isMain) {
+  let passed = 0;
+  let total = 0;
+  function t(desc, ok) {
+    total++;
+    if (ok) passed++;
+    console.log(`${ok ? "PASS" : "FAIL"}  ${desc}`);
+  }
+
+  console.log("\nrunner.mjs self-test\n");
+
+  // parseContentRange
+  t("parseContentRange '0-0/42' → 42", parseContentRange("0-0/42") === 42);
+  t("parseContentRange '0-0/0' → 0", parseContentRange("0-0/0") === 0);
+  t("parseContentRange '*/0' → 0", parseContentRange("*/0") === 0);
+  t("parseContentRange '0-24/100' → 100", parseContentRange("0-24/100") === 100);
+  t("parseContentRange '' → 0", parseContentRange("") === 0);
+  t("parseContentRange null → 0", parseContentRange(null) === 0);
+  t("parseContentRange 'garbage' → 0", parseContentRange("garbage") === 0);
+
+  // fetch helpers graceful-degrade path
+  (async () => {
+    const c0 = await fetchWorkItemsCount(null);
+    t("fetchWorkItemsCount(null) → 0", c0 === 0);
+    const c1 = await fetchWorkItemsCount({ branchId: "x" }); // missing apiUrl/anonKey
+    t("fetchWorkItemsCount(no-creds) → 0", c1 === 0);
+    const d0 = await fetchWorkItemsDelta(null, 0);
+    t(
+      "fetchWorkItemsDelta(null, 0) → []",
+      Array.isArray(d0) && d0.length === 0,
+    );
+
+    // evaluateAssertions with observed work_items_delta matching manifest
+    const observed = {
+      exit_code: 0,
+      stdout: "",
+      stderr: "",
+      files_modified: [],
+      commits: [],
+      work_items_delta: [{ id: "w1", status: "done", labels: ["fixit"] }],
+      timed_out: false,
+    };
+    const r = evaluateAssertions(
+      {
+        exit_code: 0,
+        work_items_created: {
+          min: 1,
+          max: 1,
+          status: "done",
+          labels_include: ["fixit"],
+        },
+      },
+      observed,
+    );
+    t("evaluateAssertions: matching work_items → pass", r.pass === true);
+
+    const r2 = evaluateAssertions(
+      {
+        work_items_created: { min: 1, labels_include: ["missing"] },
+      },
+      observed,
+    );
+    t(
+      "evaluateAssertions: label mismatch → fail",
+      r2.pass === false &&
+        r2.failures.some((f) => f.predicate === "work_items_created"),
+    );
+
+    console.log(`\n${passed}/${total} passed\n`);
+    process.exit(passed === total ? 0 : 1);
+  })();
 }

@@ -100,8 +100,6 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
    - Test it in isolation: `node scripts/self-test.mjs --tier2 --skill rdc:name`
    - Commit the manifest alongside any skill body changes
 
-> **Note:** `work_items_created` assertions are currently stubbed — the runner does not yet wire Supabase branch reads back into the assertion path. Avoid that assertion key until the wiring lands; use `files_touched`, `commits_made`, `exit_code`, and `stdout_matches` instead.
-
 ## Rules
 - Run Tier 1 **before every `rdc:release rdc-skills`** — it catches the backtick-drift class of bugs that break the skill menu silently.
 - Use `--strict` in CI. Warnings matter in the release path.

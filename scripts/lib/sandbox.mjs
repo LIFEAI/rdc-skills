@@ -202,6 +202,39 @@ async function sleep(ms) {
 }
 
 /**
+ * Fetch the anon/publishable key for a branch's own project ref.
+ * Uses GET /v1/projects/{ref}/api-keys?reveal=true. Returns the first key
+ * whose name/type indicates "anon" or "publishable". Throws on HTTP error.
+ */
+async function fetchBranchAnonKey(projectRef, token) {
+  const url = `${SUPABASE_MGMT_API}/v1/projects/${projectRef}/api-keys?reveal=true`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
+  const body = await res.json();
+  const keys = Array.isArray(body) ? body : body?.keys || [];
+  // Prefer anon / publishable; avoid service_role.
+  const pick = keys.find((k) => {
+    const name = (k?.name || k?.type || "").toLowerCase();
+    return name === "anon" || name === "publishable" || name.includes("anon") || name.includes("publishable");
+  });
+  if (!pick) {
+    throw new Error(
+      `no anon/publishable key found; got ${keys.length} keys: ${keys
+        .map((k) => k?.name || k?.type || "?")
+        .join(",")}`,
+    );
+  }
+  return pick.api_key || pick.key || pick.value || null;
+}
+
+/**
  * Create a Supabase test branch via Management API.
  * Retries 3× with exponential backoff on 5xx. Throws on auth or final failure.
  */
@@ -230,10 +263,41 @@ export async function createSupabaseTestBranch(runId) {
     }
     if (res.ok) {
       const json = await res.json();
-      return {
-        branchId: json.id || json.branch_id,
-        connectionString: json.database?.connection_string || json.connection_string || "",
-      };
+      const branchId = json.id || json.branch_id;
+      const connectionString =
+        json.database?.connection_string || json.connection_string || "";
+      // A branch has its own project ref (distinct from parent). Try common
+      // field names the Management API has used across versions.
+      const branchProjectRef =
+        json.project_ref ||
+        json.ref ||
+        json.branch_project_ref ||
+        json.database?.project_ref ||
+        null;
+
+      // Derive REST api_url + anon key from the branch's own project.
+      // Both lookups are best-effort — on failure we return nulls and
+      // runner.fetchWorkItemsCount will degrade gracefully.
+      let apiUrl = null;
+      let anonKey = null;
+      if (branchProjectRef) {
+        apiUrl = `https://${branchProjectRef}.supabase.co`;
+        try {
+          anonKey = await fetchBranchAnonKey(branchProjectRef, token);
+        } catch (e) {
+          console.error(
+            `createSupabaseTestBranch: anon key lookup failed for branch_ref=${branchProjectRef}: ${e.message}`,
+          );
+        }
+      } else {
+        console.error(
+          `createSupabaseTestBranch: branch create response did not include a project ref — work_items assertions will be skipped. keys=${Object.keys(
+            json,
+          ).join(",")}`,
+        );
+      }
+
+      return { branchId, connectionString, apiUrl, anonKey };
     }
     if (res.status === 401 || res.status === 403) {
       throw new Error(
