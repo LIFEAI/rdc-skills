@@ -28,14 +28,14 @@
 //   2 = runner crashed (unreadable dirs, etc.)
 //   3 = plugin manifest missing (distinct from skill failures)
 
-import { readFileSync, readdirSync, existsSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, renameSync, mkdirSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAllManifests } from "./lib/manifest-schema.mjs";
 import { runManifest } from "./lib/runner.mjs";
 import {
   generateRunId,
-  createSupabaseTestBranch,
+  resolveSandboxRef,
   deleteSupabaseTestBranch,
   removeWorktree,
 } from "./lib/sandbox.mjs";
@@ -64,10 +64,28 @@ const JSON_OUT = args.has("--json");
 const FIX = args.has("--fix");
 const TIER2 = args.has("--tier2");
 const QUICK = args.has("--quick");
-const skillArgIdx = argv.indexOf("--skill");
-const ONLY_SKILL = skillArgIdx >= 0 ? argv[skillArgIdx + 1] : null;
+const ONLY_SKILLS = [];
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === "--skill" && argv[i + 1]) {
+    for (const s of argv[i + 1].split(",")) {
+      const t = s.trim();
+      if (t) ONLY_SKILLS.push(t);
+    }
+    i++;
+  }
+}
+const ONLY_SKILL = ONLY_SKILLS.length === 1 ? ONLY_SKILLS[0] : null; // backwards-compat for single-skill Tier 1 path
 const parallelArgIdx = argv.indexOf("--parallel");
 const PARALLEL = parallelArgIdx >= 0 ? Math.max(1, parseInt(argv[parallelArgIdx + 1], 10) || 3) : 3;
+const logArgIdx = argv.indexOf("--log");
+const LIVE_LOG = logArgIdx >= 0 ? argv[logArgIdx + 1] : null;
+
+/** Append a timestamped line to the live log file (if --log was passed). */
+function liveLog(kind, msg) {
+  if (!LIVE_LOG) return;
+  const ts = new Date().toISOString();
+  try { appendFileSync(LIVE_LOG, `[${ts}] [${kind}] ${msg}\n`); } catch {}
+}
 
 // Track files modified by --fix so caller can git diff
 const FIXED_FILES = [];
@@ -513,8 +531,8 @@ async function runTier2() {
 
   // Load manifests
   let all = loadAllManifests();
-  if (ONLY_SKILL) {
-    all = all.filter((m) => m.manifest && m.manifest.skill === ONLY_SKILL);
+  if (ONLY_SKILLS.length > 0) {
+    all = all.filter((m) => m.manifest && ONLY_SKILLS.includes(m.manifest.skill));
   }
   if (QUICK) {
     all = all.filter((m) => !(m.manifest?.fixture?.slow === true));
@@ -541,27 +559,12 @@ async function runTier2() {
   console.log(`runId: ${runId}`);
   console.log(`manifests: ${valid.length} valid, ${invalid.length} invalid`);
   console.log(`parallel: ${PARALLEL}${QUICK ? "  quick" : ""}`);
+  liveLog("start", `runId=${runId} skills=${valid.map((m) => m.manifest.skill).join(",")}`);
 
-  // Create Supabase branch (retry 3x with backoff). On failure, warn + skip.
-  let supabaseBranch = null;
-  let supabaseErr = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      supabaseBranch = await createSupabaseTestBranch(runId);
-      break;
-    } catch (e) {
-      supabaseErr = e;
-      if (attempt < 3) await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
-    }
-  }
-  if (!supabaseBranch) {
-    console.error(`WARN: Supabase branch create failed after 3 attempts: ${supabaseErr?.message || "unknown"}`);
-    if (STRICT) {
-      console.error("--strict set → exiting with code 1");
-      process.exit(1);
-    }
-    console.error("Proceeding without Supabase branch — work_items assertions will see empty deltas.");
-  }
+  // WP-A3: use resolveSandboxRef — defaults to main-db mode (no branch, no cost)
+  const sandboxRef = await resolveSandboxRef({ runId });
+  console.log(`sandbox mode: ${sandboxRef.mode}  apiUrl=${sandboxRef.apiUrl || "none"}  anonKey=${sandboxRef.anonKey ? "ok" : "missing"}`);
+  liveLog("sandbox", `mode=${sandboxRef.mode} anonKey=${sandboxRef.anonKey ? "ok" : "missing"}`);
 
   // Run
   const toRun = valid.map((m) => m.manifest);
@@ -569,10 +572,16 @@ async function runTier2() {
   let results;
   try {
     results = await runPool(toRun, PARALLEL, async (manifest) => {
-      return await runManifest(manifest, {
+      liveLog("running", `skill=${manifest.skill}`);
+      const r = await runManifest(manifest, {
         runId,
-        supabaseBranchRef: supabaseBranch || null,
+        supabaseBranchRef: sandboxRef,
+        projectCwd: process.cwd(),
       });
+      const status = r.error ? "ERROR" : r.pass ? "PASS" : "FAIL";
+      const detail = r.error || (r.failures || []).map((f) => f.message).join("; ") || "";
+      liveLog(status.toLowerCase(), `skill=${r.skill} duration=${r.duration_ms}ms${detail ? " | " + detail : ""}`);
+      return r;
     });
   } finally {
     // Teardown — always
@@ -581,9 +590,7 @@ async function runTier2() {
         try { removeWorktree(runId, r.skill); } catch {}
       }
     }
-    if (supabaseBranch) {
-      try { await deleteSupabaseTestBranch(supabaseBranch.branchId); } catch {}
-    }
+    try { await deleteSupabaseTestBranch(sandboxRef.branchId); } catch {}
   }
 
   const totalDuration = Date.now() - started;
@@ -610,6 +617,7 @@ async function runTier2() {
   console.log(
     `total: ${results.length}  |  pass: ${results.length - failed - errored}  |  fail: ${failed}  |  error: ${errored}  |  wall: ${totalDuration}ms`,
   );
+  liveLog("done", `total=${results.length} pass=${results.length - failed - errored} fail=${failed} error=${errored} wall=${totalDuration}ms`);
 
   // JSON dump
   try {
@@ -626,7 +634,7 @@ async function runTier2() {
           duration_ms: totalDuration,
           parallel: PARALLEL,
           quick: QUICK,
-          supabase_branch: supabaseBranch?.branchId || null,
+          supabase_branch: sandboxRef.branchId || null,
           summary: {
             total: results.length,
             pass: results.length - failed - errored,
@@ -662,11 +670,12 @@ function main() {
     process.exit(2);
   }
 
-  if (ONLY_SKILL) {
-    const wanted = ONLY_SKILL.replace(":", "-") + ".md";
-    files = files.filter((f) => f === wanted);
+  if (ONLY_SKILLS.length > 0) {
+    files = files.filter((f) => {
+      return ONLY_SKILLS.some((s) => f === s.replace(":", "-") + ".md");
+    });
     if (files.length === 0) {
-      console.error(`no skill file matches ${ONLY_SKILL}`);
+      console.error(`no skill file matches: ${ONLY_SKILLS.join(", ")}`);
       process.exit(2);
     }
   }

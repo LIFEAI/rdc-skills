@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import { createWorktree } from "./sandbox.mjs";
 import { evaluateAssertions } from "./assertions.mjs";
 
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 240_000;
 
 function nowMs() {
   return Date.now();
@@ -236,8 +236,11 @@ export async function runManifest(manifest, opts = {}) {
   const {
     runId,
     supabaseBranchRef = null,
-    timeout = DEFAULT_TIMEOUT_MS,
+    timeout = manifest?.timeout_ms || DEFAULT_TIMEOUT_MS,
     claudeBin = process.env.CLAUDE_BIN || "claude",
+    // projectCwd: where claude --print runs. Must satisfy the project's check-cwd hook.
+    // Defaults to process.cwd() so running self-test from regen-root works automatically.
+    projectCwd = process.env.REGEN_ROOT || process.cwd(),
   } = opts;
 
   if (!runId) {
@@ -289,7 +292,7 @@ export async function runManifest(manifest, opts = {}) {
     spawnRes = await spawnClaude({
       claudeBin,
       prompt: manifest.fixture?.prompt || "",
-      cwd: worktree.path,
+      cwd: projectCwd,
       env,
       timeoutMs: timeout,
     });

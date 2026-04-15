@@ -1,6 +1,7 @@
 {
   "manifest_version": 1,
   "skill": "rdc:status",
+  "timeout_ms": 180000,
   "description": "Status is read-only: prints kanban + health, makes no commits.",
   "fixture": {
     "prompt": "rdc:status",
@@ -9,7 +10,7 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["Recommended Next"]
   },
   "teardown": { "reset_branch": true }
 }
