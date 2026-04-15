@@ -90,6 +90,57 @@ Check the project overlay for specific language, package manager, and build cons
 
 ---
 
+## RDC_TEST Sandbox Contract
+
+When `RDC_TEST=1` is set, the skill is running inside the Tier 2 sandbox harness. Short-circuit all destructive external side effects.
+
+**How to detect:** `process.env.RDC_TEST === '1'` (Node/JS) or `[ "$RDC_TEST" = "1" ]` (bash). The Tier 2 runner sets this before invoking `claude --print`.
+
+**Allowed under RDC_TEST** — run normally, no guard:
+
+| Operation | Why |
+|-----------|-----|
+| Supabase writes | Land on the test branch the harness created |
+| Local git commits | Commit to the worktree branch; never pushed |
+| Local filesystem writes | Inside the sandbox worktree |
+| Service reads | Coolify status, CF DNS lookup, GitHub read — all safe |
+| `clauth` credential reads | Read-only against the daemon |
+
+**Short-circuit under RDC_TEST** — must be wrapped in a guard:
+
+- Coolify app deploys / restarts / config writes
+- Cloudflare DNS writes / cache purges
+- R2 object writes / deletes
+- `git push` to any remote
+- `gh pr create`, `gh release create`, tag pushes
+- `npm publish`
+- Any webhook fire, email send, Slack post
+- MCP connector tools that mutate external state (e.g. `mcp__coolify__deploy`)
+
+**Bash pattern:**
+```bash
+if [ "$RDC_TEST" != "1" ]; then
+  curl -X POST "https://deploy.regendevcorp.com/api/v1/applications/$UUID/deploy" ...
+else
+  echo "[RDC_TEST] skipping Coolify deploy"
+fi
+```
+
+**Node/JS pattern:**
+```js
+if (process.env.RDC_TEST !== '1') {
+  await deployToCoolify(...);
+} else {
+  console.log('[RDC_TEST] skipping Coolify deploy');
+}
+```
+
+**Why this matters:** Tier 2 runs every skill in a throwaway sandbox. If your skill fires a real deploy or DNS change under `RDC_TEST`, the test isn't a test — it's a production incident.
+
+**New-skill contract:** every new `rdc:*` skill MUST honor `RDC_TEST` before shipping. Tier 2 manifests will fail any skill that writes to external state under the flag.
+
+---
+
 ## Completion Report
 
 When your scope is done, return a structured report to the supervisor:
