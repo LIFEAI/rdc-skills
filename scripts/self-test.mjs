@@ -568,18 +568,30 @@ async function runTier2() {
 
   // Run
   const toRun = valid.map((m) => m.manifest);
+  const total = toRun.length;
+  let launched = 0;
+  let finished = 0;
   const started = Date.now();
   let results;
   try {
     results = await runPool(toRun, PARALLEL, async (manifest) => {
+      const n = ++launched;
+      const timeoutSec = Math.round((manifest.timeout_ms || 240_000) / 1000);
+      console.log(`▶  [${n}/${total}] ${manifest.skill}  (timeout ${timeoutSec}s)`);
       liveLog("running", `skill=${manifest.skill}`);
       const r = await runManifest(manifest, {
         runId,
         supabaseBranchRef: sandboxRef,
         projectCwd: process.cwd(),
       });
+      const done = ++finished;
       const status = r.error ? "ERROR" : r.pass ? "PASS" : "FAIL";
+      const dur = r.duration_ms != null ? `${(r.duration_ms / 1000).toFixed(1)}s` : "?";
+      const icon = status === "PASS" ? "✓" : "✗";
       const detail = r.error || (r.failures || []).map((f) => f.message).join("; ") || "";
+      console.log(
+        `${icon}  [${done}/${total}] ${r.skill}  ${dur}  ${status}${detail ? "  — " + detail : ""}`,
+      );
       liveLog(status.toLowerCase(), `skill=${r.skill} duration=${r.duration_ms}ms${detail ? " | " + detail : ""}`);
       return r;
     });

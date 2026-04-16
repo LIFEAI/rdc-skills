@@ -101,7 +101,7 @@ function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
       const safePrompt = JSON.stringify(prompt ?? "");
       child = spawn(
         claudeBin,
-        ["--print", safePrompt, "--output-format", "stream-json", "--verbose"],
+        ["--print", safePrompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"],
         { cwd, env, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
       );
     } catch (e) {
