@@ -40,5 +40,12 @@ Thumbs.db
 
 # Project-specific
 .claude/hook-logs/
+.claude/restart-context.md
 .rdc-sandbox/
+.rdc/overnight.lock
+.rdc/plans/
+.rdc/reports/
+.rdc/research/
+.orphaned_at
+docs/
 dist/
