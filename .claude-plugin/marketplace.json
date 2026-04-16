@@ -11,7 +11,10 @@
       "name": "rdc-skills",
       "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
       "category": "development",
-      "source": ".",
+      "source": {
+        "source": "github",
+        "repo": "LIFEAI/rdc-skills"
+      },
       "homepage": "https://github.com/LIFEAI/rdc-skills"
     }
   ]
