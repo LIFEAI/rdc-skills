@@ -27,7 +27,7 @@ const errors = [];
 
 function validateFile(filePath) {
   try {
-    const contents = fs.readFileSync(filePath, 'utf8');
+    const contents = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
     const lines = contents.split('\n');
 
     // Check frontmatter
@@ -128,7 +128,26 @@ const skillsDir = path.join(repoRoot, 'skills');
 const guidesDir = path.join(repoRoot, 'guides');
 
 validateDirectory(skillsDir, 'skills');
-validateDirectory(guidesDir, 'guides');
+
+// Guides are prose docs — just check they are readable markdown files
+if (fs.existsSync(guidesDir)) {
+  const guideFiles = fs.readdirSync(guidesDir).filter(f => f.endsWith('.md'));
+  if (guideFiles.length > 0) {
+    console.log('\nValidating guides/ (readability only)');
+    console.log('─'.repeat(40));
+    for (const file of guideFiles) {
+      try {
+        fs.readFileSync(path.join(guidesDir, file), 'utf8');
+        console.log(`  ✓ ${file}`);
+        passed++;
+      } catch (err) {
+        errors.push(`${file}: ${err.message}`);
+        console.log(`  ✗ ${file}`);
+        failed++;
+      }
+    }
+  }
+}
 
 console.log('\n' + '═'.repeat(40));
 if (errors.length > 0) {
