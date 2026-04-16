@@ -8,6 +8,8 @@ description: >-
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag. Chitchat relay writes (outbox messages via `chitchat_*` MCP tools) and git push are skipped under `RDC_TEST=1`.
+
 
 # /rdc:collab — Claude Code Collab Session Listener
 > Invoked as: `/rdc:collab --session <session_id>`

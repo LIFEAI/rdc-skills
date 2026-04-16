@@ -10,6 +10,8 @@ description: >-
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag. Supabase work item writes, prototype registry inserts, design context inserts, and git push are skipped under `RDC_TEST=1`.
+
 
 # rdc:handoff — Planning → CLI Bridge
 
