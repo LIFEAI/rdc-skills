@@ -701,6 +701,28 @@ async function runTier2() {
     console.error(`WARN: failed to write JSON report: ${e.message}`);
   }
 
+  writeLastRun({
+    tier: 2,
+    verdict: (failed > 0 || errored > 0) ? "FAIL" : "PASS",
+    exit_code: errored > 0 ? 2 : failed > 0 ? 1 : 0,
+    summary: {
+      total: results.length,
+      passed: results.length - failed - errored,
+      failed,
+      errored,
+      wall_ms: totalDuration,
+    },
+    failures: results
+      .filter((r) => !r.pass || r.error)
+      .map((r) => ({
+        skill: r.skill,
+        error: r.error || null,
+        timed_out: r.observed?.timed_out || false,
+        assertions_failed: (r.failures || []).map((f) => `${f.predicate}: ${f.message}`),
+      })),
+    warnings: [],
+  });
+
   if (errored > 0) process.exit(2);
   process.exit(failed > 0 ? 1 : 0);
 }
@@ -934,7 +956,55 @@ function main() {
   if (manifestMissing) exitCode = 3;
 
   console.log(`\nverdict: ${fail ? "❌ FAIL" : "✓ PASS"}${STRICT ? " (strict)" : ""}  exit=${exitCode}\n`);
+
+  writeLastRun({
+    tier: 1,
+    verdict: fail ? "FAIL" : "PASS",
+    exit_code: exitCode,
+    strict: STRICT,
+    summary: {
+      total: results.length,
+      failed: failed.length,
+      warned: warned.length,
+      passed: clean.length,
+    },
+    failures: [
+      ...manifestAudit.findings.filter((f) => f.level === "error").map((f) => ({
+        scope: "plugin_manifest", code: f.code, message: f.message,
+      })),
+      ...failed.map((r) => ({ skill: r.skill || r.file, errors: r.errors, findings: r.findings })),
+      ...agentFailed.map((r) => ({ scope: "agent_guide", file: r.file, errors: r.errors, findings: r.findings })),
+      ...duplicateFindings.filter((f) => f.level === "error").map((f) => ({ scope: "global", code: f.code, message: f.message })),
+      ...orphanHookFindings.filter((f) => f.level === "error").map((f) => ({ scope: "global", code: f.code, message: f.message })),
+    ],
+    warnings: [
+      ...warned.map((r) => ({ skill: r.skill || r.file, warnings: r.warnings })),
+      ...agentWarned.map((r) => ({ scope: "agent_guide", file: r.file, warnings: r.warnings })),
+    ],
+  });
+
   process.exit(exitCode);
+}
+
+// ── last-run.json ───────────────────────────────────────────────────────────
+// Always written after every run so Claude Code can read it without the user
+// having to copy/paste terminal output.
+// Path: C:/Dev/rdc-skills/.rdc/reports/last-run.json
+//
+// Shape:
+//   { tier, ran_at, verdict, exit_code, summary, failures[], warnings[] }
+// "failures" contains only items that actually failed — ready to act on.
+
+function writeLastRun(data) {
+  try {
+    const reportsDir = resolve(REPO_ROOT, ".rdc", "reports");
+    if (!existsSync(reportsDir)) mkdirSync(reportsDir, { recursive: true });
+    const outPath = join(reportsDir, "last-run.json");
+    writeFileSync(outPath, JSON.stringify({ ...data, ran_at: new Date().toISOString() }, null, 2));
+    console.log(`\nlast-run: ${outPath}`);
+  } catch (e) {
+    console.error(`WARN: could not write last-run.json: ${e.message}`);
+  }
 }
 
 if (TIER2) {
