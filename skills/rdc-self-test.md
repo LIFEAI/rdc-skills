@@ -25,11 +25,28 @@ description: >-
 | Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live, see `.rdc/plans/skill-self-test-tier-2.md` |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
+## Interactive UI
+
+Launch the interactive menu — pick tier, pick skill, see live output:
+
+```bash
+node C:/Dev/rdc-skills/scripts/self-test-ui.mjs
+```
+
+Menu options:
+- **1** — Full Tier 1 test (all skills)
+- **2** — Pick a specific skill from a numbered list
+- **3** — Choose tier (Tier 1 static lint | Tier 2 behavioral | Tier 3 🔒 future)
+
+Test output streams live to the terminal. No server, no extra processes.
+
 ## Procedure (Tier 1)
 
-1. **Run the linter:**
+1. **Run the linter (direct or via UI):**
    ```bash
    node C:/Dev/rdc-skills/scripts/self-test.mjs
+   # or interactively:
+   node C:/Dev/rdc-skills/scripts/self-test-ui.mjs
    ```
 
 2. **Interpret exit codes:**
