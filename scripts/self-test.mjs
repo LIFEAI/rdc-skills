@@ -680,53 +680,47 @@ function main() {
     }
   }
 
-  const results = files.map((f) => auditSkill(join(SKILLS_DIR, f)));
-
-  // Cross-skill checks (skip on --skill single-file runs)
-  let duplicateFindings = [];
-  let orphanHookFindings = [];
-  if (!ONLY_SKILL) {
-    duplicateFindings = auditDuplicates(results);
-    orphanHookFindings = auditOrphanHooks(results);
-  }
-
-  let agentResults = [];
-  if (!ONLY_SKILL && existsSync(AGENT_GUIDES_DIR)) {
-    const agentFiles = readdirSync(AGENT_GUIDES_DIR).filter((f) => f.endsWith(".md"));
-    agentResults = agentFiles.map((f) => auditAgentGuide(join(AGENT_GUIDES_DIR, f)));
-  }
-
-  const failed = results.filter((r) => r.errors.length > 0);
-  const warned = results.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
-  const clean = results.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
-
-  const agentFailed = agentResults.filter((r) => r.errors.length > 0);
-  const agentWarned = agentResults.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
-  const agentClean = agentResults.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
-
-  const globalErrors = [
-    ...manifestAudit.findings.filter((f) => f.level === "error"),
-    ...duplicateFindings.filter((f) => f.level === "error"),
-    ...orphanHookFindings.filter((f) => f.level === "error"),
-  ];
-  const globalWarnings = [
-    ...manifestAudit.findings.filter((f) => f.level === "warn"),
-    ...duplicateFindings.filter((f) => f.level === "warn"),
-    ...orphanHookFindings.filter((f) => f.level === "warn"),
-  ];
-
-  const fail =
-    failed.length > 0 ||
-    agentFailed.length > 0 ||
-    globalErrors.length > 0 ||
-    (STRICT &&
-      (warned.length > 0 || agentWarned.length > 0 || globalWarnings.length > 0));
-
-  // Exit code 3 reserved for missing plugin manifest
-  let exitCode = fail ? 1 : 0;
-  if (manifestMissing) exitCode = 3;
-
   if (JSON_OUT) {
+    // JSON path: buffer everything then dump
+    const results = files.map((f) => auditSkill(join(SKILLS_DIR, f)));
+
+    let duplicateFindings = [];
+    let orphanHookFindings = [];
+    if (!ONLY_SKILL) {
+      duplicateFindings = auditDuplicates(results);
+      orphanHookFindings = auditOrphanHooks(results);
+    }
+
+    let agentResults = [];
+    if (!ONLY_SKILL && existsSync(AGENT_GUIDES_DIR)) {
+      const agentFiles = readdirSync(AGENT_GUIDES_DIR).filter((f) => f.endsWith(".md"));
+      agentResults = agentFiles.map((f) => auditAgentGuide(join(AGENT_GUIDES_DIR, f)));
+    }
+
+    const failed = results.filter((r) => r.errors.length > 0);
+    const warned = results.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
+    const clean = results.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
+    const agentFailed = agentResults.filter((r) => r.errors.length > 0);
+    const agentWarned = agentResults.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
+    const agentClean = agentResults.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
+    const globalErrors = [
+      ...manifestAudit.findings.filter((f) => f.level === "error"),
+      ...duplicateFindings.filter((f) => f.level === "error"),
+      ...orphanHookFindings.filter((f) => f.level === "error"),
+    ];
+    const globalWarnings = [
+      ...manifestAudit.findings.filter((f) => f.level === "warn"),
+      ...duplicateFindings.filter((f) => f.level === "warn"),
+      ...orphanHookFindings.filter((f) => f.level === "warn"),
+    ];
+    const fail =
+      failed.length > 0 ||
+      agentFailed.length > 0 ||
+      globalErrors.length > 0 ||
+      (STRICT && (warned.length > 0 || agentWarned.length > 0 || globalWarnings.length > 0));
+    let exitCode = fail ? 1 : 0;
+    if (manifestMissing) exitCode = 3;
+
     console.log(
       JSON.stringify(
         {
@@ -769,39 +763,67 @@ function main() {
         2,
       ),
     );
-  } else {
-    const pad = (s, n) => s + " ".repeat(Math.max(0, n - s.length));
-    console.log("\nrdc-skills self-test — Tier 1 (static lint)\n");
+    process.exit(exitCode);
+  }
 
-    // Plugin manifest line
-    const manifestStatus = manifestAudit.ok ? "pass" : "FAIL";
-    const manifestNote = manifestAudit.ok
-      ? `v${manifestAudit.manifest?.version || "?"}`
-      : manifestAudit.findings.map((f) => f.message).join("; ");
-    console.log(pad("plugin manifest", 24) + pad(manifestStatus, 10) + manifestNote);
-    console.log();
+  // Human-readable path: stream each result live as it's audited
+  const pad = (s, n) => s + " ".repeat(Math.max(0, n - s.length));
 
-    console.log(pad("skill", 24) + pad("status", 10) + "notes");
-    console.log("─".repeat(80));
-    for (const r of results) {
-      const status = r.errors.length > 0 ? "FAIL" : r.warnings.length > 0 ? "WARN" : "pass";
-      const notes = r.errors.length > 0 ? r.errors[0] : r.warnings[0] || "";
-      console.log(pad(r.name || r.file, 24) + pad(status, 10) + notes);
-      const extras = [...r.errors.slice(1), ...r.warnings.slice(r.errors.length > 0 ? 0 : 1)];
-      for (const extra of extras) {
-        console.log(pad("", 24) + pad("", 10) + "  " + extra);
-      }
+  // Count agent guides upfront for the startup banner
+  let agentFileCount = 0;
+  if (!ONLY_SKILL && existsSync(AGENT_GUIDES_DIR)) {
+    try { agentFileCount = readdirSync(AGENT_GUIDES_DIR).filter((f) => f.endsWith(".md")).length; } catch {}
+  }
+
+  // Startup banner — printed immediately so the user sees activity right away
+  console.log(`\nrdc-skills self-test — Tier 1 (static lint)`);
+  const scopeDesc = ONLY_SKILLS.length > 0
+    ? `skill: ${ONLY_SKILLS.join(", ")}`
+    : `${files.length} skill${files.length !== 1 ? "s" : ""}${agentFileCount ? ` + ${agentFileCount} agent guide${agentFileCount !== 1 ? "s" : ""}` : ""}`;
+  console.log(`Scanning ${scopeDesc}${STRICT ? "  [strict]" : ""}${FIX ? "  [fix]" : ""}\n`);
+
+  // Plugin manifest line
+  const manifestStatus = manifestAudit.ok ? "pass" : "FAIL";
+  const manifestNote = manifestAudit.ok
+    ? `v${manifestAudit.manifest?.version || "?"}`
+    : manifestAudit.findings.map((f) => f.message).join("; ");
+  console.log(pad("plugin manifest", 24) + pad(manifestStatus, 10) + manifestNote);
+  console.log();
+
+  // Skills — print each row immediately after audit (no buffering)
+  console.log(pad("skill", 24) + pad("status", 10) + "notes");
+  console.log("─".repeat(80));
+  const results = [];
+  for (const f of files) {
+    const r = auditSkill(join(SKILLS_DIR, f));
+    results.push(r);
+    const status = r.errors.length > 0 ? "FAIL" : r.warnings.length > 0 ? "WARN" : "pass";
+    const notes = r.errors.length > 0 ? r.errors[0] : r.warnings[0] || "";
+    console.log(pad(r.name || r.file, 24) + pad(status, 10) + notes);
+    const extras = [...r.errors.slice(1), ...r.warnings.slice(r.errors.length > 0 ? 0 : 1)];
+    for (const extra of extras) {
+      console.log(pad("", 24) + pad("", 10) + "  " + extra);
     }
-    console.log("─".repeat(80));
-    console.log(
-      `total: ${results.length}  |  fail: ${failed.length}  |  warn: ${warned.length}  |  pass: ${clean.length}`,
-    );
+  }
 
-    if (agentResults.length > 0) {
+  const failed = results.filter((r) => r.errors.length > 0);
+  const warned = results.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
+  const clean = results.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
+
+  console.log("─".repeat(80));
+  console.log(`total: ${results.length}  |  fail: ${failed.length}  |  warn: ${warned.length}  |  pass: ${clean.length}`);
+
+  // Agent guides — stream live
+  const agentResults = [];
+  if (!ONLY_SKILL && existsSync(AGENT_GUIDES_DIR)) {
+    const agentFiles = readdirSync(AGENT_GUIDES_DIR).filter((f) => f.endsWith(".md"));
+    if (agentFiles.length > 0) {
       console.log("\nagent guides (guides/agents/*.md)\n");
       console.log(pad("guide", 24) + pad("status", 10) + "notes");
       console.log("─".repeat(80));
-      for (const r of agentResults) {
+      for (const f of agentFiles) {
+        const r = auditAgentGuide(join(AGENT_GUIDES_DIR, f));
+        agentResults.push(r);
         const status = r.errors.length > 0 ? "FAIL" : r.warnings.length > 0 ? "WARN" : "pass";
         const notes = r.errors.length > 0 ? r.errors[0] : r.warnings[0] || "";
         console.log(pad(r.file, 24) + pad(status, 10) + notes);
@@ -810,27 +832,57 @@ function main() {
           console.log(pad("", 24) + pad("", 10) + "  " + extra);
         }
       }
+      const agentFailed = agentResults.filter((r) => r.errors.length > 0);
+      const agentWarned = agentResults.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
+      const agentClean = agentResults.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
       console.log("─".repeat(80));
-      console.log(
-        `total: ${agentResults.length}  |  fail: ${agentFailed.length}  |  warn: ${agentWarned.length}  |  pass: ${agentClean.length}`,
-      );
+      console.log(`total: ${agentResults.length}  |  fail: ${agentFailed.length}  |  warn: ${agentWarned.length}  |  pass: ${agentClean.length}`);
     }
-
-    if (duplicateFindings.length + orphanHookFindings.length > 0) {
-      console.log("\nglobal findings\n");
-      for (const f of [...duplicateFindings, ...orphanHookFindings]) {
-        console.log(`  [${f.level}] ${f.code}: ${f.message}`);
-      }
-    }
-
-    if (FIXED_FILES.length > 0) {
-      console.log("\nfixed files (review with git diff):");
-      for (const p of FIXED_FILES) console.log(`  ${p}`);
-    }
-
-    console.log(`\nverdict: ${fail ? "❌ FAIL" : "✓ PASS"}${STRICT ? " (strict)" : ""}  exit=${exitCode}\n`);
   }
 
+  // Cross-skill checks — deferred until all audits complete
+  let duplicateFindings = [];
+  let orphanHookFindings = [];
+  if (!ONLY_SKILL) {
+    duplicateFindings = auditDuplicates(results);
+    orphanHookFindings = auditOrphanHooks(results);
+  }
+
+  if (duplicateFindings.length + orphanHookFindings.length > 0) {
+    console.log("\nglobal findings\n");
+    for (const f of [...duplicateFindings, ...orphanHookFindings]) {
+      console.log(`  [${f.level}] ${f.code}: ${f.message}`);
+    }
+  }
+
+  if (FIXED_FILES.length > 0) {
+    console.log("\nfixed files (review with git diff):");
+    for (const p of FIXED_FILES) console.log(`  ${p}`);
+  }
+
+  const agentFailed = agentResults.filter((r) => r.errors.length > 0);
+  const agentWarned = agentResults.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
+  const globalErrors = [
+    ...manifestAudit.findings.filter((f) => f.level === "error"),
+    ...duplicateFindings.filter((f) => f.level === "error"),
+    ...orphanHookFindings.filter((f) => f.level === "error"),
+  ];
+  const globalWarnings = [
+    ...manifestAudit.findings.filter((f) => f.level === "warn"),
+    ...duplicateFindings.filter((f) => f.level === "warn"),
+    ...orphanHookFindings.filter((f) => f.level === "warn"),
+  ];
+
+  const fail =
+    failed.length > 0 ||
+    agentFailed.length > 0 ||
+    globalErrors.length > 0 ||
+    (STRICT && (warned.length > 0 || agentWarned.length > 0 || globalWarnings.length > 0));
+
+  let exitCode = fail ? 1 : 0;
+  if (manifestMissing) exitCode = 3;
+
+  console.log(`\nverdict: ${fail ? "❌ FAIL" : "✓ PASS"}${STRICT ? " (strict)" : ""}  exit=${exitCode}\n`);
   process.exit(exitCode);
 }
 
