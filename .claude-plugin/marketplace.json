@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "rdc",
+  "name": "rdc-skills",
   "description": "RDC typed-agent dispatch skill suite — single-plugin marketplace",
   "owner": {
     "name": "LIFEAI",
@@ -8,7 +8,7 @@
   },
   "plugins": [
     {
-      "name": "rdc",
+      "name": "rdc-skills",
       "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
       "category": "development",
       "source": ".",
