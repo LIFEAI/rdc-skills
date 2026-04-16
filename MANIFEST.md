@@ -3,7 +3,7 @@
 **Created:** 2026-04-13  
 **Last updated:** 2026-04-15  
 **Source:** Regen Root project `.claude/skills/user/`  
-**Files:** 23 skill files (2,773 lines total)  
+**Files:** 17 skill files (2,277 lines), 10 agent guides, 9 main guides  
 **Size:** ~480K  
 
 ## Generic Conversion Summary
@@ -51,7 +51,11 @@ All skills have been converted from project-specific to generic/portable:
     ├── rdc-handoff.md (172 lines)
     ├── rdc-prototype.md (144 lines)
     ├── rdc-workitems.md (129 lines)
-    └── rdc-help.md (93 lines)
+    ├── rdc-help.md (93 lines)
+    ├── rdc-deploy.md (144 lines) [new — Coolify deployment ops]
+    ├── rdc-release.md (164 lines) [new — atomic version release]
+    ├── rdc-self-test.md (124 lines) [new — static lint + tier2 smoke tests]
+    └── rdc-watch.md (92 lines) [new — session log + browser viewer]
 └── guides/agents/     (agent-only playbooks — dispatched by rdc:build, not user-invocable)
     ├── frontend.md
     ├── backend.md
@@ -76,6 +80,14 @@ All skills have been converted from project-specific to generic/portable:
 - rdc:fixit — quick-fix bypass
 - rdc:status — project dashboard
 - rdc:report — nightly report
+
+### DevOps (3)
+- rdc:deploy — Coolify deployment ops (deploy, new, diagnose, audit)
+- rdc:release — atomic version release with git tag + changelog
+- rdc:watch — session log + browser viewer for Claude activity
+
+### Quality (1)
+- rdc:self-test — static lint (tier1) + smoke tests (tier2)
 
 ### Agent Guides (10, in `guides/agents/`) — [agent-only — dispatched by rdc:build, not user-invocable]
 - frontend — React, UI, Tailwind
