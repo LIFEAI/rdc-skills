@@ -73,7 +73,8 @@ function slugify(str) {
 
 function readFrontmatter(filePath) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    const raw     = fs.readFileSync(filePath, 'utf8');
+    const content = raw.replace(/\r\n/g, '\n');
     const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return {};
     const fm = {};
