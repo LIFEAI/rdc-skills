@@ -1,31 +1,25 @@
 #!/usr/bin/env node
 /**
- * DEPRECATED as of v0.6.0 — use /plugin install rdc-skills.
- * Will be removed in v0.7.0. See README.md "Install" section.
- *
- * rdc-skills installer (Node.js — works from bash, PowerShell, or cmd)
+ * rdc-skills installer v0.7.0
+ * Registers rdc-skills as a Claude Code plugin (no flat-file copy).
  *
  * Usage:
- *   node scripts/install.js                        ← run from inside your project
- *   node scripts/install.js --project /path/to/project
- *   node scripts/install.js --skip-hooks
- *   node scripts/install.js --claude-home /path/to/.claude
+ *   node scripts/install.js                        ← standard install
+ *   node scripts/install.js --skip-hooks           ← skip hooks registration
+ *   node scripts/install.js --claude-home <path>   ← custom CLAUDE_HOME
+ *   node scripts/install.js --project <path>       ← project root for setup scan
  *   node scripts/install.js --setup                ← interactive setup interview
- *   node scripts/install.js --migrate .            ← migrate docs/ dirs to .rdc/
- *   node scripts/install.js --migrate /path/to/project
- *
- * NOTE: Run from inside your project root, or pass --project <path>.
- * The installer scans that directory to auto-detect project config.
+ *   node scripts/install.js --migrate <path>       ← migrate docs/ dirs to .rdc/
  */
 
-const fs       = require('fs');
-const path     = require('path');
-const os       = require('os');
-const readline = require('readline');
+const fs           = require('fs');
+const path         = require('path');
+const os           = require('os');
+const readline     = require('readline');
 const { execSync } = require('child_process');
 
 // ── Args ──────────────────────────────────────────────────────────────────────
-const args = process.argv.slice(2);
+const args        = process.argv.slice(2);
 const skipHooks   = args.includes('--skip-hooks');
 const doSetup     = args.includes('--setup');
 const migrateIdx  = args.indexOf('--migrate');
@@ -37,9 +31,7 @@ const projectIdx  = args.indexOf('--project');
 const projectArg  = projectIdx >= 0 ? path.resolve(args[projectIdx + 1]) : null;
 
 const repoRoot  = path.resolve(__dirname, '..');
-const skillsSrc = path.join(repoRoot, 'skills');
 const hooksSrc  = path.join(repoRoot, 'hooks');
-const skillsDst = path.join(claudeHome, 'skills', 'user');
 const hooksDst  = path.join(claudeHome, 'hooks');
 const settingsPath = path.join(claudeHome, 'settings.json');
 
@@ -52,9 +44,23 @@ function err(msg)  { console.log(`  \x1b[31m✗\x1b[0m ${msg}`); }
 function copyDir(src, dst, ext) {
   if (!fs.existsSync(src)) { warn(`Source not found: ${src}`); return 0; }
   fs.mkdirSync(dst, { recursive: true });
-  const files = fs.readdirSync(src).filter(f => f.endsWith(ext));
-  files.forEach(f => fs.copyFileSync(path.join(src, f), path.join(dst, f)));
-  return files.length;
+  const files = fs.readdirSync(src).filter(f => !ext || f.endsWith(ext));
+  files.forEach(f => {
+    const s = path.join(src, f);
+    if (fs.statSync(s).isFile()) fs.copyFileSync(s, path.join(dst, f));
+  });
+  return files.filter(f => fs.statSync(path.join(src, f)).isFile()).length;
+}
+
+function copyDirRecursive(src, dst) {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dst, entry.name);
+    if (entry.isDirectory()) copyDirRecursive(s, d);
+    else fs.copyFileSync(s, d);
+  }
 }
 
 function prompt(rl, question) {
@@ -65,7 +71,114 @@ function slugify(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-// ── Hook config template ──────────────────────────────────────────────────────
+function readFrontmatter(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return {};
+    const fm = {};
+    let key = null;
+    let multiline = false;
+    let multilineVal = '';
+    for (const line of match[1].split('\n')) {
+      if (multiline) {
+        if (/^\s+/.test(line)) { multilineVal += ' ' + line.trim(); continue; }
+        fm[key] = multilineVal.trim();
+        multiline = false;
+      }
+      const kv = line.match(/^(\w+):\s*(>-|>)?\s*(.*)?$/);
+      if (!kv) continue;
+      key = kv[1];
+      if (kv[2]) { multiline = true; multilineVal = kv[3] || ''; }
+      else fm[key] = kv[3] || '';
+    }
+    if (multiline && key) fm[key] = multilineVal.trim();
+    return fm;
+  } catch { return {}; }
+}
+
+// ── Plugin Registration ───────────────────────────────────────────────────────
+function registerPlugin() {
+  const pluginDir   = path.join(claudeHome, 'plugins');
+  const mktDir      = path.join(pluginDir, 'marketplaces', 'rdc-skills');
+  const mktPluginDir = path.join(mktDir, '.claude-plugin');
+
+  // Read version from package.json
+  const pkg     = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const version = pkg.version || '0.7.0';
+
+  // Get current git SHA
+  let gitSha = '';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim(); } catch {}
+
+  // 1. Marketplace dir + manifest
+  fs.mkdirSync(mktPluginDir, { recursive: true });
+  fs.copyFileSync(
+    path.join(repoRoot, '.claude-plugin', 'marketplace.json'),
+    path.join(mktPluginDir, 'marketplace.json')
+  );
+
+  // 2. known_marketplaces.json
+  const kmpPath = path.join(pluginDir, 'known_marketplaces.json');
+  let knownMp = {};
+  if (fs.existsSync(kmpPath)) {
+    try { knownMp = JSON.parse(fs.readFileSync(kmpPath, 'utf8')); } catch {}
+  }
+  knownMp['rdc-skills'] = {
+    source:          { source: 'github', repo: 'LIFEAI/rdc-skills' },
+    installLocation: mktDir,
+    lastUpdated:     new Date().toISOString(),
+  };
+  fs.writeFileSync(kmpPath, JSON.stringify(knownMp, null, 4));
+
+  // 3. Cache: copy plugin files
+  const cacheDir = path.join(pluginDir, 'cache', 'rdc-skills', 'rdc-skills', version);
+  fs.mkdirSync(cacheDir, { recursive: true });
+  for (const item of ['.claude-plugin', 'commands', 'skills', 'guides', 'hooks', 'package.json', 'README.md']) {
+    const src = path.join(repoRoot, item);
+    if (!fs.existsSync(src)) continue;
+    const dst = path.join(cacheDir, item);
+    if (fs.statSync(src).isDirectory()) copyDirRecursive(src, dst);
+    else fs.copyFileSync(src, dst);
+  }
+
+  // 4. installed_plugins.json
+  const ipPath = path.join(pluginDir, 'installed_plugins.json');
+  let installed = { version: 2, plugins: {} };
+  if (fs.existsSync(ipPath)) {
+    try { installed = JSON.parse(fs.readFileSync(ipPath, 'utf8')); } catch {}
+  }
+  // Remove any stale rdc-skills entries
+  for (const key of Object.keys(installed.plugins)) {
+    if (key.startsWith('rdc-skills@')) delete installed.plugins[key];
+  }
+  installed.plugins['rdc-skills@rdc-skills'] = [{
+    scope:         'user',
+    installPath:   cacheDir,
+    version:       version,
+    installedAt:   new Date().toISOString(),
+    lastUpdated:   new Date().toISOString(),
+    gitCommitSha:  gitSha,
+  }];
+  fs.writeFileSync(ipPath, JSON.stringify(installed, null, 4));
+
+  // 5. settings.json enabledPlugins
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch {}
+  }
+  if (!settings.enabledPlugins) settings.enabledPlugins = {};
+  // Remove stale entries
+  for (const key of Object.keys(settings.enabledPlugins)) {
+    if (key.startsWith('rdc-skills@')) delete settings.enabledPlugins[key];
+  }
+  settings.enabledPlugins['rdc-skills@rdc-skills'] = true;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+  return { version, cacheDir };
+}
+
+// ── Hooks config ──────────────────────────────────────────────────────────────
 function buildHooksConfig(hooksDir) {
   const base = hooksDir.replace(/\\/g, '/');
   const cmd = (file, msg) => {
@@ -92,361 +205,56 @@ function buildHooksConfig(hooksDir) {
       cmd('restart-brief.js', 'Writing restart brief...'),
     ]}],
     Stop: [{ hooks: [
-      cmd('rate-limit-retry.js',    'Checking for rate limits...'),
-      cmd('post-work-check.js',     'Checking for undocumented work...'),
-      cmd('no-stop-open-epics.js',  'Checking for open epics...'),
+      cmd('rate-limit-retry.js',   'Checking for rate limits...'),
+      cmd('post-work-check.js',    'Checking for undocumented work...'),
+      cmd('no-stop-open-epics.js', 'Checking for open epics...'),
     ]}],
   };
 }
 
-// ── .rdc/config.json generator ────────────────────────────────────────────────
-function buildConfigJson(answers, opts = {}) {
-  const slug = slugify(answers.projectName || path.basename(answers.projectRoot || process.cwd()));
-  const useWorkItems = (answers.useWorkItems || 'y').toLowerCase() !== 'n';
+// ── Commands listing ──────────────────────────────────────────────────────────
+function listCommands() {
+  const cmdsDir = path.join(repoRoot, 'commands');
+  if (!fs.existsSync(cmdsDir)) return;
 
-  const cfg = {
-    name: slug,
-    version: '1.0.0',
-    description: answers.description || '',
-    rdc_skills_version: '>=0.1.0',
-    hook_scope: answers.epicScope || slug,
-    git: {
-      org:                answers.githubOrg    || '',
-      repo:               answers.githubRepo   || slug,
-      main_branch:        answers.mainBranch   || 'main',
-      dev_branch:         answers.devBranch    || 'develop',
-      auto_commit_branch: answers.devBranch    || 'develop',
-    },
-  };
+  const files = fs.readdirSync(cmdsDir)
+    .filter(f => f.endsWith('.md'))
+    .sort();
 
-  if (answers.supabaseRef) {
-    cfg.supabase = {
-      ref:        answers.supabaseRef,
-      url:        `https://${answers.supabaseRef}.supabase.co`,
-      mcp_server: 'mcp__claude_ai_Supabase__execute_sql',
-    };
+  console.log('');
+  console.log(`  \x1b[32mAvailable rdc:* commands (${files.length}):\x1b[0m`);
+  console.log('');
+
+  const COL = 18;
+  for (const f of files) {
+    const name   = 'rdc:' + f.replace(/\.md$/, '');
+    const fm     = readFrontmatter(path.join(cmdsDir, f));
+    const desc   = (fm.description || '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    // Trim description to first sentence or 70 chars
+    const short  = desc.length > 70 ? desc.slice(0, 70) + '…' : desc;
+    const pad    = ' '.repeat(Math.max(1, COL - name.length));
+    console.log(`  \x1b[36m/${name}\x1b[0m${pad}${short}`);
   }
-
-  cfg.credentials = {
-    provider:   'clauth',
-    daemon_url: 'http://127.0.0.1:52437',
-    env_paths:  ['.env.local'],
-  };
-
-  cfg.repos = [
-    { path: '.', role: 'primary', description: answers.projectName || slug },
-  ];
-
-  cfg.paths = {
-    guides:   opts.guides   || '.rdc/guides',
-    plans:    opts.plans    || '.rdc/plans',
-    reports:  opts.reports  || '.rdc/reports',
-    research: opts.research || '.rdc/research',
-    state:    '.rdc/state',
-    systems:  'docs/systems',
-  };
-
-  cfg.work_items = { enabled: useWorkItems };
-
-  cfg.constraints = {
-    forbidden_commands: answers.forbiddenCommands
-      ? answers.forbiddenCommands.split(',').map(s => s.trim()).filter(Boolean)
-      : ['pnpm build'],
-    typecheck_command: answers.typecheckCommand || 'npx tsc --noEmit',
-    test_command:      answers.testCommand      || 'npx vitest run',
-    never_push_to:     [answers.mainBranch || 'main'],
-  };
-
-  return cfg;
-}
-
-function writeConfigJson(projectRoot, cfg) {
-  const rdcDir = path.join(projectRoot, '.rdc');
-  fs.mkdirSync(rdcDir, { recursive: true });
-  const cfgPath = path.join(rdcDir, 'config.json');
-  fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-  return cfgPath;
-}
-
-// ── --migrate command ─────────────────────────────────────────────────────────
-async function runMigrate(projectRoot) {
-  const absRoot = path.resolve(projectRoot);
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
-  console.log('');
-  console.log('  \x1b[35m╔══════════════════════════════════════════╗\x1b[0m');
-  console.log('  \x1b[35m║   rdc-skills — Migrate to .rdc/ Layout   ║\x1b[0m');
-  console.log('  \x1b[35m╚══════════════════════════════════════════╝\x1b[0m');
-  console.log('');
-  console.log(`  Project root: ${absRoot}`);
-  console.log('');
-
-  // Directories to scan
-  const candidates = [
-    { src: 'docs/guides',   dst: '.rdc/guides'   },
-    { src: 'docs/plans',    dst: '.rdc/plans'     },
-    { src: 'docs/reports',  dst: '.rdc/reports'   },
-    { src: 'docs/research', dst: '.rdc/research'  },
-  ];
-
-  const found = candidates.filter(c => fs.existsSync(path.join(absRoot, c.src)));
-
-  if (found.length === 0) {
-    info('No migratable directories found (docs/guides, docs/plans, docs/reports, docs/research).');
-    rl.close();
-    return;
-  }
-
-  console.log('  Found the following directories:');
-  found.forEach(c => console.log(`    ${c.src}`));
-  console.log('');
-
-  const moved = [];
-  const skipped = [];
-
-  for (const c of found) {
-    const srcAbs = path.join(absRoot, c.src);
-    const dstAbs = path.join(absRoot, c.dst);
-
-    const answer = await prompt(rl, `  Move ${c.src} → ${c.dst}? [Y/n]: `);
-    if (answer.toLowerCase() === 'n') {
-      skipped.push(c.src);
-      info(`Skipped ${c.src}`);
-      continue;
-    }
-
-    // If destination already exists, merge files into it
-    if (fs.existsSync(dstAbs)) {
-      warn(`${c.dst} already exists — merging files`);
-      const files = fs.readdirSync(srcAbs);
-      files.forEach(f => {
-        const srcFile = path.join(srcAbs, f);
-        const dstFile = path.join(dstAbs, f);
-        if (!fs.existsSync(dstFile)) {
-          fs.renameSync(srcFile, dstFile);
-        } else {
-          warn(`  Skipped ${f} (already exists in ${c.dst})`);
-        }
-      });
-      // Remove src dir if now empty
-      try {
-        const remaining = fs.readdirSync(srcAbs);
-        if (remaining.length === 0) fs.rmdirSync(srcAbs);
-      } catch {}
-    } else {
-      fs.mkdirSync(path.dirname(dstAbs), { recursive: true });
-      fs.renameSync(srcAbs, dstAbs);
-    }
-
-    moved.push(c);
-    ok(`Moved ${c.src} → ${c.dst}`);
-  }
-
-  // Generate .rdc/config.json if not present
-  const cfgPath = path.join(absRoot, '.rdc', 'config.json');
-  if (!fs.existsSync(cfgPath)) {
-    const genCfg = await prompt(rl, '\n  .rdc/config.json not found. Generate a minimal one? [Y/n]: ');
-    if (genCfg.toLowerCase() !== 'n') {
-      // Detect basic git info
-      let githubOrg = '';
-      let githubRepo = '';
-      try {
-        const remote = execSync('git remote get-url origin', { cwd: absRoot, encoding: 'utf8' }).trim();
-        const m = remote.match(/[:/]([^/]+)\/([^/.]+)(\.git)?$/);
-        if (m) { githubOrg = m[1]; githubRepo = m[2]; }
-      } catch {}
-
-      const pathConfig = {};
-      moved.forEach(c => { pathConfig[c.dst.replace('.rdc/', '')] = c.dst; });
-      skipped.forEach(s => { const k = s.replace('docs/', ''); pathConfig[k] = s; });
-
-      const cfg = buildConfigJson(
-        {
-          projectName:  path.basename(absRoot),
-          projectRoot:  absRoot,
-          githubOrg,
-          githubRepo,
-          epicScope:    slugify(path.basename(absRoot)),
-        },
-        pathConfig
-      );
-
-      const written = writeConfigJson(absRoot, cfg);
-      ok(`Generated ${path.relative(absRoot, written)}`);
-    }
-  } else {
-    info('.rdc/config.json already exists — skipped');
-  }
-
-  rl.close();
-
-  // Summary
-  console.log('');
-  console.log('  \x1b[32mMigration summary:\x1b[0m');
-  if (moved.length)   moved.forEach(c => console.log(`    \x1b[32m✓\x1b[0m Moved    ${c.src} → ${c.dst}`));
-  if (skipped.length) skipped.forEach(s => console.log(`    \x1b[33m→\x1b[0m Skipped  ${s}`));
-  console.log('');
-  console.log('  Update .gitignore if .rdc/ should be ignored, or commit the new layout.');
   console.log('');
 }
 
-// ── Setup interview ───────────────────────────────────────────────────────────
-async function setupInterview(detected = {}) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const d = detected; // shorthand
+// ── Preflight ─────────────────────────────────────────────────────────────────
+function runPreflight() {
+  const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+  if (nodeMajor < 18) { err(`Node.js >= 18 required — found v${process.versions.node}`); process.exit(1); }
+  ok(`Node.js v${process.versions.node}`);
 
-  // Helper: show detected value as default in bracket
-  const q = (label, key, fallback = '') => {
-    const def = d[key] || fallback;
-    return prompt(rl, def ? `  ${label} [${def}]: ` : `  ${label}: `);
-  };
-  const ans = async (label, key, fallback = '') => {
-    const val = await q(label, key, fallback);
-    return val || d[key] || fallback;
-  };
-
-  console.log('');
-  console.log('  \x1b[35m╔══════════════════════════════════════════╗\x1b[0m');
-  console.log('  \x1b[35m║   rdc-skills — Project Setup Interview   ║\x1b[0m');
-  console.log('  \x1b[35m╚══════════════════════════════════════════╝\x1b[0m');
-  console.log('');
-  console.log('  This will generate your project overlay guides and .rdc/config.json.');
-  if (Object.keys(d).filter(k => !k.startsWith('_')).length > 0) {
-    console.log('  \x1b[32mAuto-detected values shown in [brackets] — press Enter to accept.\x1b[0m');
-  } else {
-    console.log('  Press Enter to skip any question (use plugin defaults).');
-  }
-  console.log('');
-
-  const answers = {};
-
-  // Project basics
-  answers.projectName   = await ans('Project name', 'projectName');
-  answers.projectRoot   = await ans('Absolute path to project root', 'projectRoot', projectArg || process.cwd());
-  answers.description   = await ans('Short description', 'description');
-  answers.githubOrg     = await ans('GitHub org/user', 'githubOrg');
-  answers.githubRepo    = await ans('GitHub repo name', 'githubRepo');
-  answers.mainBranch    = await ans('Main branch', 'mainBranch', 'main');
-  answers.devBranch     = await ans('Dev branch', 'devBranch', 'develop');
-
-  console.log('');
-  console.log('  \x1b[33m-- Database --\x1b[0m');
-  answers.supabaseRef   = await ans('Supabase project ref (blank to skip)', 'supabaseRef');
-  answers.useWorkItems  = await ans('Use work_items RPC for task tracking?', 'useWorkItems', 'Y');
-
-  console.log('');
-  console.log('  \x1b[33m-- Frontend --\x1b[0m');
-  answers.uiPackage     = await ans('UI package name (blank for shadcn)', 'uiPackage');
-  answers.tailwind      = await ans('Using Tailwind CSS?', 'tailwind', 'Y');
-
-  console.log('');
-  console.log('  \x1b[33m-- Deployment --\x1b[0m');
-  answers.deployPlatform = await ans('Deploy platform (coolify/vercel/railway/other)', 'deployPlatform');
-  answers.deployDomain   = await ans('Deploy dashboard URL', 'deployDomain');
-
-  console.log('');
-  console.log('  \x1b[33m-- Hooks --\x1b[0m');
-  answers.epicScope     = await ans('Folder name to scope stop-hook to', 'epicScope');
-
-  console.log('');
-  console.log('  \x1b[33m-- Directory convention --\x1b[0m');
-  answers.useRdcDir     = await ans('Use .rdc/ directory convention?', 'useRdcDir', 'Y');
-
-  rl.close();
-
-  return answers;
-}
-
-function generateOverlayGuides(answers, projectRoot) {
-  const useRdc = (answers.useRdcDir || 'y').toLowerCase() !== 'n';
-
-  // Determine guides directory
-  const guidesDir = useRdc
-    ? path.join(projectRoot, '.rdc', 'guides')
-    : path.join(projectRoot, 'docs', 'guides');
-
-  fs.mkdirSync(guidesDir, { recursive: true });
-
-  const bootstrapPath = path.join(guidesDir, 'agent-bootstrap.md');
-  if (!fs.existsSync(bootstrapPath)) {
-    const supabaseSection = answers.supabaseRef
-      ? `## Supabase\nProject ref: \`${answers.supabaseRef}\`\nUse \`mcp__claude_ai_Supabase__execute_sql\` — no \`project_id\` param needed.\n`
-      : `## Supabase\n<!-- Add your Supabase project ref here -->\n`;
-
-    const workItemsSection = (answers.useWorkItems || '').toLowerCase() !== 'n'
-      ? `## Work Items\nAll tasks tracked in Supabase \`work_items\` via RPC.\n\`\`\`sql\nSELECT get_open_epics();  -- check queue at session start\nSELECT insert_work_item(p_title := '...', p_priority := 'high');\nSELECT update_work_item_status('<id>'::uuid, 'done');\n\`\`\`\nCreate work items BEFORE starting work. Never create-and-close after the fact.\n`
-      : '';
-
-    const relGuides = path.relative(projectRoot, guidesDir).replace(/\\/g, '/');
-
-    fs.writeFileSync(bootstrapPath, `# Agent Bootstrap — ${answers.projectName || 'Project'}
-> Project overlay — extends rdc-skills base guide.
-> Generated by rdc-skills installer.
-
-## Credentials
-Get credentials via clauth daemon:
-\`\`\`bash
-curl -s http://127.0.0.1:52437/get/<service>
-\`\`\`
-Ping first: \`curl -s http://127.0.0.1:52437/ping\`
-
-## Git Rules
-- **Branch:** \`${answers.devBranch}\` for all work. \`${answers.mainBranch}\` = production (explicit approval required).
-- **GitHub org:** ${answers.githubOrg || '<!-- your org -->'}
-- Auto-commit to \`${answers.devBranch}\` after every logical block. Push. Never force-push.
-- Commit format: \`type(scope): description\\n\\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\`
-
-${supabaseSection}
-${workItemsSection}
-## Completion Report
-After finishing work, output:
-\`\`\`
-## Work Summary
-- Files changed: <list>
-- Tests: <pass/fail>
-- Work items updated: <list>
-- Committed: <sha>
-\`\`\`
-`);
-    ok(`Generated ${relGuides}/agent-bootstrap.md`);
-  } else {
-    const relGuides = path.relative(projectRoot, guidesDir).replace(/\\/g, '/');
-    info(`${relGuides}/agent-bootstrap.md already exists — skipped`);
-  }
-
-  // Generate .rdc/config.json if using .rdc/ convention
-  if (useRdc) {
-    const cfgPath = path.join(projectRoot, '.rdc', 'config.json');
-    if (!fs.existsSync(cfgPath)) {
-      const cfg = buildConfigJson(answers);
-      const written = writeConfigJson(projectRoot, cfg);
-      ok(`Generated .rdc/config.json (hook_scope: "${cfg.hook_scope}")`);
-    } else {
-      info('.rdc/config.json already exists — skipped');
-    }
-  }
-
-  // Update no-stop-open-epics.js scope guard
-  const scopeSource = answers.epicScope || slugify(answers.projectName || '');
-  if (scopeSource) {
-    const hookPath = path.join(hooksDst, 'no-stop-open-epics.js');
-    if (fs.existsSync(hookPath)) {
-      let src = fs.readFileSync(hookPath, 'utf8');
-      src = src.replace(
-        /const PROJECT_SCOPE = '[^']*'/,
-        `const PROJECT_SCOPE = '${scopeSource}'`
-      );
-      fs.writeFileSync(hookPath, src);
-      ok(`Updated stop-hook scope guard → '${scopeSource}'`);
-    }
+  try {
+    execSync('curl -s --max-time 2 http://127.0.0.1:52437/ping', { stdio: 'pipe' });
+    ok('clauth daemon is running');
+  } catch {
+    warn('clauth daemon not responding — start it before using credential-dependent commands');
   }
 }
 
-// ── Project auto-detection ────────────────────────────────────────────────────
+// ── Project detection (for setup interview) ───────────────────────────────────
 function detectProjectInfo(projectRoot) {
   const detected = {};
-
-  // package.json → name, description
   const pkgPath = path.join(projectRoot, 'package.json');
   if (fs.existsSync(pkgPath)) {
     try {
@@ -455,116 +263,84 @@ function detectProjectInfo(projectRoot) {
       if (pkg.description) detected.description  = pkg.description;
     } catch {}
   }
-
-  // git remote → org, repo
   try {
     const remote = execSync('git remote get-url origin', { cwd: projectRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
     const m = remote.match(/[:/]([^/]+)\/([^/.]+)(\.git)?$/);
     if (m) { detected.githubOrg = m[1]; detected.githubRepo = m[2]; }
   } catch {}
-
-  // git branches
   try {
     const branches = execSync('git branch -a', { cwd: projectRoot, encoding: 'utf8', stdio: 'pipe' });
-    if (/\bdevelop\b/.test(branches)) detected.devBranch = 'develop';
+    if (/\bdevelop\b/.test(branches)) detected.devBranch  = 'develop';
     if (/\bmain\b/.test(branches))    detected.mainBranch = 'main';
     else if (/\bmaster\b/.test(branches)) detected.mainBranch = 'master';
   } catch {}
-
-  // .env.local / apps/**/.env.local → Supabase ref
-  const envCandidates = [
-    path.join(projectRoot, '.env.local'),
-    path.join(projectRoot, '.env'),
-  ];
-  // Also scan apps/* for .env.local
-  const appsDir = path.join(projectRoot, 'apps');
-  if (fs.existsSync(appsDir)) {
-    try {
-      fs.readdirSync(appsDir).forEach(app => {
-        envCandidates.push(path.join(appsDir, app, '.env.local'));
-      });
-    } catch {}
-  }
-  for (const envFile of envCandidates) {
-    if (!fs.existsSync(envFile)) continue;
-    try {
-      const lines = fs.readFileSync(envFile, 'utf8').split('\n');
-      for (const line of lines) {
-        const m = line.match(/NEXT_PUBLIC_SUPABASE_URL\s*=\s*https:\/\/([a-z0-9]+)\.supabase\.co/);
-        if (m) { detected.supabaseRef = m[1]; break; }
-      }
-    } catch {}
-    if (detected.supabaseRef) break;
-  }
-
-  // CLAUDE.md → hook_scope hint (look for folder name pattern)
-  const claudeMd = path.join(projectRoot, 'CLAUDE.md');
-  if (fs.existsSync(claudeMd)) {
-    try {
-      const md = fs.readFileSync(claudeMd, 'utf8');
-      // Look for PROJECT_SCOPE mentions
-      const m = md.match(/PROJECT_SCOPE[^\n]*?['"`]([^'"`]+)['"`]/);
-      if (m) detected.epicScope = m[1];
-    } catch {}
-  }
-
-  // .rdc/config.json already exists → read it for defaults
   const rdcCfg = path.join(projectRoot, '.rdc', 'config.json');
   if (fs.existsSync(rdcCfg)) {
     try {
       const cfg = JSON.parse(fs.readFileSync(rdcCfg, 'utf8'));
-      if (cfg.name)               detected.projectName  = cfg.name;
-      if (cfg.hook_scope)         detected.epicScope    = cfg.hook_scope;
-      if (cfg.git?.org)           detected.githubOrg    = cfg.git.org;
-      if (cfg.git?.repo)          detected.githubRepo   = cfg.git.repo;
-      if (cfg.git?.main_branch)   detected.mainBranch   = cfg.git.main_branch;
-      if (cfg.git?.dev_branch)    detected.devBranch    = cfg.git.dev_branch;
-      if (cfg.supabase?.ref)      detected.supabaseRef  = cfg.supabase.ref;
+      if (cfg.name)             detected.projectName = cfg.name;
+      if (cfg.hook_scope)       detected.epicScope   = cfg.hook_scope;
+      if (cfg.git?.org)         detected.githubOrg   = cfg.git.org;
+      if (cfg.git?.repo)        detected.githubRepo  = cfg.git.repo;
+      if (cfg.git?.main_branch) detected.mainBranch  = cfg.git.main_branch;
+      if (cfg.git?.dev_branch)  detected.devBranch   = cfg.git.dev_branch;
+      if (cfg.supabase?.ref)    detected.supabaseRef = cfg.supabase.ref;
       detected._alreadyHasConfig = true;
     } catch {}
   }
-
-  // Existing guides directory
-  if (fs.existsSync(path.join(projectRoot, '.rdc', 'guides')))  detected.guidesDir = '.rdc/guides';
-  else if (fs.existsSync(path.join(projectRoot, 'docs', 'guides'))) detected.guidesDir = 'docs/guides';
-
   return detected;
 }
 
-// ── Preflight checks ──────────────────────────────────────────────────────────
-function runPreflight() {
+// ── Migrate (unchanged from previous version) ─────────────────────────────────
+async function runMigrate(projectRoot) {
+  const absRoot = path.resolve(projectRoot);
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+  console.log('\n  \x1b[35mrdc-skills — Migrate to .rdc/ Layout\x1b[0m\n');
+  console.log(`  Project root: ${absRoot}\n`);
+
+  const candidates = [
+    { src: 'docs/guides',   dst: '.rdc/guides'   },
+    { src: 'docs/plans',    dst: '.rdc/plans'     },
+    { src: 'docs/reports',  dst: '.rdc/reports'   },
+    { src: 'docs/research', dst: '.rdc/research'  },
+  ];
+  const found = candidates.filter(c => fs.existsSync(path.join(absRoot, c.src)));
+  if (found.length === 0) { info('No migratable directories found.'); rl.close(); return; }
+
+  console.log('  Found:');
+  found.forEach(c => console.log(`    ${c.src}`));
   console.log('');
-  console.log('  \x1b[36mPreflight checks:\x1b[0m');
 
-  // Node.js version
-  const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
-  if (nodeMajor < 18) {
-    err(`Node.js >= 18 required — found v${process.versions.node}`);
-    process.exit(1);
-  } else {
-    ok(`Node.js v${process.versions.node} (>= 18)`);
+  for (const c of found) {
+    const srcAbs = path.join(absRoot, c.src);
+    const dstAbs = path.join(absRoot, c.dst);
+    const answer = await prompt(rl, `  Move ${c.src} → ${c.dst}? [Y/n]: `);
+    if (answer.toLowerCase() === 'n') { info(`Skipped ${c.src}`); continue; }
+    if (fs.existsSync(dstAbs)) {
+      warn(`${c.dst} exists — merging`);
+      for (const f of fs.readdirSync(srcAbs)) {
+        const sf = path.join(srcAbs, f), df = path.join(dstAbs, f);
+        if (!fs.existsSync(df)) fs.renameSync(sf, df);
+        else warn(`  Skipped ${f} (exists in dst)`);
+      }
+    } else {
+      fs.mkdirSync(path.dirname(dstAbs), { recursive: true });
+      fs.renameSync(srcAbs, dstAbs);
+    }
+    ok(`Moved ${c.src} → ${c.dst}`);
   }
-
-  // clauth daemon
-  try {
-    execSync('curl -s --max-time 2 http://127.0.0.1:52437/ping', { stdio: 'pipe' });
-    ok('clauth daemon is running');
-  } catch {
-    warn('clauth daemon not responding — run scripts/restart-clauth.bat to start it');
-  }
+  rl.close();
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  // --migrate runs independently (no install needed)
-  if (doMigrate) {
-    await runMigrate(migratePath);
-    return;
-  }
+  if (doMigrate) { await runMigrate(migratePath); return; }
 
   console.log('');
-  console.log('  \x1b[32mrdc-skills Installer\x1b[0m');
-  console.log('  \x1b[32m====================\x1b[0m');
+  console.log('  \x1b[32m╔══════════════════════════════╗\x1b[0m');
+  console.log('  \x1b[32m║  rdc-skills Installer v0.7   ║\x1b[0m');
+  console.log('  \x1b[32m╚══════════════════════════════╝\x1b[0m');
   console.log('');
   console.log(`  CLAUDE_HOME : ${claudeHome}`);
   console.log(`  Plugin root : ${repoRoot}`);
@@ -575,29 +351,26 @@ async function main() {
     process.exit(1);
   }
 
-  // 0. Pull latest from git
+  // 0. Pull latest
   try {
     const before = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
-    execSync('git pull --ff-only', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' });
+    execSync('git pull --ff-only', { cwd: repoRoot, stdio: 'pipe' });
     const after  = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
-    if (before !== after) {
-      ok(`[0/3] Updated     — ${before.slice(0,7)} → ${after.slice(0,7)}`);
-    } else {
-      ok(`[0/3] Up to date  — ${after.slice(0,7)}`);
-    }
+    ok(`[0/3] Up to date  — ${before === after ? after.slice(0, 7) : `${before.slice(0,7)} → ${after.slice(0,7)}`}`);
   } catch {
     warn('[0/3] git pull failed — installing from local copy');
   }
 
-  // 1. Skills
-  const skillCount = copyDir(skillsSrc, skillsDst, '.md');
-  ok(`[1/3] Skills      — ${skillCount} file(s) → ${skillsDst}`);
+  // 1. Plugin registration
+  const { version, cacheDir } = registerPlugin();
+  ok(`[1/3] Plugin      — rdc-skills@rdc-skills v${version} registered + enabled`);
+  info(`       Cache      : ${cacheDir}`);
 
   // 2. Hook files
   const hookCount = copyDir(hooksSrc, hooksDst, '.js');
   ok(`[2/3] Hook files  — ${hookCount} file(s) → ${hooksDst}`);
 
-  // 3. Register hooks in settings.json
+  // 3. Hooks in settings.json
   if (skipHooks) {
     info('[3/3] Hook wiring — skipped (--skip-hooks)');
   } else {
@@ -610,56 +383,35 @@ async function main() {
     ok(`[3/3] Hook wiring — registered in ${settingsPath}`);
   }
 
-  // 4. Preflight checks
+  // 4. Preflight
+  console.log('');
+  console.log('  \x1b[36mPreflight:\x1b[0m');
   runPreflight();
 
-  // 5. Scan project for existing config (always — used for auto-prompt and prefill)
+  // 5. Project scan + optional setup
   const projectRoot = projectArg || process.cwd();
-  if (projectArg) info(`Project root  : ${projectRoot}`);
   const detected = detectProjectInfo(projectRoot);
-
-  if (Object.keys(detected).filter(k => !k.startsWith('_')).length > 0) {
-    console.log('');
-    console.log('  \x1b[36mAuto-detected project info:\x1b[0m');
-    if (detected.projectName)  info(`Project name  : ${detected.projectName}`);
-    if (detected.githubOrg)    info(`GitHub        : ${detected.githubOrg}/${detected.githubRepo || '?'}`);
-    if (detected.supabaseRef)  info(`Supabase ref  : ${detected.supabaseRef}`);
-    if (detected.mainBranch)   info(`Branches      : ${detected.mainBranch} / ${detected.devBranch || 'develop'}`);
-    if (detected.guidesDir)    info(`Guides found  : ${detected.guidesDir}`);
-  }
-
-  // 6. Setup interview — explicit flag, or auto-prompt when no config found
   let runSetup = doSetup;
-
-  if (!runSetup && !detected._alreadyHasConfig) {
-    console.log('');
+  if (!runSetup && !detected._alreadyHasConfig && projectRoot !== repoRoot) {
     const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
     const ans = await new Promise(resolve => rl2.question(
-      '  No .rdc/config.json found. Run setup interview now? [Y/n]: ', resolve
+      '\n  No .rdc/config.json found. Run setup interview? [Y/n]: ', resolve
     ));
     rl2.close();
     if (ans.trim().toLowerCase() !== 'n') runSetup = true;
   }
 
-  if (runSetup) {
-    const answers = await setupInterview(detected);
-    const root = answers.projectRoot || projectRoot;
-    generateOverlayGuides(answers, root);
-  }
-
+  // 6. Done + commands list
   console.log('');
   console.log('  \x1b[32mInstallation complete!\x1b[0m');
   console.log('');
-  if (!runSetup) {
-    console.log('  Tip: run with --setup to re-run the project setup interview');
-    console.log('  Tip: run with --migrate <path> to move docs/ dirs to .rdc/ layout');
-    console.log('');
-  }
-  console.log('  Next steps:');
-  console.log('  1. Open Claude Code in your project root');
-  console.log('  2. Run /rdc:status to see your work queue and verify everything is wired up');
-  console.log('     (project setup is handled internally — the setup agent guide lives at guides/agents/setup.md)');
+  console.log('  \x1b[33mNext steps:\x1b[0m');
+  console.log('  1. Restart Claude Code (picks up new plugin + hooks)');
+  console.log('  2. Run /rdc:status to verify work queue');
   console.log('');
+
+  listCommands();
+
   console.log('  Docs: https://github.com/LIFEAI/rdc-skills#readme');
   console.log('');
 }
