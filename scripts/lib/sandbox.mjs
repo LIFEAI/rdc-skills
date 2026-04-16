@@ -71,12 +71,13 @@ function sh(cmd, opts = {}) {
 
 // ---------- sandbox root ----------
 
-/** Create (if needed) and return the absolute sandbox root path. Idempotent. */
-export function createSandboxRoot() {
-  if (!existsSync(SANDBOX_ROOT)) {
-    mkdirSync(SANDBOX_ROOT, { recursive: true });
+/** Create (if needed) and return the sandbox root for a given project root. Idempotent. */
+export function createSandboxRoot(projectRoot = REPO_ROOT) {
+  const sandboxRoot = join(projectRoot, ".rdc-sandbox");
+  if (!existsSync(sandboxRoot)) {
+    mkdirSync(sandboxRoot, { recursive: true });
   }
-  return SANDBOX_ROOT;
+  return sandboxRoot;
 }
 
 /** Generate a run id: YYYY-MM-DD + 6 hex chars. */
@@ -89,10 +90,19 @@ export function generateRunId() {
 
 // ---------- git worktrees ----------
 
-/** Create a new worktree on a throwaway branch. Throws if path already exists. */
-export function createWorktree(runId, skillName) {
-  createSandboxRoot();
-  const path = worktreePath(runId, skillName);
+/**
+ * Create a new worktree on a throwaway branch inside projectRoot.
+ *
+ * projectRoot MUST be the repo that claude --print will commit to — so that
+ * commitsSince() and filesModifiedSince() in runner.mjs inspect the right repo.
+ * In practice this is the regen-root working directory (process.cwd() when
+ * self-test runs from regen-root).
+ *
+ * Worktrees live at <projectRoot>/.rdc-sandbox/<runId>/<skill-slug>/.
+ */
+export function createWorktree(runId, skillName, projectRoot = REPO_ROOT) {
+  const sandboxRoot = createSandboxRoot(projectRoot);
+  const path = fwd(join(sandboxRoot, runId, normalizeSkillForBranch(skillName)));
   const branch = branchName(runId, skillName);
   if (existsSync(path)) {
     throw new Error(
@@ -101,29 +111,32 @@ export function createWorktree(runId, skillName) {
   }
   mkdirSync(dirname(path), { recursive: true });
   try {
-    sh(`git worktree add "${path}" -b "${branch}"`);
+    sh(`git worktree add "${path}" -b "${branch}"`, { cwd: projectRoot });
   } catch (e) {
     throw new Error(
-      `failed to create worktree for run=${runId} skill=${skillName}: ${e.message}`,
+      `failed to create worktree for run=${runId} skill=${skillName} in ${projectRoot}: ${e.message}`,
     );
   }
-  return { path, branch };
+  return { path, branch, projectRoot };
 }
 
-/** Remove a worktree and its throwaway branch. Safe to call if already gone. */
-export function removeWorktree(runId, skillName) {
-  const path = worktreePath(runId, skillName);
+/**
+ * Remove a worktree and its throwaway branch.
+ * projectRoot must match the one passed to createWorktree. Safe to call if already gone.
+ */
+export function removeWorktree(runId, skillName, projectRoot = REPO_ROOT) {
+  const sandboxRoot = join(projectRoot, ".rdc-sandbox");
+  const path = fwd(join(sandboxRoot, runId, normalizeSkillForBranch(skillName)));
   const branch = branchName(runId, skillName);
   if (existsSync(path)) {
     try {
-      sh(`git worktree remove "${path}" --force`);
-    } catch (e) {
-      // fall through — try to prune + delete branch anyway
-      try { sh(`git worktree prune`); } catch {}
+      sh(`git worktree remove "${path}" --force`, { cwd: projectRoot });
+    } catch {
+      try { sh(`git worktree prune`, { cwd: projectRoot }); } catch {}
     }
   }
   try {
-    sh(`git branch -D "${branch}"`);
+    sh(`git branch -D "${branch}"`, { cwd: projectRoot });
   } catch {
     // branch may already be gone or never created
   }

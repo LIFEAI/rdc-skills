@@ -630,10 +630,12 @@ async function runTier2() {
       return r;
     });
   } finally {
-    // Teardown — always
+    // Teardown — always. Pass process.cwd() so removeWorktree targets the
+    // same projectRoot (regen-root) that createWorktree used.
+    const projectCwd = process.cwd();
     for (const r of results || []) {
       if (r && r.skill) {
-        try { removeWorktree(runId, r.skill); } catch {}
+        try { removeWorktree(runId, r.skill, projectCwd); } catch {}
       }
     }
     try { await deleteSupabaseTestBranch(sandboxRef.branchId); } catch {}

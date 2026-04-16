@@ -238,8 +238,10 @@ export async function runManifest(manifest, opts = {}) {
     supabaseBranchRef = null,
     timeout = manifest?.timeout_ms || DEFAULT_TIMEOUT_MS,
     claudeBin = process.env.CLAUDE_BIN || "claude",
-    // projectCwd: where claude --print runs. Must satisfy the project's check-cwd hook.
-    // Defaults to process.cwd() so running self-test from regen-root works automatically.
+    // projectCwd: the repo claude --print will commit to (regen-root).
+    // Worktrees are created FROM this repo so git state tracking is correct.
+    // claude runs inside the worktree (not projectCwd directly) so each skill
+    // gets an isolated branch and commits don't pollute the working tree.
     projectCwd = process.env.REGEN_ROOT || process.cwd(),
   } = opts;
 
@@ -247,20 +249,24 @@ export async function runManifest(manifest, opts = {}) {
     return { skill, pass: false, duration_ms: 0, error: "runManifest: runId is required" };
   }
 
+  // Create worktree FROM projectCwd (regen-root), not from rdc-skills.
+  // This ensures commits made by claude land in the worktree branch and
+  // are visible to commitsSince() / filesModifiedSince().
   let worktree;
   try {
-    worktree = createWorktree(runId, skill);
+    worktree = createWorktree(runId, skill, projectCwd);
   } catch (e) {
     return { skill, pass: false, duration_ms: nowMs() - started, error: `worktree: ${e.message}` };
   }
 
+  // Write precondition files into the worktree (isolated copy of projectCwd).
   try {
     writePreconditionFiles(worktree.path, manifest.fixture?.precondition_files);
   } catch (e) {
     return { skill, pass: false, duration_ms: nowMs() - started, error: `precondition_files: ${e.message}` };
   }
 
-  // Commit precondition files so HEAD snapshot is stable
+  // Commit precondition files so HEAD snapshot is stable before claude runs.
   try {
     gitIn(worktree.path, ["add", "-A"]);
     const status = gitIn(worktree.path, ["status", "--porcelain"]);
@@ -287,12 +293,14 @@ export async function runManifest(manifest, opts = {}) {
   env.RDC_TEST = "1";
   Object.assign(env, manifest.fixture?.env || {});
 
+  // Run claude inside the worktree — commits land there, git tracking is correct,
+  // and parallel skills each get their own isolated branch with no file conflicts.
   let spawnRes;
   try {
     spawnRes = await spawnClaude({
       claudeBin,
       prompt: manifest.fixture?.prompt || "",
-      cwd: projectCwd,
+      cwd: worktree.path,
       env,
       timeoutMs: timeout,
     });
