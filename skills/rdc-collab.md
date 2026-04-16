@@ -17,6 +17,15 @@ description: >-
 
 ---
 
+## When to Use
+- Project lead wants to delegate a task to a claude.ai session
+- You need bidirectional relay between this CLI agent and a claude.ai coworker
+- An async work handoff is in progress via the chitchat relay
+
+## Arguments
+
+- `rdc:collab --session <id>` — start or resume a collab relay with the given session ID
+
 ## What This Is
 
 claude.ai writes tasks into your inbox. You read, act, commit, write the response

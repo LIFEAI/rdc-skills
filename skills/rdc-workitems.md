@@ -13,6 +13,19 @@ description: >-
 
 # rdc:workitems — Work Item Management
 
+## When to Use
+- Project lead says "create a ticket", "add to backlog", "log this bug", "update status"
+- An agent needs to create or update epics/tasks during a build session
+- Checking what work is open before starting a new epic
+
+## Arguments
+
+- `rdc:workitems epics` — list open epics
+- `rdc:workitems add <title> --epic <id>` — create a task under an epic
+- `rdc:workitems update <id> --status <status>` — update a work item's status
+- `rdc:workitems done <id>` — mark a task complete
+- `rdc:workitems list <epic-id>` — list tasks in an epic
+
 ## Rules
 
 1. **Epic first, always.** Never create a task without a parent epic.

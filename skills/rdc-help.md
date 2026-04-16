@@ -10,7 +10,17 @@ description: >-
 
 # rdc:help — Command Reference
 
+## When to Use
+- Project lead asks "what commands do I have", "what's available", "which skill should I use"
+- You are unsure which `rdc:*` skill to invoke for a given task
+- First session on a project — orient yourself to available commands
+
 Print the full usage menu below verbatim, then ask the project lead which command to run.
+
+## Arguments
+
+- `rdc:help` — print the full command reference menu
+- `rdc` — alias; same as `rdc:help`
 
 ## Workflow — the RDC loop
 

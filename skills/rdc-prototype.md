@@ -20,6 +20,10 @@ description: >-
 - Testing a data layout or interaction pattern
 - Building a visual mockup for approval
 
+## Arguments
+
+- `rdc:prototype <description>` — describe the UI to build (e.g. "a data table for work items")
+
 ## What This Produces
 
 - JSX/TSX prototype file → `docs/source/<ComponentName>.jsx`

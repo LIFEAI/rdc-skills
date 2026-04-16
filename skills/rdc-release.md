@@ -19,6 +19,11 @@ commands. This skill handles the complete release loop for any LIFEAI-published
 package so the user sees one checklist and one verdict, not a series of "now run
 this" handoffs.
 
+## When to Use
+- Project lead says "release", "publish", "ship a new version", "bump the version"
+- A package has accumulated merged fixes and needs a version cut
+- Called after `rdc:review` passes and changes are ready to ship
+
 ## Arguments
 
 - `rdc:release <repo>` — patch bump (default), full loop

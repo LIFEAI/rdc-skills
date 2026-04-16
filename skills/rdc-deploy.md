@@ -18,6 +18,12 @@ No raw MCP dumps. No UUIDs unless asked.
 >
 > *Under `$RDC_TEST=1`:* Modes 1 (deploy) and 2 (new) are **entirely skipped** — echo `[RDC_TEST] skipping Coolify deploy/create` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
 
+## When to Use
+- Project lead says "deploy", "ship it", "push to production", "update the server"
+- A new app needs to be registered and deployed for the first time (`rdc:deploy new`)
+- A deployed app is behaving unexpectedly and needs diagnosis (`rdc:deploy diagnose`)
+- Running a compliance/health audit of all deployed apps (`rdc:deploy audit`)
+
 ## Arguments
 
 - `rdc:deploy <slug>` — deploy existing app (latest commit on its watched branch)
