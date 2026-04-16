@@ -41,3 +41,4 @@ Thumbs.db
 # Project-specific
 .claude/hook-logs/
 .rdc-sandbox/
+dist/

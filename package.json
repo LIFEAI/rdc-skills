@@ -23,12 +23,9 @@
     "commands": "commands/"
   },
   "scripts": {
-    "install:win": "powershell -ExecutionPolicy Bypass -File scripts/install.ps1",
-    "install:unix": "bash scripts/install.sh",
+    "install-rdc-skills": "node scripts/install-rdc-skills.js",
     "uninstall:win": "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1",
     "uninstall:unix": "bash scripts/uninstall.sh",
-    "update:win": "powershell -ExecutionPolicy Bypass -File scripts/update.ps1",
-    "update:unix": "bash scripts/update.sh",
     "validate": "node tests/validate-skills.js"
   }
 }
