@@ -8,6 +8,8 @@ description: >-
 > Checklist-only output. No tool-call narration. No raw runner dumps — summarize.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Tier 2 behavioral runs and any git push are skipped under `RDC_TEST=1`; Tier 1 static lint runs normally.
+
 
 # rdc:self-test — Skill Library Self-Test (Tier 1)
 
