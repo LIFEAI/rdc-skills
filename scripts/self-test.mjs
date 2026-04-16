@@ -996,15 +996,101 @@ function main() {
 // "failures" contains only items that actually failed — ready to act on.
 
 function writeLastRun(data) {
+  const payload = { ...data, ran_at: new Date().toISOString() };
   try {
     const reportsDir = resolve(REPO_ROOT, ".rdc", "reports");
     if (!existsSync(reportsDir)) mkdirSync(reportsDir, { recursive: true });
-    const outPath = join(reportsDir, "last-run.json");
-    writeFileSync(outPath, JSON.stringify({ ...data, ran_at: new Date().toISOString() }, null, 2));
-    console.log(`\nlast-run: ${outPath}`);
+
+    const jsonPath = join(reportsDir, "last-run.json");
+    writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
+
+    const htmlPath = join(reportsDir, "last-run.html");
+    writeFileSync(htmlPath, renderHtml(payload));
+
+    console.log(`\nresults: file:///${htmlPath.replace(/\\/g, "/")}`);
   } catch (e) {
-    console.error(`WARN: could not write last-run.json: ${e.message}`);
+    console.error(`WARN: could not write last-run reports: ${e.message}`);
   }
+}
+
+function renderHtml(d) {
+  const pass = d.verdict === "PASS";
+  const ts = new Date(d.ran_at).toLocaleString();
+  const badge = pass
+    ? `<span class="badge pass">✓ PASS</span>`
+    : `<span class="badge fail">✗ FAIL</span>`;
+
+  const failRows = (d.failures || []).map((f) => {
+    const name = f.skill || f.file || f.scope || "?";
+    const detail = [
+      ...(f.errors || []),
+      ...(f.assertions_failed || []),
+      f.error || "",
+      f.message || "",
+    ].filter(Boolean).join("<br>");
+    const extra = f.timed_out ? "<em>timed out</em>" : detail;
+    return `<tr class="fail-row"><td>${name}</td><td>${extra || "—"}</td></tr>`;
+  }).join("");
+
+  const warnRows = (d.warnings || []).map((w) => {
+    const name = w.skill || w.file || "?";
+    const detail = (w.warnings || []).join("<br>");
+    return `<tr class="warn-row"><td>${name}</td><td>${detail}</td></tr>`;
+  }).join("");
+
+  const s = d.summary || {};
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="5">
+<title>rdc:self-test — ${d.verdict}</title>
+<style>
+  body { font-family: monospace; background: #0d1117; color: #e6edf3; margin: 2rem; }
+  h1 { font-size: 1.2rem; margin-bottom: 0.25rem; }
+  .meta { color: #8b949e; font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .badge { padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: bold; font-size: 1rem; }
+  .badge.pass { background: #1a4731; color: #3fb950; }
+  .badge.fail { background: #4a1515; color: #f85149; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th { text-align: left; padding: 0.4rem 0.8rem; background: #161b22; color: #8b949e; font-size: 0.8rem; }
+  td { padding: 0.4rem 0.8rem; border-top: 1px solid #21262d; vertical-align: top; }
+  .fail-row td:first-child { color: #f85149; font-weight: bold; }
+  .warn-row td:first-child { color: #d29922; }
+  .summary { display: flex; gap: 2rem; margin-bottom: 1rem; }
+  .stat { text-align: center; }
+  .stat .n { font-size: 1.8rem; font-weight: bold; }
+  .stat .n.red { color: #f85149; }
+  .stat .n.green { color: #3fb950; }
+  .stat .n.yellow { color: #d29922; }
+  .stat .label { color: #8b949e; font-size: 0.8rem; }
+  .section-title { color: #8b949e; font-size: 0.8rem; text-transform: uppercase;
+                   letter-spacing: 0.05em; margin: 1.5rem 0 0.5rem; }
+  .refresh { color: #8b949e; font-size: 0.75rem; float: right; }
+</style>
+</head>
+<body>
+<h1>rdc:self-test &nbsp; ${badge} &nbsp; Tier ${d.tier}</h1>
+<div class="meta">${ts} &nbsp;·&nbsp; exit ${d.exit_code}${d.strict ? " &nbsp;·&nbsp; strict" : ""}<span class="refresh">auto-refresh 5s</span></div>
+
+<div class="summary">
+  <div class="stat"><div class="n">${s.total ?? "?"}</div><div class="label">total</div></div>
+  <div class="stat"><div class="n ${(s.failed || 0) > 0 ? "red" : "green"}">${s.failed ?? s.fail ?? 0}</div><div class="label">failed</div></div>
+  ${s.warned != null ? `<div class="stat"><div class="n ${(s.warned) > 0 ? "yellow" : ""}">${s.warned}</div><div class="label">warned</div></div>` : ""}
+  <div class="stat"><div class="n green">${s.passed ?? s.pass ?? 0}</div><div class="label">passed</div></div>
+  ${s.wall_ms != null ? `<div class="stat"><div class="n">${(s.wall_ms/1000).toFixed(1)}s</div><div class="label">wall time</div></div>` : ""}
+</div>
+
+${failRows ? `<div class="section-title">Failures</div>
+<table><tr><th>Skill / Scope</th><th>Detail</th></tr>${failRows}</table>` : ""}
+
+${warnRows ? `<div class="section-title">Warnings</div>
+<table><tr><th>Skill / Scope</th><th>Detail</th></tr>${warnRows}</table>` : ""}
+
+${!failRows && !warnRows ? `<p style="color:#3fb950;margin-top:1rem">All checks passed.</p>` : ""}
+</body>
+</html>`;
 }
 
 if (TIER2) {
