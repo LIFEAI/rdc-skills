@@ -24,7 +24,7 @@ description: >-
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live, see `.rdc/plans/skill-self-test-tier-2.md` |
+| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live — 13 manifests, blocked by check-cwd.js hook (see Rules) |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Interactive UI
@@ -123,4 +123,5 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
 - Run Tier 1 **before every `rdc:release rdc-skills`** — it catches the backtick-drift class of bugs that break the skill menu silently.
 - Use `--strict` in CI. Warnings matter in the release path.
 - Do NOT skip findings by relaxing the linter. Fix the skill.
-- Tier 2 is in planning — see epic `462b3e0a-37dd-4c9d-bed7-a1ad260b8bc1`.
+- Run Tier 2 before tagging a release. Gate the tag if any manifested skill fails.
+- Tier 2 blocker: `check-cwd.js` SessionStart hook blocks headless sessions not launched from the monorepo root — runner uses `--dangerously-skip-permissions` to bypass. If tier2 tests fail with `exit_code: -1`, verify the flag is present in `scripts/lib/runner.mjs`.

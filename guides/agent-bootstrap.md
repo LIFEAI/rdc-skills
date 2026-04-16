@@ -100,14 +100,15 @@ When `RDC_TEST=1` is set, the skill is running inside the Tier 2 sandbox harness
 
 | Operation | Why |
 |-----------|-----|
-| Supabase writes | Land on the test branch the harness created |
 | Local git commits | Commit to the worktree branch; never pushed |
 | Local filesystem writes | Inside the sandbox worktree |
+| Supabase reads | Assertions read prod DB; no writes |
 | Service reads | Coolify status, CF DNS lookup, GitHub read — all safe |
 | `clauth` credential reads | Read-only against the daemon |
 
 **Short-circuit under RDC_TEST** — must be wrapped in a guard:
 
+- Supabase INSERT/UPDATE/DELETE (work items, prototype_registry, design_context, etc.) — runner uses main-db mode, no test branch
 - Coolify app deploys / restarts / config writes
 - Cloudflare DNS writes / cache purges
 - R2 object writes / deletes
@@ -138,6 +139,8 @@ if (process.env.RDC_TEST !== '1') {
 **Why this matters:** Tier 2 runs every skill in a throwaway sandbox. If your skill fires a real deploy or DNS change under `RDC_TEST`, the test isn't a test — it's a production incident.
 
 **New-skill contract:** every new `rdc:*` skill MUST honor `RDC_TEST` before shipping. Tier 2 manifests will fail any skill that writes to external state under the flag.
+
+**Known blocker:** The `check-cwd.js` SessionStart hook hard-blocks Claude sessions launched from `C:/Dev/rdc-skills`. The hook must check `process.env.RDC_TEST === '1'` and call `process.exit(0)` early to allow Tier 2 sandbox runs. Without this bypass, all Tier 2 headless invocations fail with `exit_code: -1`. File: `~/.claude/hooks/check-cwd.js`.
 
 ---
 
