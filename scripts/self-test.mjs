@@ -28,7 +28,7 @@
 //   2 = runner crashed (unreadable dirs, etc.)
 //   3 = plugin manifest missing (distinct from skill failures)
 
-import { readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, renameSync, mkdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, renameSync, mkdirSync, statSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAllManifests } from "./lib/manifest-schema.mjs";
@@ -132,8 +132,9 @@ function parseFrontmatter(text) {
   return { name, description, descStartsWithBacktick, body, raw, fmEnd };
 }
 
-function expectedSkillName(filename) {
-  const base = basename(filename, ".md");
+function expectedSkillName(dirOrFile) {
+  // Accept either a directory name (rdc-foo) or legacy filename (rdc-foo.md)
+  const base = basename(dirOrFile, ".md");
   if (!base.startsWith("rdc-")) return null;
   return "rdc:" + base.slice(4);
 }
@@ -179,17 +180,35 @@ function tryAutoFix(filepath, fm, text, result) {
     changed = true;
   }
 
-  // Fix: filename/name mismatch — rename file to match frontmatter name
-  const expected = expectedSkillName(basename(filepath));
+  // Fix: filename/name mismatch — rename directory or file to match frontmatter name
+  const _filename = basename(filepath);
+  const _dirName = basename(dirname(filepath));
+  const _isSubdir = _filename === "SKILL.md" && _dirName.startsWith("rdc-");
+  const _skillDirOrFile = _isSubdir ? _dirName : _filename;
+  const expected = expectedSkillName(_skillDirOrFile);
   if (expected && fm.name !== expected && fm.name.startsWith("rdc:")) {
-    const targetBase = "rdc-" + fm.name.slice(4) + ".md";
-    const targetPath = join(dirname(filepath), targetBase);
-    if (!existsSync(targetPath)) {
-      renameSync(filepath, targetPath);
-      console.log(`FIXED: ${fm.name} — renamed ${basename(filepath)} → ${targetBase}`);
-      FIXED_FILES.push(targetPath);
-      newPath = targetPath;
-      changed = true;
+    if (_isSubdir) {
+      // Subdirectory layout: rename the parent directory
+      const targetDirName = "rdc-" + fm.name.slice(4);
+      const targetDirPath = join(dirname(dirname(filepath)), targetDirName);
+      if (!existsSync(targetDirPath)) {
+        renameSync(dirname(filepath), targetDirPath);
+        const targetPath = join(targetDirPath, "SKILL.md");
+        console.log(`FIXED: ${fm.name} — renamed dir ${_dirName} → ${targetDirName}`);
+        FIXED_FILES.push(targetPath);
+        newPath = targetPath;
+        changed = true;
+      }
+    } else {
+      const targetBase = "rdc-" + fm.name.slice(4) + ".md";
+      const targetPath = join(dirname(filepath), targetBase);
+      if (!existsSync(targetPath)) {
+        renameSync(filepath, targetPath);
+        console.log(`FIXED: ${fm.name} — renamed ${_filename} → ${targetBase}`);
+        FIXED_FILES.push(targetPath);
+        newPath = targetPath;
+        changed = true;
+      }
     }
   }
 
@@ -198,9 +217,13 @@ function tryAutoFix(filepath, fm, text, result) {
 
 function auditSkill(filepath) {
   const filename = basename(filepath);
+  // Support both flat (rdc-foo.md) and subdirectory (rdc-foo/SKILL.md) layouts
+  const dirName = basename(dirname(filepath)); // "rdc-foo" when filepath is .../rdc-foo/SKILL.md
+  const isSubdir = filename === "SKILL.md" && dirName.startsWith("rdc-");
+  const skillDirOrFile = isSubdir ? dirName : filename;
   const result = {
     skill: null,
-    file: `skills/${filename}`,
+    file: isSubdir ? `skills/${dirName}/SKILL.md` : `skills/${filename}`,
     name: null,
     pass: true,
     errors: [],
@@ -258,7 +281,7 @@ function auditSkill(filepath) {
     }
   }
 
-  const expected = expectedSkillName(filename);
+  const expected = expectedSkillName(skillDirOrFile);
   if (expected && fm.name !== expected) {
     addFinding(
       result,
@@ -437,14 +460,22 @@ function auditDuplicates(results) {
         .map((f) => basename(f, ".md")),
     );
     for (const r of results) {
-      const skillBase = basename(r.file, ".md"); // "rdc-foo"
+      // r.file is either "skills/rdc-foo/SKILL.md" or legacy "skills/rdc-foo.md"
+      // Extract the skill directory/base name in both cases
+      const parts = r.file.replace(/\\/g, "/").split("/");
+      let skillBase;
+      if (parts.length >= 3 && parts[2] === "SKILL.md") {
+        skillBase = parts[1]; // "rdc-foo" from "skills/rdc-foo/SKILL.md"
+      } else {
+        skillBase = basename(r.file, ".md"); // legacy
+      }
       if (skillBase.startsWith("rdc-")) {
         const stem = skillBase.slice(4);
         if (agentBases.has(stem)) {
           findings.push({
             level: "error",
             code: "skill-guide-filename-collision",
-            message: `skills/${skillBase}.md collides with guides/agents/${stem}.md (half-reverted move?)`,
+            message: `skills/${skillBase}/SKILL.md collides with guides/agents/${stem}.md (half-reverted move?)`,
           });
         }
       }
@@ -472,8 +503,11 @@ function auditOrphanHooks(results) {
   // Re-scan skill bodies + known config files for hook refs
   const sources = [
     ...readdirSync(SKILLS_DIR)
-      .filter((f) => f.startsWith("rdc-") && f.endsWith(".md"))
-      .map((f) => join(SKILLS_DIR, f)),
+      .filter((f) => {
+        if (!f.startsWith("rdc-")) return false;
+        try { return statSync(join(SKILLS_DIR, f)).isDirectory(); } catch { return false; }
+      })
+      .map((f) => join(SKILLS_DIR, f, "SKILL.md")),
     join(REPO_ROOT, ".claude", "settings.json"),
     PLUGIN_MANIFEST,
   ];
@@ -676,7 +710,10 @@ function main() {
 
   let files;
   try {
-    files = readdirSync(SKILLS_DIR).filter((f) => f.startsWith("rdc-") && f.endsWith(".md"));
+    files = readdirSync(SKILLS_DIR).filter((f) => {
+      if (!f.startsWith("rdc-")) return false;
+      try { return statSync(join(SKILLS_DIR, f)).isDirectory(); } catch { return false; }
+    });
   } catch (e) {
     console.error(`FATAL: cannot read skills dir ${SKILLS_DIR}: ${e.message}`);
     process.exit(2);
@@ -684,7 +721,7 @@ function main() {
 
   if (ONLY_SKILLS.length > 0) {
     files = files.filter((f) => {
-      return ONLY_SKILLS.some((s) => f === s.replace(":", "-") + ".md");
+      return ONLY_SKILLS.some((s) => f === s.replace(":", "-"));
     });
     if (files.length === 0) {
       console.error(`no skill file matches: ${ONLY_SKILLS.join(", ")}`);
@@ -694,7 +731,7 @@ function main() {
 
   if (JSON_OUT) {
     // JSON path: buffer everything then dump
-    const results = files.map((f) => auditSkill(join(SKILLS_DIR, f)));
+    const results = files.map((f) => auditSkill(join(SKILLS_DIR, f, "SKILL.md")));
 
     let duplicateFindings = [];
     let orphanHookFindings = [];
@@ -807,7 +844,7 @@ function main() {
   console.log("─".repeat(80));
   const results = [];
   for (const f of files) {
-    const r = auditSkill(join(SKILLS_DIR, f));
+    const r = auditSkill(join(SKILLS_DIR, f, "SKILL.md"));
     results.push(r);
     const status = r.errors.length > 0 ? "FAIL" : r.warnings.length > 0 ? "WARN" : "pass";
     const notes = r.errors.length > 0 ? r.errors[0] : r.warnings[0] || "";
