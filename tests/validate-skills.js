@@ -97,9 +97,22 @@ function validateDirectory(dirPath, dirName) {
     return;
   }
 
-  const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.md'));
+  // Skills are in subdirectories: skills/<name>/SKILL.md
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  const skillFiles = [];
 
-  if (files.length === 0) {
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const skillMd = path.join(dirPath, entry.name, 'SKILL.md');
+      if (fs.existsSync(skillMd)) {
+        skillFiles.push({ label: `${entry.name}/SKILL.md`, filePath: skillMd });
+      }
+    } else if (entry.name.endsWith('.md')) {
+      skillFiles.push({ label: entry.name, filePath: path.join(dirPath, entry.name) });
+    }
+  }
+
+  if (skillFiles.length === 0) {
     console.log(`ℹ  ${dirName}/ (empty — will be populated later)`);
     return;
   }
@@ -107,13 +120,12 @@ function validateDirectory(dirPath, dirName) {
   console.log(`\nValidating ${dirName}/`);
   console.log('─'.repeat(40));
 
-  for (const file of files) {
-    const filePath = path.join(dirPath, file);
+  for (const { label, filePath } of skillFiles) {
     if (validateFile(filePath)) {
-      console.log(`  ✓ ${file}`);
+      console.log(`  ✓ ${label}`);
       passed++;
     } else {
-      console.log(`  ✗ ${file}`);
+      console.log(`  ✗ ${label}`);
       failed++;
     }
   }

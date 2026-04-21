@@ -1,7 +1,7 @@
 # RDC Skills Library — Manifest
 
 **Created:** 2026-04-13  
-**Last updated:** 2026-04-15  
+**Last updated:** 2026-04-21  
 **Source:** Regen Root project `.claude/skills/user/`  
 **Files:** 17 skill files (2,277 lines), 10 agent guides, 9 main guides  
 **Size:** ~480K  
@@ -36,26 +36,26 @@ All skills have been converted from project-specific to generic/portable:
 
 ```
 /c/Dev/rdc-skills/
-├── README.md (this quick reference)
+├── README.md
 ├── MANIFEST.md (this file)
 └── skills/
-    ├── rdc-build.md (172 lines) [+TDD enforcement, +verify gate]
-    ├── rdc-plan.md (93 lines)
-    ├── rdc-preplan.md (83 lines)
-    ├── rdc-review.md (117 lines) [+test coverage delta, +verify gate]
-    ├── rdc-overnight.md (195 lines)
-    ├── rdc-fixit.md (105 lines)
-    ├── rdc-status.md (82 lines)
-    ├── rdc-report.md (97 lines)
-    ├── rdc-collab.md (174 lines) [new — claude.ai ↔ Claude Code relay]
-    ├── rdc-handoff.md (172 lines)
-    ├── rdc-prototype.md (144 lines)
-    ├── rdc-workitems.md (129 lines)
-    ├── rdc-help.md (93 lines)
-    ├── rdc-deploy.md (144 lines) [new — Coolify deployment ops]
-    ├── rdc-release.md (164 lines) [new — atomic version release]
-    ├── rdc-self-test.md (124 lines) [new — static lint + tier2 smoke tests]
-    └── rdc-watch.md (92 lines) [new — session log + browser viewer]
+    ├── build/SKILL.md        [+TDD enforcement, +verify gate]
+    ├── plan/SKILL.md
+    ├── preplan/SKILL.md
+    ├── review/SKILL.md       [+test coverage delta, +verify gate]
+    ├── overnight/SKILL.md
+    ├── fixit/SKILL.md
+    ├── status/SKILL.md
+    ├── report/SKILL.md
+    ├── collab/SKILL.md       [claude.ai ↔ Claude Code relay]
+    ├── handoff/SKILL.md
+    ├── prototype/SKILL.md
+    ├── workitems/SKILL.md
+    ├── help/SKILL.md
+    ├── deploy/SKILL.md       [Coolify deployment ops]
+    ├── release/SKILL.md      [atomic version release]
+    ├── self-test/SKILL.md    [static lint + tier2 smoke tests]
+    └── watch/SKILL.md        [session log + browser viewer]
 └── guides/agents/     (agent-only playbooks — dispatched by rdc:build, not user-invocable)
     ├── frontend.md
     ├── backend.md
@@ -68,6 +68,8 @@ All skills have been converted from project-specific to generic/portable:
     ├── setup.md
     └── verify.md
 ```
+
+**Note (v0.7.9):** Skills migrated from flat `rdc-<name>.md` files to `<name>/SKILL.md` subdirectories. Plugin namespace is `rdc`, so composed skill names are `rdc:<name>` — matching the frontmatter. This eliminates the duplicate `rdc:rdc-*` registration that occurred when directories were named `rdc-<name>/`.
 
 ## Skill Categories
 
