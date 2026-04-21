@@ -1,28 +1,24 @@
 ---
 name: rdc:release
 description: >-
-  Atomic release. Usage `rdc:release <repo> [version]` or `rdc:release <repo> --patch|--minor|--major` or `rdc:release <repo> --dry-run` — bump, commit, tag, push, wait CI, install, verify, restart. Known repos: clauth, rdc-skills, regen-media, gws. No user handoff.
+  Atomic release for ANY LIFEAI repo. Usage `rdc:release <repo> [version]` — one skill, all repos. Known repos: clauth, rdc-skills, regen-root, regen-media, gws. Handles npm publish, monorepo develop→main promotion, and MCP server restarts. No user handoff.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw git/npm/CI dumps.
 > One checklist upfront, updated in place, shown again at end with 1-line verdict.
 
-> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls (git tag push, CI poll, npm publish verification, global install, daemon restart) short-circuit under the flag — the checklist still runs, but each destructive step echoes `[RDC_TEST] skipping <step>` instead of mutating external state.
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag — checklist runs, each destructive step echoes `[RDC_TEST] skipping <step>` instead of mutating state.
 
-# rdc:release — Atomic LIFEAI Package Release
+# rdc:release — Atomic LIFEAI Release
 
 ## Purpose
 
-Dave has Bash access. Therefore Dave should never be asked to run install
-commands. This skill handles the complete release loop for any LIFEAI-published
-package so the user sees one checklist and one verdict, not a series of "now run
-this" handoffs.
+One skill. All repos. No confusion about which release path to use.
 
-## When to Use
-- Project lead says "release", "publish", "ship a new version", "bump the version"
-- A package has accumulated merged fixes and needs a version cut
-- Called after `rdc:review` passes and changes are ready to ship
+When user says **"release"**, **"publish"**, **"promote"**, **"deploy to main"**, **"ship"**, or **"bump the version"** — this is the skill. Always. No exceptions.
+
+Dave has Bash access. He should never be asked to run commands. This skill runs the complete loop and shows one checklist + one verdict.
 
 ## Arguments
 
@@ -32,21 +28,25 @@ this" handoffs.
 - `rdc:release <repo> --dry-run` — show checklist and planned version, do nothing
 - `rdc:release` (no args) — list known repos, ask which
 
-## Known repos
+## Known Repos — The Single Lookup Table
 
-Resolve `<repo>` to source path + install mechanism:
+Resolve `<repo>` here. If not in this table, ask Dave for source path + deploy mechanism before proceeding.
 
-| Repo | Source path | Publish | Install | Post-install |
-|------|-------------|---------|---------|--------------|
-| `clauth` | `C:/Dev/clauth` | npm via tag → GitHub Actions | `npm install -g @lifeaitools/clauth@latest` | `curl -s -X POST http://127.0.0.1:52437/restart` |
-| `rdc-skills` | `C:/Dev/rdc-skills` | local (no npm) | `bash C:/Dev/rdc-skills/scripts/install.sh` + cp fallback | none |
-| `regen-media` | `C:/Dev/regen-root/mcp-servers/regen-media` | local | restart MCP server | none |
-| `gws` | `C:/Dev/regen-root/mcp-servers/gws` | local | restart MCP server | none |
+| Repo | Type | Source path | Release mechanism | Post-release |
+|------|------|-------------|-------------------|--------------|
+| `clauth` | npm package | `C:/Dev/clauth` | bump + tag → GitHub Actions → npm publish | `npm install -g @lifeaitools/clauth@latest` → daemon restart |
+| `rdc-skills` | local install | `C:/Dev/rdc-skills` | bump + tag → `install.sh` | copy to `~/.claude/skills/user/` + project |
+| `regen-root` | monorepo | `C:/Dev/regen-root` | merge develop→main via GitHub PR → Coolify auto-deploys | run `rdc:deploy <affected-slug>` gate checks |
+| `regen-media` | MCP server (in monorepo) | `C:/Dev/regen-root/mcp-servers/regen-media` | part of regen-root release — use `rdc:release regen-root` | Coolify redeploys `regen-media-mcp` from main |
+| `gws` | MCP server (in monorepo) | `C:/Dev/regen-root/mcp-servers/gws` | part of regen-root release — use `rdc:release regen-root` | Coolify redeploys from main |
 
-Add new repos to this table as they emerge. If user specifies an unknown repo,
-ask for the source path and install command.
+> **MCP servers inside the monorepo** (`regen-media`, `gws`) are released as part of `regen-root`. Coolify watches main and auto-deploys each app by its `watch_paths`. Don't release them separately.
 
-## Checklist (run every mode)
+---
+
+## Checklists
+
+### Package release checklist (clauth, rdc-skills)
 
 ```
 rdc:release: <repo> vX.Y.Z → vA.B.C
@@ -54,111 +54,162 @@ rdc:release: <repo> vX.Y.Z → vA.B.C
 [ ] Working tree clean (git status)
 [ ] Current version detected (package.json)
 [ ] New version computed
-[ ] Dry-run gate (if --dry-run, stop here)
-[ ] package.json bumped (all version fields)
+[ ] Dry-run gate (if --dry-run, stop here and print planned commands)
+[ ] package.json bumped
 [ ] Commit created
-[ ] Tag vA.B.C created
-[ ] Push to origin
-[ ] Push --tags to origin
-[ ] CI run located (gh run list, if applicable)
-[ ] CI completed successfully (poll every 20s, 10min timeout)
-[ ] npm registry shows vA.B.C (if npm package, poll every 15s, 3min timeout)
+[ ] Tag vA.B.C created + pushed
+[ ] CI run located (gh run list)
+[ ] CI completed successfully (poll 20s, 10min timeout)
+[ ] npm registry shows vA.B.C (if npm — poll 15s, 3min timeout)
 [ ] Local install executed
-[ ] Installed version verified matches vA.B.C
-[ ] Post-install action (daemon restart, etc., if applicable)
-[ ] Smoke test (ping health endpoint or binary --version)
-✅ rdc:release <repo>: vA.B.C live and installed
+[ ] Installed version verified
+[ ] Post-install action (daemon restart if clauth)
+[ ] Smoke test passed
+✅ rdc:release <repo>: vA.B.C live
 ```
 
-## Execution details (silent to user — don't narrate)
+### Monorepo release checklist (regen-root)
 
-### 1. Version bump
-- Read `package.json`, parse version
-- Apply bump: patch (default), minor, major, or explicit
-- Rewrite all `version` fields (some packages have version in `claude.version` too)
+```
+rdc:release: regen-root — develop → main
+[ ] Source path: C:/Dev/regen-root
+[ ] develop branch clean and pushed (git status + git push)
+[ ] Commits ahead of main summarised (git log main..develop --oneline)
+[ ] Dry-run gate (if --dry-run, stop here)
+[ ] Root package.json version bumped on develop
+[ ] Version bump committed + pushed to develop
+[ ] GitHub PR: develop → main created (or existing PR located)
+[ ] PR merged via GitHub API (merge method: merge)
+[ ] main pulled locally (git fetch origin main)
+[ ] Coolify auto-deploy confirmed in progress (poll deployment status)
+[ ] Affected apps gate-checked via rdc:deploy health probes
+[ ] deployment_registry updated (last_deploy_at)
+✅ rdc:release regen-root: main promoted, Coolify deployed
+```
 
-### 2. Commit + tag + push
+---
+
+## Execution Details
+
+### Package repos (clauth, rdc-skills)
+
+#### 1. Version bump
+- Read `package.json`, parse `version`
+- Apply: patch (default), minor, major, or explicit
+- Rewrite all `version` fields (some packages have `claude.version` too)
+
+#### 2. Commit + tag + push
 ```bash
 cd <source_path>
 git add package.json
 git commit -m "chore(release): vA.B.C"
-if [ "$RDC_TEST" != "1" ]; then
-  git tag vA.B.C
-  git push && git push --tags
-else
-  echo "[RDC_TEST] skipping git tag + git push --tags"
-fi
+git tag vA.B.C
+git push && git push --tags
 ```
-Never `--no-verify`. Never `--force`. If pre-commit hook fails, fix root cause, don't skip.
+Never `--no-verify`. Never `--force`. Fix pre-commit hook failures at root cause.
 
-*Under `$RDC_TEST=1`, sections 3 (CI poll), 4 (npm registry poll), 5 (install), 6 (verify install), 7 (post-install), and 8 (smoke test) are also skipped — echo `[RDC_TEST] skipping <section>` for each and mark the checklist line as `[~]`.*
-
-### 3. CI poll (for repos with GH Actions publish)
+#### 3. CI poll (clauth only — GitHub Actions publishes to npm)
 ```bash
-# Locate the run triggered by the tag push
-gh run list --repo LIFEAI/<repo> --limit 5 --json status,conclusion,headBranch,databaseId
-# Poll its status field every 20s until conclusion ∈ {success, failure, cancelled}
-# Max 10 minutes — if timeout, fail with [!] and report run URL
+gh run list --repo LIFEAI/clauth --limit 5 --json status,conclusion,headBranch,databaseId
+# Poll every 20s until conclusion ∈ {success, failure, cancelled} — 10min timeout
 ```
 
-### 4. npm registry poll (only if published to npm)
+#### 4. npm poll (clauth only)
 ```bash
-npm view @lifeaitools/<repo> version
-# Poll every 15s until matches new version
-# Max 3 minutes — usually lands within 30-60s after CI success
+npm view @lifeaitools/clauth version
+# Poll every 15s until new version appears — 3min timeout
 ```
 
-### 5. Install
+#### 5. Install
 - **clauth:** `npm install -g @lifeaitools/clauth@latest`
-- **rdc-skills:** `bash C:/Dev/rdc-skills/scripts/install.sh` — if output shows only one file copied (known bug), fall back to `cp C:/Dev/rdc-skills/skills/*.md ~/.claude/skills/user/ && cp C:/Dev/rdc-skills/skills/*.md C:/Dev/regen-root/.claude/skills/user/`
-- **MCP servers:** restart the server process (find its PID, kill, respawn — or document how)
+- **rdc-skills:** `bash C:/Dev/rdc-skills/scripts/install.sh`
+  - If only 1 file copied (known installer bug), fall back:
+    `cp C:/Dev/rdc-skills/skills/**/*.md ~/.claude/skills/user/ && cp C:/Dev/rdc-skills/skills/**/*.md C:/Dev/regen-root/.claude/skills/user/`
 
-### 6. Verify install
-- **clauth:** `curl -s http://127.0.0.1:52437/ping | jq -r .app_version` — must equal new version
-- **rdc-skills:** `ls ~/.claude/skills/user/rdc-release.md` (or whichever file is new in this release) — must exist
-- **Global npm:** `npm list -g --depth=0 @lifeaitools/<repo>` — version matches
+#### 6. Verify
+- **clauth:** `curl -s http://127.0.0.1:52437/ping | python3 -c "import sys,json; print(json.load(sys.stdin)['app_version'])"` — must match vA.B.C
+- **rdc-skills:** `ls ~/.claude/skills/user/rdc-release/SKILL.md` — must exist
+- **npm:** `npm list -g --depth=0 @lifeaitools/clauth` — version matches
 
-### 7. Post-install
-- **clauth:** `curl -s -X POST http://127.0.0.1:52437/restart` — wait 3s — ping again
-- Others: N/A
+#### 7. Post-install
+- **clauth:** `curl -s -X POST http://127.0.0.1:52437/restart` → wait 3s → ping again
+- **rdc-skills:** none
 
-### 8. Smoke test
-- **clauth:** new tool roundtrip (e.g., `curl -s http://127.0.0.1:52437/get/openai | head -c 10` succeeds without error)
-- **rdc-skills:** load one new skill file and check frontmatter parses
-- **MCP:** server responds to `tools/list`
+#### 8. Smoke test
+- **clauth:** `curl -s http://127.0.0.1:52437/get/supabase-anon | python3 -c "import sys,json; print('ok' if json.load(sys.stdin).get('value') else 'fail')"` — expect `ok`
+- **rdc-skills:** read frontmatter of one new/updated SKILL.md — parse succeeds
 
-## Failure modes → checklist outcome
+---
 
-| Failure | Marker | Next |
-|---------|--------|------|
-| Dirty working tree | `[!]` line 2 | Abort with one-sentence diff summary; ask user to commit or stash |
-| Pre-commit hook fails | `[!]` line 7 | Fix root cause, re-stage, retry (NEVER --no-verify) |
-| CI fails | `[!]` line 11 | Print run URL, tail 20 lines of failing job, ask user |
-| npm doesn't register | `[!]` line 12 | Print npm error, check if CI actually published (not a silent skip) |
-| Install script broken | `[!]` line 13 | Fall back to manual cp; note the installer bug as a task |
-| Version mismatch after install | `[!]` line 14 | Uninstall + clean install; if still wrong, likely cache issue |
-| Post-install restart fails | `[!]` line 15 | Print ping error; instruct user to run `scripts\restart-clauth.bat` manually |
+### Monorepo release (regen-root)
 
-Even on failure, show the full checklist with `[!]` markers so user sees exactly
-where it stopped.
+#### 1. Git state check
+```bash
+cd C:/Dev/regen-root
+git status          # must be clean on develop
+git push origin develop   # ensure latest is pushed
+git log origin/main..develop --oneline   # summarise what's going to main
+```
 
-## Dry-run mode
+#### 2. Bump root version on develop
+```bash
+# Read current version from package.json, apply patch bump
+# Commit: "chore(release): vA.B.C — promote develop → main"
+git add package.json && git commit -m "chore(release): vA.B.C"
+git push origin develop
+```
 
-Prints the checklist + resolved version bump + every command that WOULD run, but
-executes nothing beyond reads. Use when user says "what would you do" or before
-risky major bumps.
+#### 3. GitHub PR: develop → main
+- Check for open PR from develop→main: `gh pr list --repo LIFEAI/regen-root --base main --head develop`
+- If exists: use it. If not: create it via `mcp__claude_ai_Github_Proxy_MCP__create_pull_request`
+- Merge via `mcp__claude_ai_Github_Proxy_MCP__merge_pull_request` with `merge_method: merge`
 
-## Never
+#### 4. Confirm Coolify auto-deploy
+- Coolify watches `main` for all production apps
+- Poll the deployment for each affected app (identified by which `watch_paths` match changed files)
+- Use clauth daemon + Coolify REST to poll: `GET /api/v1/applications/<uuid>/deployments?per_page=1`
+- Wait for `status = finished`
 
-- Never release on behalf of the user without an explicit `rdc:release` invocation
-- Never skip CI verification ("it'll probably work" is how stale installs happen)
-- Never `--force` push, never `--no-verify`, never `--no-gpg-sign`
-- Never touch `main` — release tags go on the default branch the repo uses (`master` for clauth, rdc-skills)
-- Never declare success without verifying the installed version matches
+#### 5. Gate checks
+For each affected app, verify: HTTP 200, TLS valid, container running.
+Use `rdc:deploy diagnose <slug>` for any that fail.
+
+#### 6. Update registry
+```sql
+UPDATE deployment_registry SET last_deploy_at = now() WHERE slug IN (<affected slugs>);
+```
+
+---
+
+## Failure Modes
+
+| Failure | Marker | Action |
+|---------|--------|--------|
+| Dirty working tree | `[!]` | Abort — show one-line diff summary, ask to commit or stash |
+| Pre-commit hook fails | `[!]` | Fix root cause, re-stage, retry — NEVER `--no-verify` |
+| CI fails | `[!]` | Print run URL + last 20 log lines |
+| npm not registered | `[!]` | Check CI actually published — not a silent skip |
+| PR merge blocked | `[!]` | Show blocker (branch protection, conflict) — resolve and retry |
+| Coolify deploy failed | `[!]` | Run `rdc:deploy diagnose <slug>` — fix before declaring done |
+| Gate non-200 | `[!]` | Don't update registry until fixed |
+
+Show full checklist with `[!]` markers even on failure.
+
+---
+
+## Hard Rules
+
+- **Never push directly to `main`** — always via GitHub PR merge (`mcp__claude_ai_Github_Proxy_MCP__merge_pull_request`)
+- **Never `--force`, never `--no-verify`, never `--no-gpg-sign`**
+- **Never declare success** without verified install or verified Coolify gate
+- **Never release without an explicit `rdc:release` invocation** from the user
+- **Monorepo MCP servers** (`regen-media`, `gws`) are released via `rdc:release regen-root` — not separately
+
+---
 
 ## Related
 
-- `.claude/rules/clauth.md` — clauth release workflow source of truth
-- `feedback_version_bump_must_tag.md` (memory) — never bump without tagging
-- `feedback_clauth_ci.md` (memory) — CI publish pattern
-- `feedback_just_do_it.md` (memory) — don't hand commands to Dave; run them
+- `.claude/rules/clauth.md` — clauth release source of truth
+- `.claude/rules/coolify-deployment.md` — Coolify watch_paths, deploy rules
+- `memory/feedback_version_bump_must_tag.md` — never bump without tagging
+- `memory/feedback_use_rdc_release.md` — "promote/deploy to main" always triggers this skill
