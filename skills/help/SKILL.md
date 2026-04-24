@@ -9,6 +9,9 @@ description: >-
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
 # rdc:help — Command Reference
+> **rdc-skills v0.8.0** — installed at `~/.claude/skills/user/rdc-*.md`
+> To check installed version: `head -3 ~/.claude/skills/user/rdc-help.md`
+> Source: `C:/Dev/rdc-skills` · package.json version field is authoritative
 
 ## When to Use
 - Project lead asks "what commands do I have", "what's available", "which skill should I use"

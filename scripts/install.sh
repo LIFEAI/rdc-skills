@@ -39,15 +39,20 @@ echo "✓ Skills directory: $SKILLS_DIR"
 # cp glitch, leaving the install half-applied. Bulk cp runs once, reports once.
 if [ -d "$REPO_ROOT/skills" ]; then
     SKILL_COUNT=0
+    # Read version from package.json
+    PKG_VERSION=$(python3 -c "import json; print(json.load(open('$REPO_ROOT/package.json'))['version'])" 2>/dev/null || echo "unknown")
+    VERSION_STAMP="<!-- rdc-skills v${PKG_VERSION} -->"
+
     # Skills are in subdirectories: skills/<name>/SKILL.md → rdc-<name>.md
     for skill_dir in "$REPO_ROOT"/skills/*/; do
         name=$(basename "$skill_dir")
         src="$skill_dir/SKILL.md"
         dst="$SKILLS_DIR/rdc-${name}.md"
         if [ -f "$src" ]; then
-            cp "$src" "$dst" 2>&1 || echo "  (cp warning — failed to copy $name)"
+            # Prepend version stamp then file content
+            { echo "$VERSION_STAMP"; cat "$src"; } > "$dst" 2>&1 || echo "  (cp warning — failed to copy $name)"
             SKILL_COUNT=$((SKILL_COUNT + 1))
-            echo "  → rdc-${name}.md"
+            echo "  → rdc-${name}.md  [v${PKG_VERSION}]"
         fi
     done
     if [ "$SKILL_COUNT" -gt 0 ]; then
