@@ -115,24 +115,25 @@ Read the task title and description, then:
      - Specific files to create/modify
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
+     - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
 
 8. **Post-wave test gate (mandatory):**
-   After all agents in a wave complete, before marking tasks done:
+   After all agents in a wave complete, before proceeding:
    ```bash
    # For each package modified in this wave:
    cd packages/<name> && npx vitest run 2>&1 | tail -20
    ```
    - All tests must pass before proceeding to next wave
-   - If tests fail: fix before marking the wave done
+   - If tests fail: fix before proceeding
    - NEVER use `pnpm build` or `pnpm turbo test` — vitest only per package
    - New code must have tests: if a modified package shows 0 new test files, flag it
 
 9. **As agents complete:**
    - Verify commit landed on the development branch
    - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
-   - Set work item to `done` with notes
+   - Worker agents set items to `review` — **do NOT close to `done` yet**
    - Continue to next wave
 
    **If an agent fails:**
@@ -142,14 +143,30 @@ Read the task title and description, then:
      BUILD_STATUS: { wave, tasks_done, tasks_failed, commits, escalated: true }
      ```
 
-10. **Final verification gate (mandatory — before marking epic done):**
-    Dispatch the verify agent (see `guides/agents/verify.md`) across every package/app touched in this build.
-    The Iron Law: **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
-    - Run `npx vitest run --dir <pkg>` fresh for each touched package
-    - Run `npx tsc --noEmit --project <pkg>/tsconfig.json` for each
-    - Read the full output — zero failures, zero type errors
-    - If any step fails: fix and re-run the entire gate. Do not skip.
-    - NEVER `pnpm build` / `pnpm test` / `pnpm -r` (crashes machine)
+10. **Mandatory validator gate (runs after ALL waves complete — before any work item closes):**
+
+    ⛔ **NO work item may be set to `done` without the validator passing it.**
+
+    Dispatch ONE validator agent with the complete list of `review` work items and the full git diff:
+
+    ```
+    "Read C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md then C:/Dev/regen-root/.rdc/guides/verify.md.
+     Validate these work items: [list of IDs and titles].
+     Apps touched: [list].
+     Git diff since build start: [attach or reference].
+     You are the ONLY agent that closes work items to done.
+     Follow verify.md procedure exactly: tsc → vitest → dev server route probes → record result per item."
+    ```
+
+    The validator:
+    - Runs `npx tsc --noEmit` for every touched app/package
+    - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
+    - Runs vitest for every touched package
+    - Sets passing items to `done`, failing items back to `todo` with failure detail
+    - Returns `VALIDATOR_COMPLETE` report
+
+    **If the validator finds failures:** fix them in a new wave, then re-run the validator. Do not skip.
+    **File existence alone is NOT verification.** A route returning 500 is a failure regardless of tsc passing.
 
 11. **After verification passes:**
     - Push all commits:
