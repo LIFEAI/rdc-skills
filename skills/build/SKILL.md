@@ -119,6 +119,16 @@ Read the task title and description, then:
    - Wave 3: integration tasks
 
 7. **For each wave — dispatch typed agents in parallel:**
+
+   ### ⛔ Agent Dispatch Non-Negotiable Defaults
+   Every `Agent()` call MUST include these parameters — no exceptions:
+   ```
+   model: "claude-opus-4-7"
+   max_turns: 70
+   ```
+   Without `max_turns: 70`, agents hit the default turn cap mid-task and stop. Without `model: claude-opus-4-7`, agents may silently downgrade to Sonnet under load.
+
+   ### Required agent prompt contents
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
@@ -126,6 +136,8 @@ Read the task title and description, then:
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
      - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
+     - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
+     - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
 
@@ -208,3 +220,5 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
+- Every Agent() dispatch: `model: "claude-opus-4-7"` + `max_turns: 70` — non-negotiable
+- Finding an existing file is NOT task completion — verify it satisfies the spec
