@@ -123,10 +123,11 @@ Read the task title and description, then:
    ### ⛔ Agent Dispatch Non-Negotiable Defaults
    Every `Agent()` call MUST include these parameters — no exceptions:
    ```
-   model: "claude-opus-4-7"
+   model: "sonnet"
    max_turns: 70
    ```
-   Without `max_turns: 70`, agents hit the default turn cap mid-task and stop. Without `model: claude-opus-4-7`, agents may silently downgrade to Sonnet under load.
+   Agents run Sonnet 4.6 — capable for implementation work, budget-safe for parallel dispatch. The supervisor session model does NOT cascade to agents; you must set it explicitly.
+   Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
 
    ### Required agent prompt contents
    - Set work item to `in_progress` before dispatching
@@ -220,5 +221,5 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: "claude-opus-4-7"` + `max_turns: 70` — non-negotiable
+- Every Agent() dispatch: `model: "sonnet"` + `max_turns: 70` — non-negotiable (Sonnet agents, Opus supervisor)
 - Finding an existing file is NOT task completion — verify it satisfies the spec
