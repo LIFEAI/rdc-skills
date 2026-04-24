@@ -125,9 +125,11 @@ Read the task title and description, then:
    ```
    model: "sonnet"
    max_turns: 70
+   isolation: "worktree"
    ```
    Agents run Sonnet 4.6 — capable for implementation work, budget-safe for parallel dispatch. The supervisor session model does NOT cascade to agents; you must set it explicitly.
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
+   `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
    ### Required agent prompt contents
    - Set work item to `in_progress` before dispatching
@@ -136,6 +138,7 @@ Read the task title and description, then:
      - Specific files to create/modify
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
+     - **`"You are running in an isolated git worktree. Commit your work normally. Do NOT push to origin — the supervisor merges your branch after the wave completes."`**
      - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
      - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
@@ -153,13 +156,29 @@ Read the task title and description, then:
    - NEVER use `pnpm build` or `pnpm turbo test` — vitest only per package
    - New code must have tests: if a modified package shows 0 new test files, flag it
 
-9. **As agents complete:**
-   - Verify commit landed on the development branch
-   - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
+9. **After all wave agents complete — merge worktrees and push:**
+
+   Each completed agent returns a worktree branch (e.g. `claude/agent-frontend-abc123`). Merge them all to develop before running the test gate:
+
+   ```bash
+   # For each worktree branch returned by agents in this wave:
+   git merge --no-ff <worktree-branch> -m "merge(<agent-type>): <task-title>"
+   ```
+
+   - Resolve any conflicts before proceeding — do not skip
    - Worker agents set items to `review` — **do NOT close to `done` yet**
+   - After all branches merged, push once:
+     ```bash
+     if [ "$RDC_TEST" != "1" ]; then
+       git push origin develop
+     else
+       echo "[RDC_TEST] skipping git push"
+     fi
+     ```
+   - Then run the post-wave test gate (Step 8) on the merged state
    - Continue to next wave
 
-   **If an agent fails:**
+   **If an agent fails (returns no worktree branch):**
    - Interactive: diagnose before retrying
    - Unattended: retry once; on second failure escalate via advisor
      ```
@@ -170,7 +189,8 @@ Read the task title and description, then:
 
     ⛔ **NO work item may be set to `done` without the validator passing it.**
 
-    Dispatch ONE validator agent with the complete list of `review` work items and the full git diff:
+    Dispatch ONE validator agent with the complete list of `review` work items and the full git diff.
+    ⚠️ The validator does NOT use `isolation: "worktree"` — it must read the fully merged develop branch. Omit the isolation parameter for this dispatch only.
 
     ```
     "Read C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md then C:/Dev/regen-root/.rdc/guides/verify.md.
@@ -192,14 +212,7 @@ Read the task title and description, then:
     **File existence alone is NOT verification.** A route returning 500 is a failure regardless of tsc passing.
 
 11. **After verification passes:**
-    - Push all commits:
-      ```bash
-      if [ "$RDC_TEST" != "1" ]; then
-        git push origin {development-branch}
-      else
-        echo "[RDC_TEST] skipping git push origin {development-branch}"
-      fi
-      ```
+    - All wave commits are already on develop and pushed (Step 9 pushes after each wave merge).
     - Update epic version: `bump_epic_version()`
     - Report summary with verification evidence quoted
 
@@ -221,5 +234,5 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: "sonnet"` + `max_turns: 70` — non-negotiable (Sonnet agents, Opus supervisor)
+- Every Agent() dispatch: `model: "sonnet"` + `max_turns: 70` + `isolation: "worktree"` — non-negotiable (Sonnet agents, Opus supervisor). Exception: validator agent in Step 10 omits isolation.
 - Finding an existing file is NOT task completion — verify it satisfies the spec
