@@ -103,6 +103,16 @@ Read the task title and description, then:
 
 5. **Classify each task** → assign agent type from the table above.
 
+5b. **Write a checklist into every work item before dispatching:**
+    For each task, append a checklist to its notes BEFORE setting to `in_progress`:
+    ```sql
+    SELECT update_work_item_status('<id>'::uuid, 'in_progress',
+      '["CHECKLIST: [ ] <deliverable 1>, [ ] <deliverable 2>, [ ] tsc clean, [ ] route 200, [ ] committed"]'::jsonb
+    );
+    ```
+    The agent must complete every item on this checklist and return it checked off in AGENT_COMPLETE.
+    A checklist with unchecked items = incomplete work. Do not proceed to next wave with unchecked items.
+
 6. **Group tasks into waves** — parallelize tasks with no file overlap:
    - Wave 1: independent tasks (different packages/files)
    - Wave 2: tasks that depend on Wave 1 outputs
