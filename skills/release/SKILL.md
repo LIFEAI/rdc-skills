@@ -20,6 +20,12 @@ When user says **"release"**, **"publish"**, **"promote"**, **"deploy to main"**
 
 Dave has Bash access. He should never be asked to run commands. This skill runs the complete loop and shows one checklist + one verdict.
 
+## When to Use
+- User says "release", "publish", "promote", "deploy to main", "ship", or "bump the version"
+- A package, plugin, or app needs to be versioned and pushed to its distribution channel
+- After landing significant changes that must be published (clauth, rdc-skills, regen-media, gws)
+- After develop is verified and staging passes — promoting to main
+
 ## Arguments
 
 - `rdc:release <repo>` — patch bump (default), full loop
