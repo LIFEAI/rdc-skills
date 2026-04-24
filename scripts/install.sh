@@ -39,23 +39,26 @@ echo "✓ Skills directory: $SKILLS_DIR"
 # cp glitch, leaving the install half-applied. Bulk cp runs once, reports once.
 if [ -d "$REPO_ROOT/skills" ]; then
     SKILL_COUNT=0
-    if ls "$REPO_ROOT"/skills/*.md >/dev/null 2>&1; then
-        cp "$REPO_ROOT"/skills/*.md "$SKILLS_DIR/" 2>&1 || echo "  (cp warning — some files may not have copied)"
-        SKILL_COUNT=$(ls -1 "$REPO_ROOT"/skills/*.md 2>/dev/null | wc -l)
-        for skill in "$REPO_ROOT"/skills/*.md; do
-            [ -f "$skill" ] && echo "  → $(basename "$skill")"
-        done
-    fi
+    # Skills are in subdirectories: skills/<name>/SKILL.md → rdc-<name>.md
+    for skill_dir in "$REPO_ROOT"/skills/*/; do
+        name=$(basename "$skill_dir")
+        src="$skill_dir/SKILL.md"
+        dst="$SKILLS_DIR/rdc-${name}.md"
+        if [ -f "$src" ]; then
+            cp "$src" "$dst" 2>&1 || echo "  (cp warning — failed to copy $name)"
+            SKILL_COUNT=$((SKILL_COUNT + 1))
+            echo "  → rdc-${name}.md"
+        fi
+    done
     if [ "$SKILL_COUNT" -gt 0 ]; then
         echo "  ✓ Copied $SKILL_COUNT skill(s)"
-        # Verify — list what actually landed
         INSTALLED=$(ls -1 "$SKILLS_DIR"/rdc-*.md 2>/dev/null | wc -l)
         echo "  ✓ Verified: $INSTALLED rdc-*.md file(s) present in $SKILLS_DIR"
         if [ "$INSTALLED" -lt "$SKILL_COUNT" ]; then
             echo "  ⚠ WARNING: only $INSTALLED of $SKILL_COUNT installed — run install again or check permissions"
         fi
     else
-        echo "  (no skills yet — guides to be added by WP2 agent)"
+        echo "  (no SKILL.md files found in skills/ subdirectories)"
     fi
 fi
 echo ""
