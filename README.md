@@ -4,25 +4,50 @@ This directory contains a generic, project-agnostic version of the RDC (Research
 
 ## Install
 
-RDC Skills is distributed as a Claude Code plugin. From any Claude Code session:
+### Option A — Plugin marketplace (recommended for new installs)
+
+From any Claude Code session:
 
 ```
 /plugin marketplace add LIFEAI/rdc-skills
 /plugin install rdc-skills
 ```
 
-That's it — all 16 user-invocable skills (rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report, rdc:collab, rdc:handoff, rdc:prototype, rdc:workitems, rdc:help, rdc:deploy, rdc:release, rdc:self-test) become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
+All 17 user-invocable skills become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
 
-### Legacy install (deprecated)
+### Option B — Directory plugin (LIFEAI dev machines)
 
-The pre-v0.6.0 install path used PowerShell/Bash scripts that copied files into `~/.claude/skills/user/`:
+If you have the source repo locally, point the plugin directly at the directory in `~/.claude/settings.json`. Skills load live from disk — no install step needed, changes take effect on next session start:
 
+```json
+"extraKnownMarketplaces": {
+  "rdc-skills": {
+    "source": { "source": "directory", "path": "C:\\Dev\\rdc-skills" }
+  }
+},
+"enabledPlugins": {
+  "rdc-skills@rdc-skills": true
+}
 ```
-scripts/install.ps1   # Windows
-scripts/install.sh    # macOS / Linux
+
+### ⚠️ DO NOT mix install methods — duplicates will occur
+
+If `rdc-skills@rdc-skills` is enabled in your plugin settings AND you have manually installed files at `~/.claude/skills/user/rdc-*.md`, every skill loads twice (or more if stale plugin cache versions exist). Symptoms: each skill appears 2–3× in the skill list.
+
+**Fix:**
+```bash
+# Remove manual install
+rm ~/.claude/skills/user/rdc-*.md
+
+# Remove stale plugin cache (keep only the current version)
+rm -rf ~/.claude/plugins/cache/rdc-skills/rdc-skills/0.7.*
 ```
 
-These scripts are **deprecated as of v0.6.0** and will be removed in v0.7.0. Migrate to the plugin install path above. Existing installs continue to work until you run the uninstall script or upgrade.
+Use **one method only**: plugin (Option A or B) OR manual install — never both.
+
+### Legacy install scripts (deprecated since v0.6.0)
+
+`scripts/install.sh` and `scripts/install.ps1` copy files into `~/.claude/skills/user/`. These exist only for environments that cannot use the plugin system. Running them alongside the plugin creates duplicates. Do not use them if you have the plugin installed.
 
 ## Path Variables
 
@@ -99,19 +124,23 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 
 ```
 skills/
-  rdc-build.md         (dispatch agents in waves)
-  rdc-plan.md          (create architecture + tasks)
-  rdc-preplan.md       (research before planning)
-  rdc-review.md        (quality gate: tests, types, docs)
-  rdc-overnight.md     (unattended multi-epic supervisor)
-  rdc-fixit.md         (quick-fix bypass)
-  rdc-status.md        (project dashboard)
-  rdc-report.md        (nightly report)
-  rdc-collab.md        (bidirectional claude.ai ↔ Claude Code relay)
-  rdc-handoff.md       (planning → work items)
-  rdc-prototype.md     (build JSX prototype)
-  rdc-workitems.md     (work item management)
-  rdc-help.md          (skill index)
+  build/SKILL.md       (dispatch agents in waves — mandatory validator gate)
+  plan/SKILL.md        (create architecture + tasks)
+  preplan/SKILL.md     (research before planning)
+  review/SKILL.md      (quality gate: tests, types, docs)
+  overnight/SKILL.md   (unattended multi-epic supervisor)
+  fixit/SKILL.md       (quick-fix bypass)
+  status/SKILL.md      (project dashboard)
+  report/SKILL.md      (nightly report)
+  collab/SKILL.md      (bidirectional claude.ai ↔ Claude Code relay)
+  handoff/SKILL.md     (planning → work items)
+  prototype/SKILL.md   (build JSX prototype)
+  workitems/SKILL.md   (work item management)
+  help/SKILL.md        (skill index — shows current version)
+  deploy/SKILL.md      (Coolify ops: deploy, new, diagnose, audit)
+  release/SKILL.md     (atomic package/app release)
+  self-test/SKILL.md   (skill suite health check)
+  watch/SKILL.md       (session log watcher)
 
 guides/agents/         (agent-only playbooks — dispatched by rdc:build, not user-invocable)
   frontend.md          (React, UI, Tailwind)
@@ -123,8 +152,27 @@ guides/agents/         (agent-only playbooks — dispatched by rdc:build, not us
   cs2.md               (paradigm-level work)
   viz.md               (visualizations, charts, SVG)
   setup.md             (project scan + .rdc/config.json generation)
-  verify.md            (evidence-before-claims verification gate)
+  verify.md            (evidence-before-claims verification gate — tsc + vitest + HTTP)
+
+scripts/
+  install.sh           (legacy only — do not use with plugin install)
+  install.ps1          (legacy only — do not use with plugin install)
 ```
+
+## Check installed version
+
+```bash
+# See version in rdc:help skill
+head -4 ~/.claude/skills/user/rdc-help.md   # if using manual install
+
+# Or check source directly
+python3 -c "import json; print(json.load(open('package.json'))['version'])"
+
+# Or invoke the skill
+/rdc:help
+```
+
+Current version: **v0.8.0**
 
 ## Quick Start
 

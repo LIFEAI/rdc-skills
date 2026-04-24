@@ -6,7 +6,34 @@
 # Unix/macOS bash script
 
 set -u
-# NOTE: intentionally NOT using `set -e` — it aborts the whole install on any
+# NOTE: intentionally NOT using `set -e`
+
+# Guard: warn if rdc-skills plugin is already active in settings.json
+# Running this script alongside the plugin creates duplicate skill entries.
+SETTINGS_FILE="${HOME}/.claude/settings.json"
+if [ -f "$SETTINGS_FILE" ] && python3 -c "
+import json, sys
+s = json.load(open('$SETTINGS_FILE'))
+plugins = s.get('enabledPlugins', {})
+if plugins.get('rdc-skills@rdc-skills'):
+    sys.exit(1)
+" 2>/dev/null; then
+    : # plugin not active — safe to proceed
+else
+    echo "⚠️  WARNING: rdc-skills@rdc-skills plugin is active in ~/.claude/settings.json"
+    echo "   Running this script alongside the plugin creates DUPLICATE skill entries."
+    echo "   Each skill will appear 2-3x in your skill list."
+    echo ""
+    echo "   If you want to use the plugin (recommended), do NOT run this script."
+    echo "   If you want to use this script instead, disable the plugin first:"
+    echo "     Set \"rdc-skills@rdc-skills\": false in ~/.claude/settings.json"
+    echo ""
+    read -p "Continue anyway? (y/N) " confirm
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+        echo "Aborted."
+        exit 0
+    fi
+fi — it aborts the whole install on any
 # single file glitch (stale lock, permission hiccup, cp retry). We want the
 # loop to power through and report failures at the end, not die silently
 # after the first file. Past bug: every install "only copied rdc-backend.md".
