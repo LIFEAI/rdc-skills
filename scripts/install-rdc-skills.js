@@ -120,12 +120,28 @@ function buildPluginCache(cacheDir, version, gitSha) {
   }
 }
 
+// ── Cache flush helper ────────────────────────────────────────────────────────
+function flushOldCaches(cacheBase, keepVersion) {
+  if (!fs.existsSync(cacheBase)) return 0;
+  let flushed = 0;
+  for (const entry of fs.readdirSync(cacheBase)) {
+    if (entry === keepVersion || entry === 'latest') continue;
+    try {
+      fs.rmSync(path.join(cacheBase, entry), { recursive: true, force: true });
+      flushed++;
+    } catch {}
+  }
+  return flushed;
+}
+
 // ── Step 2: CLI plugin registration (→ ~/.claude/plugins/) ───────────────────
 function registerCLI(version, gitSha) {
   const pluginDir  = path.join(claudeHome, 'plugins');
   const mktDir     = path.join(pluginDir, 'marketplaces', MARKETPLACE);
   const mktPlugDir = path.join(mktDir, '.claude-plugin');
-  const cacheDir   = path.join(pluginDir, 'cache', MARKETPLACE, 'rdc-skills', version);
+  const cacheBase  = path.join(pluginDir, 'cache', MARKETPLACE, 'rdc-skills');
+  const cacheDir   = path.join(cacheBase, version);
+  const latestDir  = path.join(cacheBase, 'latest');
 
   // 1. Marketplace manifest
   fs.mkdirSync(mktPlugDir, { recursive: true });
@@ -137,16 +153,33 @@ function registerCLI(version, gitSha) {
   knownMp[MARKETPLACE] = { source: { source: 'github', repo: 'LIFEAI/rdc-skills' }, installLocation: mktDir, lastUpdated: new Date().toISOString() };
   writeJson(kmpPath, knownMp, 4);
 
-  // 3. Plugin cache
+  // 3. Flush stale version caches, then write versioned + stable latest
+  const flushed = flushOldCaches(cacheBase, version);
+  if (flushed > 0) info(`       flushed  : ${flushed} stale cache dir(s)`);
   buildPluginCache(cacheDir, version, gitSha);
+  // Write to stable 'latest/' so open terminals can pick up changes if they
+  // re-read installed_plugins.json between skill invocations.
+  if (fs.existsSync(latestDir)) fs.rmSync(latestDir, { recursive: true, force: true });
+  buildPluginCache(latestDir, version, gitSha);
 
-  // 4. installed_plugins.json
+  // 4. installed_plugins.json — register 'latest/' as stable installPath so
+  // re-installs overwrite in-place rather than creating orphaned version dirs.
+  // Open terminals that re-read installed_plugins.json mid-session will pick
+  // up the updated path; otherwise a terminal restart is needed.
   const ipPath    = path.join(pluginDir, 'installed_plugins.json');
   const installed = readJson(ipPath, { version: 2, plugins: {} });
+  // Also overwrite whichever installPath the old entry had, so any open
+  // terminal that already loaded that path sees fresh files.
+  const oldEntries = installed.plugins[PLUGIN_KEY] || [];
+  for (const old of oldEntries) {
+    if (old.installPath && fs.existsSync(old.installPath) && old.installPath !== latestDir) {
+      try { buildPluginCache(old.installPath, version, gitSha); } catch {}
+    }
+  }
   for (const key of Object.keys(installed.plugins || {})) {
     if (key.startsWith('rdc-skills@')) delete installed.plugins[key];
   }
-  installed.plugins[PLUGIN_KEY] = [{ scope: 'user', installPath: cacheDir, version, installedAt: new Date().toISOString(), lastUpdated: new Date().toISOString(), gitCommitSha: gitSha }];
+  installed.plugins[PLUGIN_KEY] = [{ scope: 'user', installPath: latestDir, version, installedAt: new Date().toISOString(), lastUpdated: new Date().toISOString(), gitCommitSha: gitSha }];
   writeJson(ipPath, installed, 4);
 
   // 5. settings.json enabledPlugins
@@ -158,7 +191,7 @@ function registerCLI(version, gitSha) {
   settings.enabledPlugins[PLUGIN_KEY] = true;
   writeJson(settingsPath, settings);
 
-  return cacheDir;
+  return latestDir;
 }
 
 // ── Step 3: Cowork (Claude Desktop) registration ──────────────────────────────
@@ -207,7 +240,9 @@ function registerCowork(version, gitSha) {
 
   for (const { dir, settingsFile } of bases) {
     const pluginsDir = path.join(dir, 'cowork_plugins');
-    const cacheDir   = path.join(pluginsDir, 'cache', MARKETPLACE, 'rdc-skills', version);
+    const cacheBase  = path.join(pluginsDir, 'cache', MARKETPLACE, 'rdc-skills');
+    const cacheDir   = path.join(cacheBase, version);
+    const latestDir  = path.join(cacheBase, 'latest');
     const mktDir     = path.join(pluginsDir, 'marketplaces', MARKETPLACE);
     const mktPlugDir = path.join(mktDir, '.claude-plugin');
 
@@ -221,16 +256,19 @@ function registerCowork(version, gitSha) {
     knownMp[MARKETPLACE] = { source: { source: 'github', repo: 'LIFEAI/rdc-skills' }, installLocation: mktDir, lastUpdated: new Date().toISOString() };
     writeJson(kmpPath, knownMp, 4);
 
-    // Plugin cache
+    // Flush stale caches, write versioned + stable latest
+    flushOldCaches(cacheBase, version);
     buildPluginCache(cacheDir, version, gitSha);
+    if (fs.existsSync(latestDir)) fs.rmSync(latestDir, { recursive: true, force: true });
+    buildPluginCache(latestDir, version, gitSha);
 
-    // installed_plugins.json
+    // installed_plugins.json — use stable 'latest/' path
     const ipPath    = path.join(pluginsDir, 'installed_plugins.json');
     const installed = readJson(ipPath, { version: 2, plugins: {} });
     for (const key of Object.keys(installed.plugins || {})) {
       if (key.startsWith('rdc-skills@')) delete installed.plugins[key];
     }
-    installed.plugins[PLUGIN_KEY] = [{ scope: 'user', installPath: cacheDir, version, installedAt: new Date().toISOString(), lastUpdated: new Date().toISOString(), gitCommitSha: gitSha }];
+    installed.plugins[PLUGIN_KEY] = [{ scope: 'user', installPath: latestDir, version, installedAt: new Date().toISOString(), lastUpdated: new Date().toISOString(), gitCommitSha: gitSha }];
     writeJson(ipPath, installed, 4);
 
     // cowork_settings.json — enabledPlugins + extraKnownMarketplaces
