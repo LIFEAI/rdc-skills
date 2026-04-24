@@ -25,6 +25,21 @@ description: >-
 - `rdc:build` (no args) — show open epics and ask which to build (interactive only)
 - `rdc:build <epic-id> --unattended` — silent mode for overnight builds
 
+## Agent Dispatch — Non-Negotiable Defaults
+
+> These apply to EVERY Task call in this skill. No exceptions.
+
+```
+max_turns: 70          ← REQUIRED on every Task dispatch — never omit
+model: claude-opus-4-7 ← REQUIRED — never let the model default or fall back
+```
+
+Setting `max_turns: 70` prevents early stopping under Anthropic's reduced effort defaults.
+Setting `model: claude-opus-4-7` prevents silent fallback to Sonnet under usage caps.
+
+If a task is simple (<5 files, no cross-package deps), `max_turns: 30` is acceptable.
+Never go below 30. Never omit either parameter.
+
 ## Agent Types & Guide Files
 
 Every dispatched agent MUST read two files before starting — in this order:
@@ -39,7 +54,7 @@ Include both lines in every agent prompt:
 ```
 
 | Agent Type | Guide File | When to dispatch |
-|-----------|-----------|-----------------|
+|-----------|-----------|------------------|
 | `frontend` | `.rdc/guides/frontend.md` | React components, pages, UI, Tailwind, animation |
 | `backend` | `.rdc/guides/backend.md` | API routes, server components, database queries, auth |
 | `data` | `.rdc/guides/data.md` | Migrations, schema changes, RPC functions |
@@ -110,11 +125,15 @@ Read the task title and description, then:
 
 7. **For each wave — dispatch typed agents in parallel:**
    - Set work item to `in_progress` before dispatching
+   - **MANDATORY Task parameters — set on EVERY dispatch:**
+     - `max_turns: 70` (use `max_turns: 30` only for tasks touching <5 files with no cross-package deps)
+     - `model: claude-opus-4-7`
    - Each agent prompt MUST include:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
      - Specific files to create/modify
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
+     - `"COMPLETION PROOF REQUIRED: Your AGENT_COMPLETE report must include the actual file paths written, the git commit hash, and the vitest output. Do not claim done without these three items."`
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
 
@@ -122,7 +141,7 @@ Read the task title and description, then:
    After all agents in a wave complete, before marking tasks done:
    ```bash
    # For each package modified in this wave:
-   cd packages/<name> && npx vitest run 2>&1 | tail -20
+   cd packages/<n> && npx vitest run 2>&1 | tail -20
    ```
    - All tests must pass before proceeding to next wave
    - If tests fail: fix before marking the wave done
@@ -168,7 +187,7 @@ Read the task title and description, then:
 When dispatching agents, include in every prompt:
 ```
 TDD REQUIREMENT: Write tests FIRST for new functions/modules.
-Run: npx vitest run packages/<name> to verify red → implement → verify green.
+Run: npx vitest run packages/<n> to verify red → implement → verify green.
 NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 ```
 
@@ -177,6 +196,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - NEVER let two agents edit the same file
 - NEVER run `pnpm build` (crashes system) — code only
 - Every agent reads its guide file — no exceptions
+- Every Task dispatch sets `max_turns: 70` and `model: claude-opus-4-7` — no exceptions
 - Update Supabase work items IN REAL TIME — not batch at end
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
