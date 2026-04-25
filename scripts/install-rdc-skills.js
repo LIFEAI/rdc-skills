@@ -447,9 +447,12 @@ async function runMigrate(projectRoot) {
 async function main() {
   if (doMigrate) { await runMigrate(migratePath); return; }
 
+  const bannerVersion = (readJson(path.join(repoRoot, 'package.json')).version || '?');
+  const bannerLine    = `║  install-rdc-skills v${bannerVersion}`;
+  const bannerPadded  = bannerLine.padEnd(41) + '║';
   console.log('');
   console.log('  \x1b[32m╔═══════════════════════════════════════╗\x1b[0m');
-  console.log('  \x1b[32m║  install-rdc-skills v0.7              ║\x1b[0m');
+  console.log(`  \x1b[32m${bannerPadded}\x1b[0m`);
   console.log('  \x1b[32m╚═══════════════════════════════════════╝\x1b[0m');
   console.log('');
   console.log(`  CLAUDE_HOME : ${claudeHome}`);
