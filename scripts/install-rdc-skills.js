@@ -477,6 +477,25 @@ async function main() {
     warn('[0/6] git pull failed — installing from local copy');
   }
 
+  // 0.5. Legacy cleanup — remove old commands/rdc/ (pre-plugin-system format)
+  const legacyCommandsDir = path.join(claudeHome, 'commands', 'rdc');
+  if (fs.existsSync(legacyCommandsDir)) {
+    fs.rmSync(legacyCommandsDir, { recursive: true, force: true });
+    ok('[0.5] Cleanup    — removed legacy commands/rdc/');
+  }
+  // Also remove extraKnownMarketplaces.rdc-skills from settings.json to prevent
+  // Claude Code from syncing a directory-source marketplace back to known_marketplaces.json
+  // (which causes skills to load from both the cache AND the live source directory)
+  {
+    const st = readJson(settingsPath);
+    if (st.extraKnownMarketplaces && st.extraKnownMarketplaces[MARKETPLACE]) {
+      delete st.extraKnownMarketplaces[MARKETPLACE];
+      if (Object.keys(st.extraKnownMarketplaces).length === 0) delete st.extraKnownMarketplaces;
+      writeJson(settingsPath, st);
+      ok('[0.5] Cleanup    — removed extraKnownMarketplaces.rdc-skills from settings.json');
+    }
+  }
+
   // 1. CLI registration
   const cliCacheDir = registerCLI(version, gitSha);
   ok(`[1/6] CLI plugin — ${PLUGIN_KEY} v${version}`);
