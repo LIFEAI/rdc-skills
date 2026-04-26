@@ -95,3 +95,4 @@ choose the most conservative/reversible approach and document the decision.
 - Include test requirements in every work package
 - Reference affected CLAUDE.md files in each work package description
 - Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context
+- **If a work package involves creating a new deployed app:** the task description MUST say "Use `rdc:deploy new <slug>` — do NOT create the Coolify app manually. Read `docs/runbooks/coolify-app-templates.json` first." Assign it to an `infra` agent. This is a hard rule — manually created apps have consistently been misconfigured.
