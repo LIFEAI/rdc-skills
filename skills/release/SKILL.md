@@ -126,6 +126,10 @@ rdc:release: regen-root — develop → main
 
 ## Execution Details
 
+> **Notification paths by repo type:**
+> - **Public repos** (rdc-skills, clauth): GitHub Actions POSTs to clauth channel on publish — wait for `mcp__claude_ai_clauth__channel_list` event, not a polling loop
+> - **Private repos** (regen-root): Coolify webhook is wired to Supabase — check `deployment_registry` for deploy completion, not the clauth channel
+
 ### Package repos (clauth, rdc-skills)
 
 #### 1. Version bump
@@ -277,10 +281,22 @@ git push origin develop
 - Merge via `mcp__claude_ai_Github_Proxy_MCP__merge_pull_request` with `merge_method: merge`
 
 #### 4. Confirm Coolify auto-deploy
-- Coolify watches `main` for all production apps
-- Poll the deployment for each affected app (identified by which `watch_paths` match changed files)
-- Use clauth daemon + Coolify REST to poll: `GET /api/v1/applications/<uuid>/deployments?per_page=1`
-- Wait for `status = finished`
+
+regen-root is a **private repo**. Coolify's webhook is wired to Supabase — deployment events land there automatically. Do NOT poll the Coolify REST API in a loop. Check Supabase:
+
+```sql
+-- Wait for the affected app's deployment to show status = 'finished'
+SELECT slug, last_deploy_at, status, notes
+FROM deployment_registry
+WHERE slug IN (<affected slugs>)
+ORDER BY last_deploy_at DESC;
+```
+
+If the registry hasn't updated within 2 minutes of the PR merge, check Coolify directly:
+```bash
+curl -s -H "Authorization: Bearer $(curl -s http://127.0.0.1:52437/v/coolify-api)" \
+  "https://deploy.regendevcorp.com/api/v1/applications/<uuid>/deployments?per_page=1"
+```
 
 #### 5. Gate checks
 For each affected app, verify: HTTP 200, TLS valid, container running.
