@@ -89,7 +89,13 @@ fi
 
 ### 6. Close and clean up
 
+Submit implementation report first, then mark done:
+
 ```sql
+SELECT submit_implementation_report('<id>'::uuid,
+  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[]}'::jsonb
+);
+
 SELECT update_work_item_status('<id>'::uuid, 'done',
   '["Fixed via rdc:fixit"]'::jsonb
 );

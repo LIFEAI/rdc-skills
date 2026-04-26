@@ -183,6 +183,47 @@ If you discover that fixing your assigned task would also require changing files
 
 ---
 
+## ⛔ Implementation Report Contract
+
+Every agent MUST follow this protocol before closing any work item as `done`.
+
+### Step 1 — Tick checklist items as you complete them
+
+```sql
+SELECT update_checklist_item('<work-item-id>'::uuid, 'item-id', true);
+```
+
+Call this for each item AS you complete it — not all at once at the end.
+
+### Step 2 — Submit implementation report BEFORE marking done
+
+```sql
+SELECT submit_implementation_report(
+  '<work-item-id>'::uuid,
+  '{"tldr":"...","assumptions":[],"deviations":[],"uncertainty":[],"detail":"...","flags":[]}'::jsonb
+);
+```
+
+Returns `{ flags_count, deviations_count, has_deviations }`. Include this signal in your `AGENT_COMPLETE` report.
+
+### Step 3 — Mark done
+
+```sql
+SELECT update_work_item_status('<work-item-id>'::uuid, 'done');
+```
+
+If any `required: true` checklist item is still unchecked, the DB raises EXCEPTION — fix it first.
+
+### Supervisor workflow
+
+- All zeros → clean run, proceed
+- `flags_count > 0` or `deviations_count > 0` → pull full report:
+  ```sql
+  SELECT implementation_report FROM work_items WHERE id = '<id>';
+  ```
+
+---
+
 ## Now read your role-specific guide
 
 Path: `{PROJECT_ROOT}/.rdc/guides/<type>.md` (e.g., `frontend.md`, `backend.md`, `data.md`)

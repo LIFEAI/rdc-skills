@@ -66,8 +66,9 @@ description: >-
    ```
 
 6. **Create Supabase epic + child tasks:**
-   - Epic via `insert_work_item(p_item_type := 'epic', ...)`
-   - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)`
+   - Epic via `insert_work_item(p_item_type := 'epic', p_definition_of_done := '[{"id":"...", "text":"...", "required":true, "checked":false}]'::jsonb, ...)`
+   - Set `p_definition_of_done` on the epic — child tasks inserted under it will auto-inherit it as their checklist
+   - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)` — checklist auto-hydrated from epic's DoD
    - Set priorities: urgent/high/normal based on sequencing
 
 7. **Report results:**

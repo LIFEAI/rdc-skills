@@ -122,6 +122,8 @@ const { data } = await supabase.rpc('insert_work_item', {
 | `p_session_id` | text | NULL | Session UUID (for audit trail) |
 | `p_package` | text | NULL | Package/module name (e.g., '@regen/ui') |
 | `p_source` | text | `'manual'` | How was this created: `manual`, `agent`, `api`, `import` |
+| `p_checklist` | jsonb | `NULL` | Checklist items. If NULL and parent has `definition_of_done`, auto-inherited with all `checked: false` |
+| `p_definition_of_done` | jsonb | `NULL` | DoD template (epics only). Child tasks inherit this as their checklist at insert time |
 
 **Returns:**
 - Full inserted work_item row as JSONB
@@ -171,6 +173,7 @@ const { data } = await supabase.rpc('update_work_item_status', {
 
 **Behavior:**
 - Setting `done` auto-sets `completed_at = now()`
+- Setting `done` raises EXCEPTION if any `required: true` checklist item has `checked: false` — DoD gate
 - Setting `todo`, `in_progress`, `blocked`, or `review` clears `completed_at`
 - `updated_at` always refreshed to current timestamp
 - Raises exception if ID not found
@@ -180,7 +183,76 @@ const { data } = await supabase.rpc('update_work_item_status', {
 
 ---
 
-### 4. get_work_items_by_epic — Fetch epic + children
+### 4. update_checklist_item — Tick off a checklist item
+
+**Supabase SQL:**
+```sql
+SELECT update_checklist_item(
+  'work-item-uuid'::uuid,
+  'tsc-clean',   -- string id of the checklist item
+  true           -- checked state
+);
+```
+
+**Parameters:**
+
+| Name | Type | Required | Notes |
+|------|------|----------|-------|
+| `p_work_item_id` | uuid | yes | the work item ID |
+| `p_item_id` | text | yes | the `id` field of the checklist item |
+| `p_checked` | boolean | yes | `true` = checked, `false` = unchecked |
+
+Call this as each checklist item is completed — not all at once at the end.
+
+**Returns:** updated checklist JSONB array.
+
+---
+
+### 5. submit_implementation_report — File agent completion narrative
+
+MUST be called BEFORE `update_work_item_status('done')`.
+
+**Supabase SQL:**
+```sql
+SELECT submit_implementation_report(
+  'work-item-uuid'::uuid,
+  '{
+    "tldr": "One-sentence summary",
+    "assumptions": [],
+    "deviations": [],
+    "uncertainty": [],
+    "detail": "Full narrative",
+    "flags": []
+  }'::jsonb
+);
+```
+
+**Parameters:**
+
+| Name | Type | Required | Notes |
+|------|------|----------|-------|
+| `p_work_item_id` | uuid | yes | the work item ID |
+| `p_report` | jsonb | yes | implementation report (shape below) |
+
+**Returns:** `{ "flags_count": N, "deviations_count": N, "has_deviations": bool }` — signal only.
+
+**`implementation_report` shape:**
+```json
+{
+  "tldr": "string",
+  "assumptions": ["string", "..."],
+  "deviations": ["string — deviation from plan", "..."],
+  "uncertainty": ["string — anything unclear", "..."],
+  "detail": "string — full narrative",
+  "flags": ["string — supervisor attention needed", "..."]
+}
+```
+
+If `has_deviations` is true or `flags_count > 0`, supervisor pulls full report from DB.
+
+---
+
+### 6. get_work_items_by_epic — Fetch epic + children
 
 Get an epic and all its child tasks/subtasks, sorted by priority.
 
@@ -216,7 +288,7 @@ const { data } = await supabase.rpc('get_work_items_by_epic', {
 
 ---
 
-### 5. bump_epic_version — Version with history
+### 7. bump_epic_version — Version with history
 
 Snapshot an epic's current state and assign a version number.
 
