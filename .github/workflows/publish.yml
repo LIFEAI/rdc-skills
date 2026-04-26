@@ -31,4 +31,4 @@ jobs:
           STATUS="${{ job.status }}"
           curl -s -X POST "${{ secrets.CLAUTH_CHANNEL_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{\"text\":\"rdc-skills v${VERSION} npm publish: ${STATUS}\",\"source\":\"github-actions\"}"
+            -d "{\"event\":\"npm-publish\",\"package\":\"rdc-skills\",\"version\":\"${VERSION}\",\"status\":\"${STATUS}\",\"source\":\"github-actions\"}"
