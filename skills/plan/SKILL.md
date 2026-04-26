@@ -96,3 +96,41 @@ choose the most conservative/reversible approach and document the decision.
 - Reference affected CLAUDE.md files in each work package description
 - Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context
 - **If a work package involves creating a new deployed app:** the task description MUST say "Use `rdc:deploy new <slug>` — do NOT create the Coolify app manually. Read `docs/runbooks/coolify-app-templates.json` first." Assign it to an `infra` agent. This is a hard rule — manually created apps have consistently been misconfigured.
+
+## New App Q&A (mandatory before writing any infra task that creates a Coolify app)
+
+If the plan includes deploying a new app, these questions MUST be answered — in interactive mode, ask the user; in unattended mode, escalate via advisor. Do NOT write the infra task until all answers are locked in. Record answers in the plan doc and embed them directly in the task description.
+
+**Never guess. Wrong project = delete and recreate. There is no move operation in Coolify.**
+
+```
+Q1. Which Coolify project does this app belong to?
+    → Read docs/runbooks/coolify-app-templates.json → _infrastructure.projects
+    → Match by area: design-system / prt / rdc / rdc-marketing / zoen / lifeai / place-fund / infrastructure / ai-platform
+    → If unsure: ASK. Do not infer from app name alone.
+    → Record: project_uuid + environment_uuid (staging or production)
+
+Q2. What is the domain?
+    → *.dev.place.fund subdomain? (staging / internal tools)
+    → Custom subdomain on an existing zone? (e.g. app.regendevcorp.com)
+    → Apex domain? (e.g. place.fund itself)
+    → Domain on a different zone entirely? (e.g. skymesasouth.com)
+
+Q3. Is this domain already in our Cloudflare account?
+    → Yes, zone exists → which zone?
+    → No → who controls the nameservers? Does the registrar point NS to Cloudflare?
+    → If NS not delegated to Cloudflare: A record in Cloudflare does nothing — must go to registrar
+
+Q4. Does this app need Cloudflare proxy (orange cloud)?
+    → *.dev.place.fund: NEVER proxy — breaks Traefik Let's Encrypt HTTP-01 cert provisioning
+    → Custom domain needing DDoS/CDN: proxy OK only if SSL mode = Full (strict) + origin cert provisioned
+    → Any doubt: start unproxied, add proxy after confirming SSL works
+
+Q5. What SSL path?
+    → Traefik + Let's Encrypt (default for all unproxied): automatic, no action needed
+    → Cloudflare proxy + Full (strict): need origin cert from Cloudflare dashboard first
+    → Nixpacks build pack: DO NOT USE for any app that needs custom SSL setup — nixpacks
+      containers have incompatible SSL configuration requirements. Use dockerfile build pack only.
+```
+
+Embed all five answers into the infra task description verbatim before handing to the agent.
