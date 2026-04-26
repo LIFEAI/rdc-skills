@@ -155,23 +155,22 @@ function cleanUserSkills(userSkillsDir) {
 }
 
 // ── Stale hook cleanup ────────────────────────────────────────────────────────
-// Remove hook files from ~/.claude/hooks/ that are no longer in the source hooks/ dir.
-// Prevents orphaned hooks (removed from source but still installed) from misfiring.
-function cleanStaleHooks(hooksDstDir, hooksSrcDir) {
-  if (!fs.existsSync(hooksDstDir) || !fs.existsSync(hooksSrcDir)) return 0;
-  const sourceFiles = new Set(fs.readdirSync(hooksSrcDir).filter(f => f.endsWith('.js')));
-  // These hooks were written by us (rdc-skills) — safe to remove if no longer in source.
-  // We only manage our own hooks; never touch hooks we didn't install.
-  const knownHooks = [
-    'check-cwd.js', 'check-stale-work-items.js', 'check-services.js',
-    'precompact-log.js', 'postcompact-log.js', 'restart-brief.js',
-    'rate-limit-retry.js', 'post-work-check.js', 'no-stop-open-epics.js',
-    'require-work-item-on-commit.js', 'verify-rdc-skills.js',
+// Remove ONLY explicitly orphaned hook files — hooks that were previously shipped
+// by rdc-skills and have since been removed from the project.
+// NEVER use "not in source = remove" logic: most hooks in ~/.claude/hooks/ are
+// not managed by rdc-skills (they come from other plugins or were written directly).
+function cleanStaleHooks(hooksDstDir) {
+  if (!fs.existsSync(hooksDstDir)) return 0;
+  // Explicit orphan list — add entries here when a hook is intentionally removed.
+  // Format: filename that should be deleted if it still exists.
+  const ORPHANED_HOOKS = [
+    'verify-rdc-skills.js', // removed in v0.9.7 — was checking for old flat-file format
   ];
   let removed = 0;
-  for (const f of knownHooks) {
-    if (!sourceFiles.has(f) && fs.existsSync(path.join(hooksDstDir, f))) {
-      try { fs.unlinkSync(path.join(hooksDstDir, f)); removed++; } catch {}
+  for (const f of ORPHANED_HOOKS) {
+    const p = path.join(hooksDstDir, f);
+    if (fs.existsSync(p)) {
+      try { fs.unlinkSync(p); removed++; } catch {}
     }
   }
   return removed;
@@ -547,7 +546,7 @@ async function main() {
 
   // 0.5b. Stale hook cleanup — remove hooks we no longer ship
   {
-    const staleRemoved = cleanStaleHooks(hooksDst, hooksSrc);
+    const staleRemoved = cleanStaleHooks(hooksDst);
     if (staleRemoved > 0) ok(`[0.5b] Hook cleanup — removed ${staleRemoved} orphaned hook file(s)`);
   }
 
