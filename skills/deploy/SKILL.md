@@ -58,20 +58,29 @@ rdc:deploy: <slug> → <domain>
 
 ### Mode 2 — new <slug>
 
+**MANDATORY:** All new apps are created from `docs/runbooks/coolify-app-templates.json`. Read that file first — pick the right template, substitute the required vars, POST the exact payload. No manual field configuration. No improvisation. The template encodes all learned lessons (base_directory, build_pack, watch_paths, health_check, ports). Deviating from it breaks things.
+
+Template selection:
+- `nextjs-app` — for `apps/<name>/` (Dockerfile, turbo filter, port 3000)
+- `static-site` — for `sites/<name>/` (nixpacks, publish_directory=out, no packages)
+- `mcp-server` — for `mcp-servers/<name>/` (Dockerfile, health check enabled, custom port)
+
 ```
 rdc:deploy new: <slug>
-[ ] Registry entry loaded (or interactive create)
+[ ] .dockerignore present at regen-root root (ls C:/Dev/regen-root/.dockerignore — STOP if missing)
+[ ] Template loaded from docs/runbooks/coolify-app-templates.json (pick nextjs-app / static-site / mcp-server)
+[ ] Required vars substituted: NAME, APP_PATH, DOMAIN, BRANCH, PROJECT_UUID, ENVIRONMENT_UUID [+ TURBO_FILTER / PORT]
 [ ] DNS path chosen (A: *.dev.place.fund  B: apex  C: other zone)
 [ ] DNS record verified or wildcard confirmed
 [ ] Cloudflare proxy setting correct for DNS path
-[ ] server_uuid, project_uuid, environment_uuid, github_app_uuid resolved
-[ ] Build type chosen (Next.js / Vite / static / standalone)
-[ ] Type-specific fields filled (ports, build cmd, install cmd, start cmd)
-[ ] Application created via /applications/private-github-app
-[ ] watch_paths set and verified
-[ ] Env vars set in Coolify
+[ ] Application created via POST /applications/private-github-app (template payload)
+[ ] UUID recorded from response
+[ ] watch_paths verified via GET /api/v1/applications/<uuid> — must match template
+[ ] Env vars set in Coolify (from deployment_registry.env_vars_needed)
 [ ] First deploy triggered
-[ ] Gate passed (5 checks)
+[ ] Deployment reached "finished" state
+[ ] Gate: HTTP 200 on <domain>
+[ ] Gate: TLS valid
 [ ] deployment_registry row inserted
 ✅ rdc:deploy new: <slug> live at <domain>
 ```
