@@ -23,3 +23,12 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Notify clauth channel
+        if: always()
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          STATUS="${{ job.status }}"
+          curl -s -X POST "${{ secrets.CLAUTH_CHANNEL_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"rdc-skills v${VERSION} npm publish: ${STATUS}\",\"source\":\"github-actions\"}"
