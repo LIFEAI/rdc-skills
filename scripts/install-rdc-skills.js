@@ -120,6 +120,63 @@ function buildPluginCache(cacheDir, version, gitSha) {
   }
 }
 
+// ── User-skills cleanup ───────────────────────────────────────────────────────
+// Older installer versions wrote skill files directly to ~/.claude/skills/user/.
+// Claude Code loads that directory AND the plugin cache, so any rdc skills left
+// there produce duplicate registrations and break the resolver.
+// This function nukes any entry whose frontmatter name starts with "rdc:".
+function cleanUserSkills(userSkillsDir) {
+  if (!fs.existsSync(userSkillsDir)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(userSkillsDir, { withFileTypes: true })) {
+    const candidate = path.join(userSkillsDir, entry.name);
+    let skillFile = null;
+    if (entry.isDirectory()) {
+      // New format: <name>/SKILL.md or <name>/skill.md
+      for (const sf of ['SKILL.md', 'skill.md']) {
+        const p = path.join(candidate, sf);
+        if (fs.existsSync(p)) { skillFile = p; break; }
+      }
+    } else if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'skill.md' && entry.name !== 'SKILL.md' && entry.name !== 'README.md') {
+      // Old format: rdc-deploy.md flat file
+      skillFile = candidate;
+    }
+    if (!skillFile) continue;
+    const fm = readFrontmatter(skillFile);
+    if (fm.name && fm.name.startsWith('rdc:')) {
+      try {
+        if (entry.isDirectory()) fs.rmSync(candidate, { recursive: true, force: true });
+        else fs.unlinkSync(candidate);
+        removed++;
+      } catch {}
+    }
+  }
+  return removed;
+}
+
+// ── Stale hook cleanup ────────────────────────────────────────────────────────
+// Remove hook files from ~/.claude/hooks/ that are no longer in the source hooks/ dir.
+// Prevents orphaned hooks (removed from source but still installed) from misfiring.
+function cleanStaleHooks(hooksDstDir, hooksSrcDir) {
+  if (!fs.existsSync(hooksDstDir) || !fs.existsSync(hooksSrcDir)) return 0;
+  const sourceFiles = new Set(fs.readdirSync(hooksSrcDir).filter(f => f.endsWith('.js')));
+  // These hooks were written by us (rdc-skills) — safe to remove if no longer in source.
+  // We only manage our own hooks; never touch hooks we didn't install.
+  const knownHooks = [
+    'check-cwd.js', 'check-stale-work-items.js', 'check-services.js',
+    'precompact-log.js', 'postcompact-log.js', 'restart-brief.js',
+    'rate-limit-retry.js', 'post-work-check.js', 'no-stop-open-epics.js',
+    'require-work-item-on-commit.js', 'verify-rdc-skills.js',
+  ];
+  let removed = 0;
+  for (const f of knownHooks) {
+    if (!sourceFiles.has(f) && fs.existsSync(path.join(hooksDstDir, f))) {
+      try { fs.unlinkSync(path.join(hooksDstDir, f)); removed++; } catch {}
+    }
+  }
+  return removed;
+}
+
 // ── Cache flush helper ────────────────────────────────────────────────────────
 function flushOldCaches(cacheBase, keepVersion) {
   if (!fs.existsSync(cacheBase)) return 0;
@@ -478,6 +535,20 @@ async function main() {
     ok(`[0/6] git pull   — ${before === after ? after.slice(0, 7) : `${before.slice(0,7)} → ${after.slice(0,7)}`}`);
   } catch {
     warn('[0/6] git pull failed — installing from local copy');
+  }
+
+  // 0.5a. User-skills cleanup — remove any rdc: skills from ~/.claude/skills/user/
+  // (older installer versions wrote there; plugin cache is the only authoritative source)
+  {
+    const userSkillsDir = path.join(claudeHome, 'skills', 'user');
+    const purged = cleanUserSkills(userSkillsDir);
+    if (purged > 0) ok(`[0.5a] Skills cleanup — removed ${purged} stale rdc: skill(s) from skills/user/`);
+  }
+
+  // 0.5b. Stale hook cleanup — remove hooks we no longer ship
+  {
+    const staleRemoved = cleanStaleHooks(hooksDst, hooksSrc);
+    if (staleRemoved > 0) ok(`[0.5b] Hook cleanup — removed ${staleRemoved} orphaned hook file(s)`);
   }
 
   // 0.5. Legacy cleanup — remove old commands/rdc/ (pre-plugin-system format)
