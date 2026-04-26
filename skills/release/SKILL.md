@@ -69,9 +69,9 @@ rdc:release: <repo> vX.Y.Z → vA.B.C
 [ ] package.json bumped
 [ ] Commit created
 [ ] Tag vA.B.C created + pushed
-[ ] CI run located (gh run list)
-[ ] CI completed successfully (poll 20s, 10min timeout)
-[ ] npm registry shows vA.B.C (if npm — poll 15s, 3min timeout)
+[ ] CI completion event received via clauth channel (mcp__claude_ai_clauth__channel_list)
+[ ] CI concluded successfully (failure → pull logs via gh run view --log-failed)
+[ ] npm registry shows vA.B.C (npm view @lifeaitools/<repo> version)
 [ ] Local install executed
 [ ] Installed version verified
 [ ] Post-install action (daemon restart if clauth)
@@ -143,23 +143,35 @@ git push && git push --tags
 ```
 Never `--no-verify`. Never `--force`. Fix pre-commit hook failures at root cause.
 
-#### 3. CI poll (clauth only — GitHub Actions publishes to npm)
-```bash
-gh run list --repo LIFEAI/clauth --limit 5 --json status,conclusion,headBranch,databaseId
-# Poll every 20s until conclusion ∈ {success, failure, cancelled} — 10min timeout
+#### 3. Wait for CI via clauth channel (rdc-skills and clauth)
+
+Both repos have a GitHub Actions workflow that POSTs to `https://clauth.prtrust.fund/channel` on publish completion. **Do not poll `gh run list` in a loop.** Use the Monitor tool or check the channel:
+
+```
+# Check clauth channel for the completion event:
+mcp__claude_ai_clauth__channel_list (since: <tag-push-timestamp>)
+# Wait for event with text containing "vA.B.C" and status "success" or "failure"
+# If no event after 10 min → fallback: gh run list --repo LIFEAI/<repo> --limit 3
 ```
 
-#### 4. npm poll (clauth only)
+If the channel event shows failure, pull the run logs before proceeding:
 ```bash
-npm view @lifeaitools/clauth version
-# Poll every 15s until new version appears — 3min timeout
+gh run view <databaseId> --repo LIFEAI/<repo> --log-failed
 ```
+
+#### 4. Verify npm registry
+
+```bash
+npm view @lifeaitools/<repo> version   # must equal vA.B.C
+```
+
+Only run this after the channel event confirms success — don't poll npm independently.
 
 #### 5. Install
 - **clauth:** `npm install -g @lifeaitools/clauth@latest`
-- **rdc-skills:** `bash C:/Dev/rdc-skills/scripts/install.sh`
-  - If only 1 file copied (known installer bug), fall back:
-    `cp C:/Dev/rdc-skills/skills/**/*.md ~/.claude/skills/user/ && cp C:/Dev/rdc-skills/skills/**/*.md C:/Dev/regen-root/.claude/skills/user/`
+- **rdc-skills:** `node C:/Dev/rdc-skills/scripts/install-rdc-skills.js`
+  - If install script fails, fall back:
+    `cp -r C:/Dev/rdc-skills/skills/* ~/.claude/plugins/cache/rdc-skills/rdc-skills/latest/skills/`
 
 #### 6. Verify
 - **clauth:** `curl -s http://127.0.0.1:52437/ping | python3 -c "import sys,json; print(json.load(sys.stdin)['app_version'])"` — must match vA.B.C
