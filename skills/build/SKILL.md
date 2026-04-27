@@ -76,7 +76,23 @@ Read the task title and description, then:
    SELECT get_work_items_by_epic('<epic-id>', 'todo');
    ```
 
-   **Pre-flight gate — run before any agent dispatch:**
+   **Session lock — claim the epic immediately (before any agent dispatch):**
+
+   After loading the epic, check its status:
+   - If `status = 'in_progress'` → **ABORT** with:
+     ```
+     SKIP: epic <id> is already in_progress — claimed by another session. Pick a different epic.
+     ```
+     Do NOT proceed. Do NOT dispatch any agents.
+   - If `status = 'todo'` or `status = 'blocked'` → immediately claim it:
+     ```sql
+     SELECT update_work_item_status('<epic-id>'::uuid, 'in_progress',
+       '["Claimed by build session — dispatching agents"]'::jsonb
+     );
+     ```
+     This is an atomic Supabase write. A concurrent session that loads the same epic after this point will see `in_progress` and abort. **Do this before any classification, planning, or agent dispatch.**
+
+   **Pre-flight gate — run after claiming:**
 
    | Condition | Action |
    |-----------|--------|
