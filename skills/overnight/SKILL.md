@@ -77,6 +77,25 @@ Log the epic queue at the start of `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fal
 
 ## Phase 3 — Epic Loop
 
+### ⛔ ONE EPIC PER SESSION — NON-NEGOTIABLE
+
+Each epic runs in its own isolated overnight agent. **Never handle two epics inline in the same supervisor session.**
+
+If the queue contains multiple epics:
+1. Work the **first (highest-priority) epic only** in this session
+2. After it completes, dispatch a **new background `rdc:overnight` agent** for the remaining queue:
+   ```
+   Agent({
+     prompt: "rdc:overnight --unattended",
+     run_in_background: true
+   })
+   ```
+3. Then exit this session
+
+**Why this matters:** Handling multiple epics inline causes context bleed — the second epic's agents inherit the first epic's plan, files, and decisions. Each epic must start cold. A new overnight agent gets a fresh context with no knowledge of prior epics.
+
+**The stop hook will not fire** after dispatching the next overnight agent, because the current session has done its job and can exit cleanly.
+
 For each epic in the queue, run this sequence:
 
 ### 3a. Research (if needed)
