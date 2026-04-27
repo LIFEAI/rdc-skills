@@ -1,7 +1,7 @@
 {
   "name": "@lifeaitools/rdc-skills",
-  "version": "0.9.13",
-  "description": "RDC typed-agent dispatch skill suite for Claude Code \u00e2\u20ac\u201d plan, build, review, overnight builds",
+  "version": "0.9.14",
+  "description": "RDC typed-agent dispatch skill suite for Claude Code â€” plan, build, review, overnight builds",
   "keywords": [
     "claude-code",
     "claude-code-plugin",
