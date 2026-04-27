@@ -71,12 +71,26 @@ Read the task title and description, then:
 
 ## Procedure
 
-1. **Load the epic:**
+1. **Load the epic and run pre-flight gate:**
    ```sql
    SELECT get_work_items_by_epic('<epic-id>', 'todo');
    ```
-   - Interactive (no args): show open epics, ask which to build
-   - Unattended (no tasks found): escalate via advisor tool
+
+   **Pre-flight gate — run before any agent dispatch:**
+
+   | Condition | Action |
+   |-----------|--------|
+   | No child tasks returned | → Invoke `rdc:plan` on this epic. Do NOT proceed with build. |
+   | Tasks exist but all have empty `description` fields | → Invoke `rdc:plan` on this epic. Tasks without descriptions cannot be safely dispatched. |
+   | Tasks exist and have descriptions | → Continue with build. |
+
+   **Re-planning is not a failure — it is correct behavior.** The build skill is the last gate before agent dispatch; catching an under-specified epic here is cheaper than a wasted agent run.
+
+   **How to re-plan:**
+   - Interactive: tell the user — "Epic has no tasks / tasks lack descriptions — invoking rdc:plan first." Then invoke `rdc:plan <epic-id>`.
+   - Unattended: invoke `rdc:plan <epic-id> --unattended` inline, wait for it to complete, then reload tasks and re-run this gate once. If tasks still missing after re-plan, escalate via advisor.
+
+   **Interactive (no args):** show open epics, ask which to build.
 
 2. **CHECK FOR EXISTING WORK (mandatory — never skip):**
    ```sql
@@ -131,11 +145,31 @@ Read the task title and description, then:
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
+   ### Forked agents vs. standalone agents
+
+   **When the supervisor has already read the plan** (via a prior `Read` tool call in the same session),
+   dispatch **forked agents** with short prompts. Forked agents inherit the full conversation context —
+   including every file the supervisor has read — so you do NOT need to copy plan sections, file specs,
+   or architecture details into the prompt. The agent already sees them.
+
+   Short forked prompt template:
+   ```
+   You are a frontend agent building <WP name>. Work item: <uuid>.
+   Scope: <one sentence>. Files: <list>. Verification: tsc --noEmit.
+   Set item to review when done, return AGENT_COMPLETE with verification evidence.
+   Read .rdc/guides/agent-bootstrap.md + .rdc/guides/frontend.md before starting.
+   ```
+
+   **When the supervisor has NOT read the plan** (e.g. dispatching from a fresh `rdc:build` call with
+   only an epic ID), the agent has no plan context — write a full briefing prompt with all specs.
+
+   ---
+
    ### Required agent prompt contents
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
-     - Specific files to create/modify
+     - Specific files to create/modify (or omit if forked agent inherits plan context)
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
      - **`"You are running in an isolated git worktree. Commit your work normally. Do NOT push to origin — the supervisor merges your branch after the wave completes."`**
