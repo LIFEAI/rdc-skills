@@ -57,11 +57,20 @@ description: >-
    git branch -v
    ```
 
-6. **Infrastructure health** (if MCP available):
+6. **Dev server health (PM2):**
+   SSH into the Coolify server and check PM2 process state:
+   ```bash
+   SSH_KEY=$(curl -s http://127.0.0.1:52437/v/ssh-key-path)
+   ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no root@64.237.54.189 "pm2 jlist 2>/dev/null"
+   ```
+   Parse the JSON array — for each process note `name`, `pm2_env.status` (online/stopped/errored), and `pm2_env.pm_uptime`.
+   If SSH fails or PM2 returns nothing, note "PM2 unreachable" and continue.
+
+7. **Infrastructure health** (if MCP available):
    - Get infrastructure overview or diagnose issues
    - Report any apps with failed builds or down containers
 
-7. **Present as a compact dashboard:**
+8. **Present as a compact dashboard:**
    ```
    ## Open Epics (N)
    <table>
@@ -70,6 +79,9 @@ description: >-
    
    ## Recent (48h)
    <list>
+   
+   ## Dev Servers (PM2)
+   online: studio canvas lifeai ...   stopped: issho-invest
    
    ## Deployments
    <green/red/yellow status>
