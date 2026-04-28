@@ -6,12 +6,14 @@
  *   node scripts/install-rdc-skills.js                      ← standard
  *   node scripts/install-rdc-skills.js --skip-hooks         ← skip hook wiring
  *   node scripts/install-rdc-skills.js --claude-home <path> ← custom CLI home
+ *   node scripts/install-rdc-skills.js --codex-root <path>  ← also install to .agents/skills/user/
  *   node scripts/install-rdc-skills.js --migrate <path>     ← migrate docs/ → .rdc/
  *
  * What it does:
  *   1. git pull (latest commands + guides)
  *   2. CLI plugin  — registers in ~/.claude/plugins/ + settings.json
  *   3. Cowork      — registers in Desktop cowork_plugins/ + cowork_settings.json
+ *   3.5 Codex      — copies skills to <project>/.agents/skills/user/rdc-<name>/
  *   4. Hook files  — copies hooks/*.js → ~/.claude/hooks/
  *   5. Hook wiring — wires hooks into ~/.claude/settings.json
  *   6. Zip         — builds dist/rdc-skills-plugin.zip for claude.ai / distribution
@@ -36,6 +38,14 @@ const doMigrate  = migrateIdx >= 0;
 const migratePath = doMigrate ? (args[migrateIdx + 1] || process.cwd()) : null;
 
 const repoRoot     = path.resolve(__dirname, '..');
+
+const codexIdx   = args.indexOf('--codex-root');
+const codexRoot  = codexIdx >= 0
+  ? path.resolve(args[codexIdx + 1])
+  : (() => {
+      const sibling = path.resolve(repoRoot, '..', 'regen-root');
+      return fs.existsSync(path.join(sibling, '.agents')) ? sibling : null;
+    })();
 const hooksSrc     = path.join(repoRoot, 'hooks');
 const hooksDst     = path.join(claudeHome, 'hooks');
 const settingsPath = path.join(claudeHome, 'settings.json');
@@ -342,6 +352,43 @@ function registerCowork(version, gitSha) {
   return bases.length;
 }
 
+// ── Codex registration (→ <project>/.agents/skills/user/rdc-*/) ─────────────
+function registerCodex(codexProjectRoot) {
+  const targetDir = path.join(codexProjectRoot, '.agents', 'skills', 'user');
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  // Clean: remove dirs that are rdc skills — by prefix OR by frontmatter name
+  let removed = 0;
+  for (const entry of fs.readdirSync(targetDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(targetDir, entry.name);
+    if (/^rdc-/.test(entry.name)) {
+      fs.rmSync(candidate, { recursive: true, force: true });
+      removed++;
+    } else {
+      const fm = readFrontmatter(path.join(candidate, 'SKILL.md'));
+      if (fm.name && fm.name.startsWith('rdc:')) {
+        fs.rmSync(candidate, { recursive: true, force: true });
+        removed++;
+      }
+    }
+  }
+
+  // Copy: each source skill dir that has a SKILL.md → rdc-<name>/
+  const skillsSrc = path.join(repoRoot, 'skills');
+  let copied = 0;
+  for (const entry of fs.readdirSync(skillsSrc, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const skillFile = path.join(skillsSrc, entry.name, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) continue;
+    const dst = path.join(targetDir, `rdc-${entry.name}`);
+    copyDirRecursive(path.join(skillsSrc, entry.name), dst);
+    copied++;
+  }
+
+  return { removed, copied };
+}
+
 // ── Step 6: Zip for claude.ai / distribution ─────────────────────────────────
 function buildZip(version) {
   const distDir = path.join(repoRoot, 'dist');
@@ -580,6 +627,16 @@ async function main() {
     ok(`[2/6] Cowork     — registered in ${coworkCount} workspace(s)`);
   } else {
     warn('[2/6] Cowork     — no Desktop workspaces found (open Claude Desktop once to create them)');
+  }
+
+  // 2.5. Codex registration
+  if (codexRoot) {
+    const { removed, copied } = registerCodex(codexRoot);
+    const codexTarget = path.join(codexRoot, '.agents', 'skills', 'user');
+    ok(`[2.5] Codex      — ${copied} skill(s) installed, ${removed} stale removed`);
+    info(`       target   : ${codexTarget}`);
+  } else {
+    info('[2.5] Codex      — skipped (no .agents/ found; use --codex-root <path>)');
   }
 
   // 3. Hook files
