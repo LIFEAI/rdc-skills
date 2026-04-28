@@ -192,6 +192,15 @@ Read the task title and description, then:
      - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
      - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
+     - **The test plan items from the work item's checklist** (all `test-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
+       ```
+       TEST PLAN — you MUST implement/verify each of these and tick them off via update_checklist_item:
+       - test-assert-xxx: <description> → write a vitest test that proves this
+       - test-smoke-xxx: <description> → run the command and confirm the result
+       - test-visual-xxx: <description> → note: delegate to UI audit (you cannot verify this yourself)
+       - test-contract-xxx: <description> → verify the export/type/shape exists
+       Tick each item as you complete it. Do NOT batch — tick immediately after each verification.
+       ```
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
 
@@ -255,11 +264,18 @@ Read the task title and description, then:
     - Runs `npx tsc --noEmit` for every touched app/package
     - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
     - Runs vitest for every touched package
+    - **Verifies test plan completion per work item:**
+      - For each `test-assert-*` checklist item: confirm a corresponding vitest test exists and passes
+      - For each `test-smoke-*` checklist item: run the command and confirm exit code / HTTP status
+      - For each `test-visual-*` checklist item: note as "delegated to UI audit" (validator cannot verify visuals)
+      - For each `test-contract-*` checklist item: verify the export/type/shape exists in the built code
+      - Any unchecked `test-*` item with `required: true` = work item CANNOT be set to `done` (DB enforces this)
     - Sets passing items to `done`, failing items back to `todo` with failure detail
-    - Returns `VALIDATOR_COMPLETE` report
+    - Returns `VALIDATOR_COMPLETE` report with test plan status per item
 
     **If the validator finds failures:** fix them in a new wave, then re-run the validator. Do not skip.
     **File existence alone is NOT verification.** A route returning 500 is a failure regardless of tsc passing.
+    **Unchecked test plan items are a hard gate** — `update_work_item_status('done')` will raise an exception if any `required: true` checklist item is unchecked.
 
 11. **After verification passes:**
     - All wave commits are already on develop and pushed (Step 9 pushes after each wave merge).

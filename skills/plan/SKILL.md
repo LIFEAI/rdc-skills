@@ -49,26 +49,74 @@ description: >-
 4. **Define work packages** — break into agent-dispatchable units:
    - Each work package = one agent assignment
    - No file overlap between packages
-   - Each package has: scope, files to create/modify, test requirements
+   - Each package has: scope, files to create/modify, test plan
    - Assign an agent type to each work package from the typed dispatch table in rdc:build. Include the guide file path (from `.rdc/guides/`, fallback `.rdc/guides/`) in each work package description.
    - Estimate: small (1 agent, <500 LOC), medium (1 agent, 500-1500 LOC), large (needs splitting)
 
-5. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist):
+5. **Write a test plan for each work package (MANDATORY):**
+
+   Every work package MUST have a `test_plan` section with specific, concrete test items. Each item has a type:
+
+   | Type | What it proves | How agent verifies | Example |
+   |------|---------------|-------------------|---------|
+   | `assert` | Logic is correct | Write a vitest test — input → expected output | `extractCode("```tsx\nfoo\n```") returns "foo"` |
+   | `smoke` | It runs without crashing | Run command, check exit code / HTTP status | `tsc --noEmit passes`, `GET /api/layout/scan returns 200` |
+   | `visual` | It looks right | Delegate to UI audit tool with specific checkpoints | `"/layout page renders container tree, not login screen"` |
+   | `contract` | Interface matches spec | Check exports, prop types, response shape | `ScanResult has { roots: ContainerNode[] }` |
+
+   **Rules for writing test plan items:**
+   - Every item must be a specific, falsifiable assertion — not "write tests" or "verify it works"
+   - New functions/modules MUST have at least one `assert` item
+   - API routes MUST have at least one `smoke` item
+   - UI pages MUST have at least one `visual` item
+   - New exports/types MUST have at least one `contract` item
+   - `assert` and `smoke` are mandatory for every work package. `visual` and `contract` when applicable.
+
+   **Example test plan in a plan doc:**
+   ```markdown
+   ### WP-2: AST Scanner
+   **Test plan:**
+   - assert: `scanFile` returns only Window/Frame/Pane/SubPane nodes, not Badge/Button
+   - assert: SubPane nested directly in root produces a warning
+   - assert: Valid Window > Frame > Pane > SubPane nesting produces no warnings
+   - smoke: `GET /api/layout/scan?dir=apps/studio/src` returns 200 with JSON body
+   - smoke: `npx tsc --noEmit` exits 0
+   - contract: `ScanResult` has shape `{ filePath: string, roots: ContainerNode[], warnings: ScanWarning[] }`
+   ```
+
+6. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist):
    ```markdown
    # Plan: <Topic>
    > Generated: <date> | Epic: <id if exists>
 
    ## Goal
    ## Design Decisions
-   ## Work Packages
+   ## Work Packages (each with test plan)
    ## Sequencing (what can parallelize, what depends on what)
    ## Risks & Mitigations
    ```
 
-6. **Create Supabase epic + child tasks:**
-   - Epic via `insert_work_item(p_item_type := 'epic', p_definition_of_done := '[{"id":"...", "text":"...", "required":true, "checked":false}]'::jsonb, ...)`
+7. **Create Supabase epic + child tasks:**
+   - Epic via `insert_work_item(p_item_type := 'epic', p_definition_of_done := '[...]'::jsonb, ...)`
+   - Epic DoD MUST include: `{"id":"test-plan-verified","text":"All test plan items implemented and passing","required":true,"checked":false}`
    - Set `p_definition_of_done` on the epic — child tasks inserted under it will auto-inherit it as their checklist
    - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)` — checklist auto-hydrated from epic's DoD
+   - **Additionally, write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`:
+     ```sql
+     SELECT insert_work_item(
+       p_parent_id := '<epic_id>',
+       p_title := 'WP-2: AST Scanner',
+       p_checklist := '[
+         {"id":"test-assert-scanner-filters","text":"assert: scanFile returns only container components","required":true,"checked":false},
+         {"id":"test-assert-nesting-warn","text":"assert: invalid nesting produces warnings","required":true,"checked":false},
+         {"id":"test-smoke-scan-api","text":"smoke: GET /api/layout/scan returns 200","required":true,"checked":false},
+         {"id":"test-contract-scanresult","text":"contract: ScanResult shape matches spec","required":true,"checked":false},
+         {"id":"tsc-clean","text":"npx tsc --noEmit passes","required":true,"checked":false}
+       ]'::jsonb
+     );
+     ```
+   - Agents MUST tick each `test-*` checklist item as they implement/verify it (via `update_checklist_item`)
+   - `update_work_item_status('done')` will REJECT if any `required: true` item is unchecked — this is the enforcement gate
    - Set priorities: urgent/high/normal based on sequencing
 
 7. **Report results:**
