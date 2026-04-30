@@ -639,6 +639,42 @@ async function main() {
     info('[2.5] Codex      — skipped (no .agents/ found; use --codex-root <path>)');
   }
 
+  // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)
+  if (codexRoot) {
+    const skillsLinkDir = path.join(codexRoot, '.claude', 'skills');
+    const skillsSrc     = path.join(repoRoot, 'skills');
+    fs.mkdirSync(skillsLinkDir, { recursive: true });
+    let linked = 0;
+    for (const entry of fs.readdirSync(skillsSrc, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (!fs.existsSync(path.join(skillsSrc, entry.name, 'SKILL.md'))) continue;
+      const linkPath = path.join(skillsLinkDir, entry.name);
+      const target   = path.join(skillsSrc, entry.name);
+      try {
+        if (fs.existsSync(linkPath) || (() => { try { fs.lstatSync(linkPath); return true; } catch { return false; } })()) {
+          fs.rmSync(linkPath, { recursive: true, force: true });
+        }
+      } catch {}
+      try {
+        if (process.platform === 'win32') {
+          const winLink   = linkPath.replace(/\//g, '\\');
+          const winTarget = target.replace(/\//g, '\\');
+          execSync(`cmd /c mklink /J "${winLink}" "${winTarget}"`, { stdio: 'pipe' });
+        } else {
+          fs.symlinkSync(target, linkPath, 'dir');
+        }
+        linked++;
+      } catch {}
+    }
+    if (linked > 0) {
+      ok(`[2.7] Symlinks   — ${linked} skill link(s) in ${skillsLinkDir}`);
+    } else {
+      info('[2.7] Symlinks   — no rdc skill links created (skills may already be linked)');
+    }
+  } else {
+    info('[2.7] Symlinks   — skipped (no codex root found)');
+  }
+
   // 3. Hook files
   const hookCount = copyDir(hooksSrc, hooksDst, '.js');
   ok(`[3/6] Hook files — ${hookCount} file(s) → ${hooksDst}`);
