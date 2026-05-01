@@ -13,7 +13,7 @@ From any Claude Code session:
 /plugin install rdc-skills
 ```
 
-All 17 user-invocable skills become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
+All user-invocable skills become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
 
 ### Option B — Directory plugin (LIFEAI dev machines)
 
@@ -78,6 +78,9 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 ### Utility Skills
 - rdc:collab
 
+### Design Skills
+- rdc:design — RDC/Studio design, tokens, palettes, themes, and Rampa CLI-assisted color systems
+
 ### Reference
 - rdc:help
 
@@ -136,6 +139,7 @@ skills/
   handoff/SKILL.md     (planning → work items)
   prototype/SKILL.md   (build JSX prototype)
   workitems/SKILL.md   (work item management)
+  design/SKILL.md      (RDC/Studio design, Palette Library, Rampa CLI)
   help/SKILL.md        (skill index — shows current version)
   deploy/SKILL.md      (Coolify ops: deploy, new, diagnose, audit)
   release/SKILL.md     (atomic package/app release)
@@ -172,7 +176,7 @@ python3 -c "import json; print(json.load(open('package.json'))['version'])"
 /rdc:help
 ```
 
-Current version: **v0.8.0**
+Current version: **v0.9.20**
 
 ## Quick Start
 

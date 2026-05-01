@@ -133,10 +133,12 @@ function parseFrontmatter(text) {
 }
 
 function expectedSkillName(dirOrFile) {
-  // Accept either a directory name (rdc-foo) or legacy filename (rdc-foo.md)
+  // Accept current directory names (foo), legacy directory names
+  // (rdc-foo), or legacy filenames (rdc-foo.md).
   const base = basename(dirOrFile, ".md");
-  if (!base.startsWith("rdc-")) return null;
-  return "rdc:" + base.slice(4);
+  if (base.startsWith("rdc-")) return "rdc:" + base.slice(4);
+  if (base === "tests" || base.startsWith(".")) return null;
+  return "rdc:" + base;
 }
 
 function findReferencedFiles(body) {
@@ -183,7 +185,7 @@ function tryAutoFix(filepath, fm, text, result) {
   // Fix: filename/name mismatch — rename directory or file to match frontmatter name
   const _filename = basename(filepath);
   const _dirName = basename(dirname(filepath));
-  const _isSubdir = _filename === "SKILL.md" && _dirName.startsWith("rdc-");
+  const _isSubdir = _filename === "SKILL.md";
   const _skillDirOrFile = _isSubdir ? _dirName : _filename;
   const expected = expectedSkillName(_skillDirOrFile);
   if (expected && fm.name !== expected && fm.name.startsWith("rdc:")) {
@@ -219,7 +221,7 @@ function auditSkill(filepath) {
   const filename = basename(filepath);
   // Support both flat (rdc-foo.md) and subdirectory (rdc-foo/SKILL.md) layouts
   const dirName = basename(dirname(filepath)); // "rdc-foo" when filepath is .../rdc-foo/SKILL.md
-  const isSubdir = filename === "SKILL.md" && dirName.startsWith("rdc-");
+  const isSubdir = filename === "SKILL.md";
   const skillDirOrFile = isSubdir ? dirName : filename;
   const result = {
     skill: null,
@@ -469,15 +471,13 @@ function auditDuplicates(results) {
       } else {
         skillBase = basename(r.file, ".md"); // legacy
       }
-      if (skillBase.startsWith("rdc-")) {
-        const stem = skillBase.slice(4);
-        if (agentBases.has(stem)) {
-          findings.push({
-            level: "error",
-            code: "skill-guide-filename-collision",
-            message: `skills/${skillBase}/SKILL.md collides with guides/agents/${stem}.md (half-reverted move?)`,
-          });
-        }
+      const stem = skillBase.startsWith("rdc-") ? skillBase.slice(4) : skillBase;
+      if (agentBases.has(stem)) {
+        findings.push({
+          level: "warn",
+          code: "skill-guide-name-overlap",
+          message: `skills/${skillBase}/SKILL.md overlaps guides/agents/${stem}.md; allowed when a user-facing skill delegates to an agent guide`,
+        });
       }
     }
   }
@@ -504,8 +504,9 @@ function auditOrphanHooks(results) {
   const sources = [
     ...readdirSync(SKILLS_DIR)
       .filter((f) => {
-        if (!f.startsWith("rdc-")) return false;
-        try { return statSync(join(SKILLS_DIR, f)).isDirectory(); } catch { return false; }
+        try {
+          return statSync(join(SKILLS_DIR, f)).isDirectory() && existsSync(join(SKILLS_DIR, f, "SKILL.md"));
+        } catch { return false; }
       })
       .map((f) => join(SKILLS_DIR, f, "SKILL.md")),
     join(REPO_ROOT, ".claude", "settings.json"),
@@ -735,8 +736,9 @@ function main() {
   let files;
   try {
     files = readdirSync(SKILLS_DIR).filter((f) => {
-      if (!f.startsWith("rdc-")) return false;
-      try { return statSync(join(SKILLS_DIR, f)).isDirectory(); } catch { return false; }
+      try {
+        return statSync(join(SKILLS_DIR, f)).isDirectory() && existsSync(join(SKILLS_DIR, f, "SKILL.md"));
+      } catch { return false; }
     });
   } catch (e) {
     console.error(`FATAL: cannot read skills dir ${SKILLS_DIR}: ${e.message}`);
@@ -745,7 +747,10 @@ function main() {
 
   if (ONLY_SKILLS.length > 0) {
     files = files.filter((f) => {
-      return ONLY_SKILLS.some((s) => f === s.replace(":", "-"));
+      return ONLY_SKILLS.some((s) => {
+        const bare = s.replace(/^rdc:/, "");
+        return f === bare || f === s.replace(":", "-");
+      });
     });
     if (files.length === 0) {
       console.error(`no skill file matches: ${ONLY_SKILLS.join(", ")}`);

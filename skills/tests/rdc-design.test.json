@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:design",
+  "description": "RDC Design provides Studio-aware design instructions and CLI prompt logging under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:design studio audit the palette page",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

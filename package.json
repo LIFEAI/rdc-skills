@@ -1,6 +1,6 @@
 {
   "name": "@lifeaitools/rdc-skills",
-  "version": "0.9.19",
+  "version": "0.9.20",
   "description": "RDC typed-agent dispatch skill suite for Claude Code â€” plan, build, review, overnight builds",
   "keywords": [
     "claude-code",
@@ -19,13 +19,14 @@
     "type": "plugin",
     "skills": "skills/",
     "guides": "guides/",
-    "version": "0.9.6",
+    "version": "0.9.20",
     "commands": "commands/"
   },
   "scripts": {
     "install-rdc-skills": "node scripts/install-rdc-skills.js",
     "uninstall:win": "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1",
     "uninstall:unix": "bash scripts/uninstall.sh",
-    "validate": "node tests/validate-skills.js"
+    "validate": "node tests/validate-skills.js",
+    "rdc-design": "node scripts/rdc-design-cli.mjs"
   }
 }

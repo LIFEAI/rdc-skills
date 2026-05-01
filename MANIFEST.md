@@ -1,9 +1,9 @@
 # RDC Skills Library — Manifest
 
 **Created:** 2026-04-13  
-**Last updated:** 2026-04-21  
+**Last updated:** 2026-05-01  
 **Source:** Regen Root project `.claude/skills/user/`  
-**Files:** 17 skill files (2,277 lines), 10 agent guides, 9 main guides  
+**Files:** 18+ skill files, 10 agent guides, command mirrors, and support scripts  
 **Size:** ~480K  
 
 ## Generic Conversion Summary
@@ -51,6 +51,7 @@ All skills have been converted from project-specific to generic/portable:
     ├── handoff/SKILL.md
     ├── prototype/SKILL.md
     ├── workitems/SKILL.md
+    ├── design/SKILL.md       [RDC/Studio design, Palette Library, Rampa CLI]
     ├── help/SKILL.md
     ├── deploy/SKILL.md       [Coolify deployment ops]
     ├── release/SKILL.md      [atomic version release]
@@ -110,6 +111,9 @@ All skills have been converted from project-specific to generic/portable:
 - rdc:handoff — planning → work items
 - rdc:prototype — JSX prototypes
 - rdc:workitems — work item CRUD
+
+### Design (1)
+- rdc:design — Studio-aware design workflow with token, Palette Library, and Rampa CLI context
 
 ### Reference (1)
 - rdc:help — skill index

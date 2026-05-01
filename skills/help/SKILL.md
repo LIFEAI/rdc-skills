@@ -10,6 +10,12 @@ description: >-
 > No preamble. No follow-up question. No summary. No "what would you like to do?".
 > Do NOT add any text before or after the block. Emit it exactly as written. This is non-negotiable.
 
+## When to Use
+
+- The project lead asks what RDC commands exist
+- The active task is unclear and needs command selection
+- A user needs syntax for planning, build, review, deployment, design, or release workflows
+
 ## Arguments
 
 - `rdc:help` — print the full command reference menu
@@ -43,6 +49,7 @@ description: >-
 | `rdc:prototype` | `rdc:prototype <description>` — JSX mock for review |
 | `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
 | `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
+| `rdc:design` | `rdc:design <command\|brief>` — RDC/Studio design, tokens, palettes, themes, Rampa CLI |
 
 ## Agent guides (dispatched by rdc:build, not user-invocable)
 
@@ -79,6 +86,7 @@ Project lead says → invoke
 "hand this off" / "give to agents"      → rdc:handoff
 "show me what it looks like"            → rdc:prototype
 "add to backlog" / "create a ticket"    → rdc:workitems
+"design/tokens/palette/theme"           → rdc:design <command>
 "what commands" / "what skills"         → rdc:help
 ```
 

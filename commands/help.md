@@ -40,6 +40,7 @@ Print the full usage menu below verbatim, then ask the project lead which comman
 | `rdc:prototype` | `rdc:prototype <description>` — JSX mock for review |
 | `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
 | `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
+| `rdc:design` | `rdc:design <command\|brief>` — RDC/Studio design, tokens, palettes, themes, Rampa CLI |
 
 ## Agent guides (dispatched by rdc:build, not user-invocable)
 
@@ -76,6 +77,7 @@ Project lead says → invoke
 "hand this off" / "give to agents"      → rdc:handoff
 "show me what it looks like"            → rdc:prototype
 "add to backlog" / "create a ticket"    → rdc:workitems
+"design/tokens/palette/theme"           → rdc:design <command>
 "what commands" / "what skills"         → rdc:help
 ```
 
