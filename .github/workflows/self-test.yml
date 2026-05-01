@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: tier1
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,15 +41,18 @@ jobs:
           node-version: '20'
 
       - name: Install claude CLI
+        if: env.ANTHROPIC_API_KEY != ''
         run: npm install -g @anthropic-ai/claude-code
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Run rdc:self-test --tier2 --quick (Tier 2)
+        if: env.ANTHROPIC_API_KEY != ''
         # Runs each manifest in --quick mode. Skips long-running (slow:true) tests.
         # Requires: ANTHROPIC_API_KEY secret set in repo settings.
         # Note: check-cwd.js hook must allow RDC_TEST=1 sessions (see guides/agent-bootstrap.md § Known blocker).
         run: node scripts/self-test.mjs --tier2 --quick
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RDC_TEST: '1'
+
+      - name: Skip Tier 2 when Claude API key is unavailable
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "Skipping Tier 2 behavioral tests because ANTHROPIC_API_KEY is not configured for this repository."
