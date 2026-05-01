@@ -15,16 +15,16 @@ const command = cleanArgs[0] || "help";
 const brief = cleanArgs.slice(1).join(" ").trim();
 
 const commandRefs = {
-  studio: ["studio-model", "lineage"],
-  tokens: ["studio-model", "lineage"],
-  palette: ["studio-model", "rampa", "lineage"],
-  theme: ["studio-model", "rampa", "lineage"],
-  colorize: ["rampa", "studio-model", "lineage"],
-  audit: ["studio-model", "lineage"],
-  critique: ["studio-model", "lineage"],
-  polish: ["studio-model", "lineage"],
-  craft: ["studio-model", "rampa", "lineage"],
-  help: ["lineage"],
+  studio: ["studio-model", "ownership"],
+  tokens: ["studio-model", "ownership"],
+  palette: ["studio-model", "rampa", "ownership"],
+  theme: ["studio-model", "rampa", "ownership"],
+  colorize: ["rampa", "studio-model", "ownership"],
+  audit: ["studio-model", "ownership"],
+  critique: ["studio-model", "ownership"],
+  polish: ["studio-model", "ownership"],
+  craft: ["studio-model", "rampa", "ownership"],
+  help: ["ownership"],
 };
 
 function readText(path) {
@@ -56,7 +56,7 @@ function buildPrompt() {
   const skillPath = join(skillRoot, "SKILL.md");
   if (!existsSync(skillPath)) throw new Error(`Missing skill file: ${skillPath}`);
 
-  const refs = loadReferences(commandRefs[command] || ["studio-model", "lineage"]);
+  const refs = loadReferences(commandRefs[command] || ["studio-model", "ownership"]);
   const skill = stripFrontmatter(readText(skillPath));
   const refText = refs.map((ref) => `## Reference: ${ref.name}\n\n${ref.text}`).join("\n\n");
   const target = brief || "(no brief supplied)";
@@ -77,7 +77,7 @@ function buildPrompt() {
     "",
     `Execute \`rdc:design ${command}\` for: ${target}`,
     "",
-    "Return checklist-first output, cite concrete Studio files/routes/tables when relevant, and do not mutate upstream Impeccable.",
+    "Return checklist-first output, cite concrete Studio files/routes/tables when relevant, and do not mutate unrelated installed skills or vendor artifacts.",
   ].join("\n");
 
   return { prompt, refs };

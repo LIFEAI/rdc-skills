@@ -1,7 +1,7 @@
 ---
 name: rdc:design
 description: >-
-  Usage `rdc:design <command|brief>` — RDC-owned design skill for Studio, Palette Library, token-aware UI work, and Rampa CLI-assisted color systems. Forked/adapted from Impeccable concepts without modifying installed Impeccable.
+  Usage `rdc:design <command|brief>` — RDC-owned design skill for Studio, Palette Library, token-aware UI work, and Rampa CLI-assisted color systems.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

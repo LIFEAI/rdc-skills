@@ -176,7 +176,7 @@ python3 -c "import json; print(json.load(open('package.json'))['version'])"
 /rdc:help
 ```
 
-Current version: **v0.9.23**
+Current version: **v0.9.24**
 
 ## Quick Start
 

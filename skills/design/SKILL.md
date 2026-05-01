@@ -1,7 +1,7 @@
 ---
 name: rdc:design
 description: >-
-  Usage `rdc:design <command|brief>` — RDC-owned design skill for Studio, Palette Library, token-aware UI work, and Rampa CLI-assisted color systems. Forked/adapted from Impeccable concepts without modifying installed Impeccable.
+  Usage `rdc:design <command|brief>` — RDC-owned design skill for Studio, Palette Library, token-aware UI work, and Rampa CLI-assisted color systems.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -14,7 +14,7 @@ description: >-
 
 # rdc:design — RDC Design Skill
 
-RDC-owned design execution for Studio and LIFEAI interfaces. This skill is inspired by and adapted from the Impeccable design workflow, but it is not the installed Impeccable skill and must not modify upstream Impeccable files.
+RDC-owned design execution for Studio and LIFEAI interfaces. This skill is the Studio-aware design authority for RDC token, palette, theme, component, and local-debug work.
 
 ## When to Use
 
@@ -23,8 +23,6 @@ RDC-owned design execution for Studio and LIFEAI interfaces. This skill is inspi
 - UI critique, audit, polish, colorize, type, layout, or craft work in `regen-root`
 - Agent-side color-system exploration using Rampa CLI
 - Preparing token-aware implementation instructions for frontend/backend/data agents
-
-Use the installed `impeccable` skill directly only when the task is a general upstream Impeccable workflow and does not need RDC Studio knowledge.
 
 ## Arguments
 
@@ -47,7 +45,7 @@ Load only what applies, but do not skip the Studio model for Studio/token/palett
 |---|---|
 | Studio, tokens, palettes, themes, editor | `skills/design/reference/studio-model.md` |
 | Color generation, ramps, contrast, neutrals | `skills/design/reference/rampa.md` |
-| Attribution, fork boundary, Impeccable relationship | `skills/design/reference/lineage.md` |
+| Ownership, operating boundary, attribution files | `skills/design/reference/ownership.md` |
 
 Project docs to read for Studio work:
 
@@ -89,7 +87,7 @@ Project docs to read for Studio work:
 6. **Plan edits before mutating files.**
    - State the files/routes/tables involved.
    - Use RDC work-item protocol for non-trivial implementation.
-   - Keep upstream Impeccable installed and untouched.
+   - Keep unrelated installed skills and vendor artifacts untouched.
 
 7. **Verify.**
    - Run scoped tests only.
@@ -130,9 +128,9 @@ Each run includes character count, word count, approximate token count, referenc
 
 ## Boundaries
 
-- Do not edit installed Impeccable skills.
-- Do not create another skill named `impeccable`.
-- Do not use Impeccable Live as Studio's live-edit execution path.
+- Do not edit unrelated installed skills.
+- Do not rename this skill or create duplicate aliases for it.
+- Do not use external live-edit runtimes as Studio's live-edit execution path.
 - Do not persist Rampa output directly to production without Studio token mapping.
 - Do not fork or ship Palette Designer until its license is verified.
 - Do not use Studio's deprecated `/api/editor/render` route.

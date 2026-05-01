@@ -48,7 +48,7 @@ Clauth relay route families:
 
 ## Native Local Debug Model
 
-Studio live editing must use the RDC-owned local debug system, not Impeccable Live:
+Studio live editing must use the RDC-owned local debug system, not an external live-edit runtime:
 
 1. Studio starts a local session with `POST /studio/debug/start`.
 2. Studio embeds the returned local `devUrl` with debug query params.
