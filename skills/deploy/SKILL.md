@@ -138,7 +138,7 @@ Severity rules:
 ## References
 
 - Type-specific checklists + DNS tree + gate commands: `docs/runbooks/coolify-deploy-checklist.md`
-- Rules / registry RPCs / hard limits: `.claude/rules/coolify-deployment.md`
+- Rules / registry RPCs / hard limits: `.claude/context/coolify-deployment.md`
 - MCP server: `@masonator/coolify-mcp` (38 tools)
 - Infrastructure constants:
   ```

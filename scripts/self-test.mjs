@@ -474,7 +474,7 @@ function auditDuplicates(results) {
       const stem = skillBase.startsWith("rdc-") ? skillBase.slice(4) : skillBase;
       if (agentBases.has(stem)) {
         findings.push({
-          level: "warn",
+          level: "info",
           code: "skill-guide-name-overlap",
           message: `skills/${skillBase}/SKILL.md overlaps guides/agents/${stem}.md; allowed when a user-facing skill delegates to an agent guide`,
         });
@@ -531,9 +531,9 @@ function auditOrphanHooks(results) {
   for (const hf of hookFiles) {
     if (!referenced.has(hf)) {
       findings.push({
-        level: "warn",
+        level: "info",
         code: "orphan-hook",
-        message: `hooks/${hf} exists but is not referenced by any skill`,
+        message: `hooks/${hf} exists but is not referenced by any skill; plugin hooks may still be convention-discovered or wired by settings`,
       });
     }
   }

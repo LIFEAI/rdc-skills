@@ -4,6 +4,10 @@ description: >-
   Usage `rdc:help` or `rdc` — selection menu of all rdc:* skills with their full argument syntax. Use when unsure which command to invoke or what args it takes.
 ---
 
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
 # rdc:help — Command Reference
 
 > **⚠️ HARD OUTPUT RULE:** Your ENTIRE response MUST be the block below, copied verbatim.

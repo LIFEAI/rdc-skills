@@ -337,7 +337,7 @@ Show full checklist with `[!]` markers even on failure.
 
 ## Related
 
-- `.claude/rules/clauth.md` — clauth release source of truth
-- `.claude/rules/coolify-deployment.md` — Coolify watch_paths, deploy rules
+- `.claude/context/clauth.md` — clauth release source of truth
+- `.claude/context/coolify-deployment.md` — Coolify watch_paths, deploy rules
 - `memory/feedback_version_bump_must_tag.md` — never bump without tagging
 - `memory/feedback_use_rdc_release.md` — "promote/deploy to main" always triggers this skill
