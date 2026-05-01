@@ -71,7 +71,7 @@ Project docs to read for Studio work:
 3. **Find the source of truth before proposing changes.**
    - Tokens: Studio APIs, resolver files, and Supabase token tables.
    - Palette Library: Studio palette APIs and theme/palette model.
-   - Live editor: local editor routes and clauth relay routes.
+   - Live editor: RDC Native Local Debug only — `/editor/local/*`, `/api/editor/local-debug`, `/studio/debug/*`, `/studio/claude/*`, and `scripts/studio-debug-poll.mjs`.
    - Components: `@regen/ui`, Studio component registry, and existing local components.
 
 4. **Use Rampa only as proposal tooling.**
@@ -132,6 +132,7 @@ Each run includes character count, word count, approximate token count, referenc
 
 - Do not edit installed Impeccable skills.
 - Do not create another skill named `impeccable`.
+- Do not use Impeccable Live as Studio's live-edit execution path.
 - Do not persist Rampa output directly to production without Studio token mapping.
 - Do not fork or ship Palette Designer until its license is verified.
 - Do not use Studio's deprecated `/api/editor/render` route.

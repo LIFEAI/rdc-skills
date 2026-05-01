@@ -46,6 +46,25 @@ Clauth relay route families:
 - `/studio/debug/*`
 - `/studio/claude/*`
 
+## Native Local Debug Model
+
+Studio live editing must use the RDC-owned local debug system, not Impeccable Live:
+
+1. Studio starts a local session with `POST /studio/debug/start`.
+2. Studio embeds the returned local `devUrl` with debug query params.
+3. `/api/editor/local-debug` injects Studio's own `local-debug-browser.js` picker.
+4. Browser/user events go to `/studio/debug/:sessionId/events`.
+5. Claude Code polls `/studio/claude/:sessionId/poll` with `scripts/studio-debug-poll.mjs`.
+6. Claude edits source files directly and replies to `/studio/claude/:sessionId/reply`.
+7. HMR updates the iframe.
+
+The disposable proof target is:
+
+- `/editor/local/test`
+- `apps/studio/src/app/editor/local-test-target/page.tsx`
+
+Direct edits must make exactly one source edit unless impossible. Variant edits should return alternatives without editing unless explicitly instructed to apply one. Reference replacement requires an explicit reference. Notes must not edit source.
+
 ## Token APIs
 
 - `GET /api/public/tokens/[slug]` returns legacy public token payload and CSS variables.
