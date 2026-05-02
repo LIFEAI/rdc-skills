@@ -93,12 +93,17 @@ Submit implementation report first, then mark done:
 
 ```sql
 SELECT submit_implementation_report('<id>'::uuid,
-  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[]}'::jsonb
+  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[],"transactional":false,"memory_records":[]}'::jsonb
 );
 
 SELECT update_work_item_status('<id>'::uuid, 'done',
   '["Fixed via rdc:fixit"]'::jsonb
 );
+```
+
+If the fix touched a transactional flow, API boundary, or package contract, set `"transactional": true` and populate `memory_records` (see `agent-bootstrap.md`), then run:
+```bash
+node scripts/work-item-memory.mjs <work-item-id>
 ```
 
 ```bash
