@@ -1,7 +1,6 @@
 ---
 name: rdc:deploy
-description: >-
-  Coolify ops. Usage `rdc:deploy <slug> [build-id]` or `rdc:deploy new <slug>` or `rdc:deploy diagnose <slug>` or `rdc:deploy audit [--fix]` — type checklists, DNS decision tree, mandatory post-deploy gate. Checklist-only output.
+description: "Deploy an app to Coolify (production) or PM2 (staging), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, health checks, and post-deploy verification."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

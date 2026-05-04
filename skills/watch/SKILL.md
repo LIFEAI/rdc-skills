@@ -1,7 +1,6 @@
 ---
 name: rdc:watch
-description: >-
-  Usage `rdc:watch` — initialize a session log and open a browser viewer that tails Claude activity live. Zero infra, pure filesystem + static HTML.
+description: "Open a live browser viewer tailing this session's activity. Zero infrastructure — pure filesystem + static HTML."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

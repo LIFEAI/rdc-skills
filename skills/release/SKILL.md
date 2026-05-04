@@ -1,7 +1,6 @@
 ---
 name: rdc:release
-description: >-
-  Atomic release for ANY LIFEAI repo. Usage `rdc:release <repo> [version]` — one skill, all repos. Known repos: clauth, rdc-skills, regen-root, regen-media, gws. Also promotes individual deployed apps from staging to production: `rdc:release promote <slug>`. Handles npm publish, monorepo develop→main promotion, per-app Coolify gate checks, and MCP server restarts. No user handoff.
+description: "Promote develop→main and deploy to production for any LIFEAI repo (clauth, rdc-skills, regen-root, etc.), or promote a staged app with rdc:release promote <slug>. Requires dev verification first."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

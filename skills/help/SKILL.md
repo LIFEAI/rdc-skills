@@ -1,7 +1,6 @@
 ---
 name: rdc:help
-description: >-
-  Usage `rdc:help` or `rdc` — selection menu of all rdc:* skills with their full argument syntax. Use when unsure which command to invoke or what args it takes.
+description: "Show all rdc:* skills with full argument syntax. Call when unsure which skill to use or what args it takes."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -1,7 +1,6 @@
 ---
 name: rdc:build
-description: >-
-  Usage `rdc:build <epic-id|topic> [--unattended]` — dispatch typed agents from an epic, commit, push, update work items. The build engine. Use after rdc:plan or when the project lead says "build it".
+description: "You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told "build it"."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

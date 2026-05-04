@@ -1,7 +1,6 @@
 ---
 name: rdc:prototype
-description: >-
-  Usage `rdc:prototype <description>` — build JSX/TSX prototype for review before CLI handoff. Saves to docs/source/, registers in prototype_registry. Use for "mock this up", "show me what it looks like". Reference material only, not production.
+description: "Build a JSX/TSX mockup for visual review before implementation. Saves to docs/source/, registers in prototype_registry. Use when told "mock this up" or "show me what it looks like". Not production code."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

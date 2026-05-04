@@ -1,7 +1,6 @@
 ---
 name: rdc:review
-description: >-
-  Usage `rdc:review [--unattended]` — tests, typecheck, stale docs, export conflicts across modified packages. Fixes issues found. Use after a build session or before merging to main.
+description: "Post-build quality gate: tsc, tests, stale docs, export conflicts across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

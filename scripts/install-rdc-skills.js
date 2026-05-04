@@ -7,13 +7,14 @@
  *   node scripts/install-rdc-skills.js --skip-hooks         ← skip hook wiring
  *   node scripts/install-rdc-skills.js --claude-home <path> ← custom CLI home
  *   node scripts/install-rdc-skills.js --codex-root <path>  ← also install to .agents/skills/user/
+ *   node scripts/install-rdc-skills.js --codex-skill-dir <path> ← also install to a Codex skill dir
  *   node scripts/install-rdc-skills.js --migrate <path>     ← migrate docs/ → .rdc/
  *
  * What it does:
  *   1. git pull (latest commands + guides)
  *   2. CLI plugin  — registers in ~/.claude/plugins/ + settings.json
  *   3. Cowork      — registers in Desktop cowork_plugins/ + cowork_settings.json
- *   3.5 Codex      — copies skills to <project>/.agents/skills/user/rdc-<name>/
+ *   3.5 Codex      — copies skills to detected Codex skill dirs
  *   4. Hook files  — copies hooks/*.js → ~/.claude/hooks/
  *   5. Hook wiring — wires hooks into ~/.claude/settings.json
  *   6. Zip         — builds dist/rdc-skills-plugin.zip for claude.ai / distribution
@@ -46,6 +47,10 @@ const codexRoot  = codexIdx >= 0
       const sibling = path.resolve(repoRoot, '..', 'regen-root');
       return fs.existsSync(path.join(sibling, '.agents')) ? sibling : null;
     })();
+const codexSkillDirIdx = args.indexOf('--codex-skill-dir');
+const explicitCodexSkillDir = codexSkillDirIdx >= 0
+  ? path.resolve(args[codexSkillDirIdx + 1])
+  : null;
 const hooksSrc     = path.join(repoRoot, 'hooks');
 const hooksDst     = path.join(claudeHome, 'hooks');
 const settingsPath = path.join(claudeHome, 'settings.json');
@@ -352,9 +357,37 @@ function registerCowork(version, gitSha) {
   return bases.length;
 }
 
-// ── Codex registration (→ <project>/.agents/skills/user/rdc-*/) ─────────────
-function registerCodex(codexProjectRoot) {
-  const targetDir = path.join(codexProjectRoot, '.agents', 'skills', 'user');
+// ── Codex registration (→ Codex skill dirs/rdc-*/) ───────────────────────────
+function addCodexTarget(targets, label, targetDir) {
+  if (!targetDir) return;
+  const resolved = path.resolve(targetDir);
+  if (targets.some(t => t.targetDir.toLowerCase() === resolved.toLowerCase())) return;
+  targets.push({ label, targetDir: resolved });
+}
+
+function findCodexTargets() {
+  const targets = [];
+  if (codexRoot) {
+    addCodexTarget(targets, 'project .agents', path.join(codexRoot, '.agents', 'skills', 'user'));
+  }
+  if (explicitCodexSkillDir) {
+    addCodexTarget(targets, 'explicit', explicitCodexSkillDir);
+  }
+
+  const codexHomeSkills = path.join(os.homedir(), '.codex', 'skills');
+  if (fs.existsSync(codexHomeSkills)) {
+    addCodexTarget(targets, 'global .codex', codexHomeSkills);
+  }
+
+  const globalAgentSkills = path.join(os.homedir(), '.agents', 'skills');
+  if (fs.existsSync(globalAgentSkills)) {
+    addCodexTarget(targets, 'global .agents', globalAgentSkills);
+  }
+
+  return targets;
+}
+
+function registerCodexTarget(targetDir) {
   fs.mkdirSync(targetDir, { recursive: true });
 
   // Clean: remove dirs that are rdc skills — by prefix OR by frontmatter name
@@ -630,13 +663,19 @@ async function main() {
   }
 
   // 2.5. Codex registration
-  if (codexRoot) {
-    const { removed, copied } = registerCodex(codexRoot);
-    const codexTarget = path.join(codexRoot, '.agents', 'skills', 'user');
-    ok(`[2.5] Codex      — ${copied} skill(s) installed, ${removed} stale removed`);
-    info(`       target   : ${codexTarget}`);
+  const codexTargets = findCodexTargets();
+  if (codexTargets.length > 0) {
+    let copiedTotal = 0;
+    let removedTotal = 0;
+    for (const target of codexTargets) {
+      const { removed, copied } = registerCodexTarget(target.targetDir);
+      copiedTotal += copied;
+      removedTotal += removed;
+      info(`       ${target.label.padEnd(15)}: ${target.targetDir} (${copied} installed, ${removed} stale removed)`);
+    }
+    ok(`[2.5] Codex      — ${copiedTotal} skill install(s), ${removedTotal} stale removed across ${codexTargets.length} target(s)`);
   } else {
-    info('[2.5] Codex      — skipped (no .agents/ found; use --codex-root <path>)');
+    info('[2.5] Codex      — skipped (no Codex skill dirs found; use --codex-root or --codex-skill-dir)');
   }
 
   // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)
