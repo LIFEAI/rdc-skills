@@ -1,6 +1,6 @@
 ---
 name: rdc:build
-description: "You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told "build it"."
+description: "You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
