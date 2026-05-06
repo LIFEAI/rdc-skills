@@ -83,6 +83,27 @@ Template:
 Wave 1 (parallel): Package 1, Package 2
 Wave 2 (after Wave 1): Package 3
 
+## Checklist Decomposition Matrix
+
+| Work item | Atomic deliverable | Surface type | Route or file path | Preconditions / fixture data | Action | Expected result | Verification artifact | Owner package | Status |
+|-----------|-------------------|--------------|--------------------|------------------------------|--------|-----------------|-----------------------|---------------|--------|
+| WP-1 | decomp-<surface>-<slug> | screen | /route | seeded fixture | open / click / submit | observable result | Playwright screenshot / route probe / test name | Package 1 | todo |
+
+Rules:
+- One observable behavior per row.
+- Each row must be independently pass/fail.
+- Each implementation work item must have matching `decomp-*` checklist rows and `test-*` verification rows.
+- UI routes list state rows separately: empty, loading, loaded, error, create/edit/detail/mobile where applicable.
+- API and DB rows include success, failure/guard, and side-effect proof where applicable.
+
+## Checklist Quality Gate
+
+verdict: PASS | FAIL
+failures:
+- <missing/coarse row if any>
+deferred:
+- <explicitly out-of-scope row if any>
+
 ## Definition of Done
 
 - [ ] [specific acceptance criterion]
@@ -114,6 +135,9 @@ Where: <files>
 Agent type: <type>
 Guide: .rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md)
 Design doc: .rdc/plans/<topic-slug>.md (fallback: .rdc/plans/<topic-slug>.md)
+Checklist: include required rows from the plan matrix:
+- decomp-<surface>-<slug>: route/file=<path> | action=<action> | expect=<result> | evidence=<artifact>
+- test-<type>-<slug>: <verification command or artifact>
 Depends on: <other task if applicable>
 Est: <hours>',
   p_parent_id   := '<epic-uuid>'::uuid,
@@ -124,6 +148,8 @@ Est: <hours>',
   p_source      := 'planning'
 );
 ```
+
+Do not create build-ready tasks unless the plan has `## Checklist Decomposition Matrix` and `## Checklist Quality Gate` with `verdict: PASS`. If the matrix fails, save the plan as `Status: Needs checklist repair` and return the failure list instead of creating dispatchable implementation tasks.
 
 ### Step 4 — Register Prototype (if one was built)
 

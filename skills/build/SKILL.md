@@ -97,6 +97,10 @@ Read the task title and description, then:
    |-----------|--------|
    | No child tasks returned | → Invoke `rdc:plan` on this epic. Do NOT proceed with build. |
    | Tasks exist but all have empty `description` fields | → Invoke `rdc:plan` on this epic. Tasks without descriptions cannot be safely dispatched. |
+   | Plan doc missing `## Checklist Decomposition Matrix` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
+   | Plan doc missing `## Checklist Quality Gate` with `verdict: PASS` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
+   | Any implementation task lacks `decomp-*` checklist items | → Invoke `rdc:plan` on this epic. Coarse checklists cannot be safely dispatched. |
+   | Any `decomp-*` item lacks route/file, action, expected result, or evidence artifact | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Tasks exist and have descriptions | → Continue with build. |
 
    **Re-planning is not a failure — it is correct behavior.** The build skill is the last gate before agent dispatch; catching an under-specified epic here is cheaper than a wasted agent run.
@@ -126,17 +130,53 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
-3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
+3. **Load the plan** (mandatory): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
+
+3b. **Checklist decomposition quality gate (mandatory before code):**
+
+   `rdc:build` is the final gate before implementation. It MUST reject any plan or work item that is too coarse for an agent to execute and verify independently.
+
+   Required plan sections:
+   - `## Checklist Decomposition Matrix`
+   - `## Checklist Quality Gate`
+   - `verdict: PASS`
+
+   Required task checklist shape:
+   - Every implementation work item has at least one `decomp-*` checklist row and one `test-*` checklist row.
+   - Every `decomp-*` row names a concrete route or file path.
+   - Every `decomp-*` row names one user/agent action.
+   - Every `decomp-*` row names one expected UI/API/DB result.
+   - Every `decomp-*` row names one verification artifact: test name, route probe, Playwright screenshot, SQL query, API response, type-check, migration proof, or CLI transcript.
+
+   Atomicity rubric:
+   - One observable behavior per `decomp-*` row.
+   - The row can pass or fail without reading hidden intent from the plan narrative.
+   - The row is small enough for a worker to implement, tick, and cite evidence for directly.
+   - Vague rows such as "theme management works", "UI implemented", "verified", "all screens", or "integration complete" are failures.
+
+   Minimum decomposition heuristics:
+   - UI route: at least empty/loading/loaded/error or the documented reason a state does not apply.
+   - CRUD surface: at least list, create, edit, detail, duplicate/delete/archive where applicable, and validation failure.
+   - API route: at least successful read/write, validation failure, and unauthorized/forbidden or documented auth bypass.
+   - DB/migration task: at least schema object, relationship/guard, policy/permission, seed/fixture or backfill, and smoke query.
+   - Editor/sidebar/CLI workflow: at least start, attach/open, enqueue action, observe result, timeout/error, and live refresh where applicable.
+
+   If the gate fails:
+   - Interactive: show the failing rows and invoke `rdc:plan <epic-id>` to repair the matrix before dispatch.
+   - Unattended: invoke `rdc:plan <epic-id> --unattended`, reload tasks, and run this gate once more.
+   - If the second gate fails, abort the build and return the failure list. Do not dispatch implementation agents.
+
+   **Plan verifier escalation:** A separate verifier agent is optional, not default. Dispatch one only when the plan touches 5+ UI routes, 3+ data/API boundaries, auth/security, production deployment, or when this rubric fails twice. The verifier reads the plan and work-item checklists only; it does not write code.
 
 4. **Read CLAUDE.md files** for all affected packages.
 
 5. **Classify each task** → assign agent type from the table above.
 
-5b. **Write a checklist into every work item before dispatching:**
-    For each task, append a checklist to its notes BEFORE setting to `in_progress`:
+5b. **Write or refresh the checklist into every work item before dispatching:**
+    For each task, append the exact `decomp-*` and `test-*` checklist rows to its notes BEFORE setting to `in_progress`:
     ```sql
     SELECT update_work_item_status('<id>'::uuid, 'in_progress',
-      '["CHECKLIST: [ ] <deliverable 1>, [ ] <deliverable 2>, [ ] tsc clean, [ ] route 200, [ ] committed"]'::jsonb
+      '["CHECKLIST: [ ] decomp-ui-route-state: <route/file> | action=<action> | expect=<result> | evidence=<artifact>, [ ] test-smoke-route: <route probe>, [ ] committed"]'::jsonb
     );
     ```
     The agent must complete every item on this checklist and return it checked off in AGENT_COMPLETE.
@@ -191,6 +231,13 @@ Read the task title and description, then:
      - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
      - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
+     - **The decomposition items from the work item's checklist** (all `decomp-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
+       ```
+       DECOMPOSITION CHECKLIST — you MUST implement/verify each row and tick it immediately via update_checklist_item:
+       - decomp-ui-xxx: <route/file> | action=<action> | expect=<result> | evidence=<artifact>
+       - decomp-api-xxx: <route/file> | action=<action> | expect=<result> | evidence=<artifact>
+       Tick each item as soon as that specific behavior is implemented and proven. Do NOT batch.
+       ```
      - **The test plan items from the work item's checklist** (all `test-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
        ```
        TEST PLAN — you MUST implement/verify each of these and tick them off via update_checklist_item:
@@ -263,6 +310,11 @@ Read the task title and description, then:
     - Runs `npx tsc --noEmit` for every touched app/package
     - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
     - Runs vitest for every touched package
+    - **Verifies checklist decomposition quality per work item before functional validation:**
+      - Every implementation work item has at least one `decomp-*` item and one `test-*` item
+      - Every `decomp-*` item includes route/file, action, expected result, and evidence artifact
+      - Any unchecked `decomp-*` item with `required: true` = work item CANNOT be set to `done`
+      - Any coarse or non-falsifiable `decomp-*` item = reopen to `todo` with the specific failure
     - **Verifies test plan completion per work item:**
       - For each `test-assert-*` checklist item: confirm a corresponding vitest test exists and passes
       - For each `test-smoke-*` checklist item: run the command and confirm exit code / HTTP status

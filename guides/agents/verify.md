@@ -37,6 +37,23 @@ If you're about to write any of these, STOP:
 
 Run these in order. All must pass. Capture output.
 
+### 0. Checklist decomposition quality
+
+Before code verification, inspect each work item checklist and the matching plan section.
+
+Required plan evidence:
+- `## Checklist Decomposition Matrix`
+- `## Checklist Quality Gate`
+- `verdict: PASS`
+
+Required work item evidence:
+- At least one `decomp-*` checklist item for every implementation work item
+- At least one `test-*` checklist item for every implementation work item
+- Each `decomp-*` item includes a route or file path, one action, one expected result, and one evidence artifact
+- Each `decomp-*` item is independently pass/fail; vague rows like "UI complete", "theme management works", or "integration verified" are failures
+
+If this check fails, stop validation for that item and reopen it. Do not mark a work item `done` when the checklist itself is not decomposed enough to prove completion.
+
 ### 1. Per-package vitest (every package touched)
 
 ```bash
@@ -107,6 +124,7 @@ $ npx tsc --noEmit --project packages/hail/tsconfig.json
 (no output — clean)
 
 ### Status
+Checklist quality: PASS
 PASS — safe to mark tasks done.
 ```
 
@@ -124,6 +142,7 @@ If any step fails: do NOT claim completion. Report the failure, fix it, re-run t
 When dispatching a verification agent, give them:
 - Exact list of packages/apps to verify
 - Explicit ban on `pnpm build` / `pnpm test` / `pnpm -r`
+- Work item checklists and the matching plan doc so `decomp-*` quality can be verified first
 - Required output format (above)
 - Instruction: "If any command fails, STOP and report. Do not fix. Do not continue."
 

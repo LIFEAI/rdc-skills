@@ -52,6 +52,66 @@ description: "No epic exists and you need architecture + task breakdown. Produce
    - Assign an agent type to each work package from the typed dispatch table in rdc:build. Include the guide file path (from `.rdc/guides/`, fallback `.rdc/guides/`) in each work package description.
    - Estimate: small (1 agent, <500 LOC), medium (1 agent, 500-1500 LOC), large (needs splitting)
 
+4b. **Build the checklist decomposition matrix (MANDATORY PRE-BUILD GATE):**
+
+   Before writing Supabase work items, create a `## Checklist Decomposition Matrix`
+   in the plan doc. This matrix is the source of truth for task checklists and
+   build verification.
+
+   Required columns:
+   - Work item ID or placeholder
+   - Atomic deliverable
+   - Surface type: `screen`, `state`, `action`, `api`, `db`, `migration`, `component`, `asset`, `tool`, `test`, `doc`
+   - Route or file path
+   - Preconditions / fixture data
+   - User or agent action
+   - Expected UI/API/DB result
+   - Verification artifact: test name, route probe, Playwright screenshot, SQL query, API response, type-check, migration proof, or CLI transcript
+   - Owner work package
+   - Status
+
+   Atomicity rubric:
+   - One observable behavior per row.
+   - Each row names a concrete route or file path.
+   - Each row names one concrete verification artifact.
+   - Each row can independently pass or fail.
+   - Each row is small enough for a worker to implement and tick without hidden intent.
+
+   Required decomposition by surface:
+   - UI screens: list empty, loading, loaded, error, create, edit, detail, delete/archive guard, mobile, and auth states where applicable.
+   - UI actions: open, search, filter, select, duplicate, save, assign, activate, archive, delete, import, apply, cancel where applicable.
+   - API routes: successful read/write, validation failure, unauthorized/forbidden, and side-effect verification where applicable.
+   - DB/migrations: table/column/index/policy/trigger/function, FK/guard, rollback or smoke query, and type exposure.
+   - CLI/sidebar/local tools: start, attach, enqueue, poll, reply, timeout/not-found, and live refresh where applicable.
+   - Visual work: each named screenshot and visual checkpoint gets its own row.
+   - Cross-system workflows: each handoff boundary gets its own row.
+
+   Minimum row-count heuristics:
+   - UI route: at least 4 rows.
+   - CRUD surface: at least 6 rows.
+   - API route: at least 3 rows.
+   - DB work package: at least 5 rows.
+   - Local editor/sidebar workflow: at least 5 rows.
+
+   Reject these checklist items as too coarse:
+   - "theme management works"
+   - "build all screens"
+   - "verify UI"
+   - "integration complete"
+   - "tests pass"
+
+   Replace them with rows like:
+   - `decomp-ui-theme-manager-loaded: /brands/[id]/theme shows owned theme rows with status, project usage, and actions; evidence: Playwright screenshot`
+   - `decomp-action-duplicate-theme: duplicate submits source brand_theme_id and creates a new editable brand-owned copy; evidence: vitest + DB query`
+   - `decomp-api-import-validation: POST /api/tools/theme-import rejects missing source URL with 400 JSON error; evidence: route probe`
+
+   Add a `## Checklist Quality Gate` section with:
+   - `verdict: PASS` only when every row passes the rubric.
+   - `failures:` list any coarse, missing, duplicate, or unverifiable rows.
+   - `deferred:` list any explicit out-of-scope rows.
+
+   Do not create build-ready work items unless this gate is `PASS`.
+
 5. **Write a test plan for each work package (MANDATORY):**
 
    Every work package MUST have a `test_plan` section with specific, concrete test items. Each item has a type:
@@ -65,6 +125,8 @@ description: "No epic exists and you need architecture + task breakdown. Produce
 
    **Rules for writing test plan items:**
    - Every item must be a specific, falsifiable assertion — not "write tests" or "verify it works"
+   - Every item must map to one or more rows in the Checklist Decomposition Matrix.
+   - A test plan item may summarize multiple checks only when the matrix still keeps those checks as separate atomic rows.
    - New functions/modules MUST have at least one `assert` item
    - API routes MUST have at least one `smoke` item
    - UI pages MUST have at least one `visual` item
@@ -91,6 +153,8 @@ description: "No epic exists and you need architecture + task breakdown. Produce
    ## Goal
    ## Design Decisions
    ## Work Packages (each with test plan)
+   ## Checklist Decomposition Matrix
+   ## Checklist Quality Gate
    ## Sequencing (what can parallelize, what depends on what)
    ## Risks & Mitigations
    ```
@@ -100,12 +164,16 @@ description: "No epic exists and you need architecture + task breakdown. Produce
    - Epic DoD MUST include: `{"id":"test-plan-verified","text":"All test plan items implemented and passing","required":true,"checked":false}`
    - Set `p_definition_of_done` on the epic — child tasks inserted under it will auto-inherit it as their checklist
    - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)` — checklist auto-hydrated from epic's DoD
-   - **Additionally, write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`:
+   - **Additionally, write decomposition rows as checklist items** on each task, using id format `decomp-<surface>-<slug>`.
+     The task checklist MUST include both the atomic `decomp-*` rows and the `test-*` verification rows.
+     The `decomp-*` row text must include the route/file, action, expected result, and evidence artifact.
+   - **Write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`:
      ```sql
      SELECT insert_work_item(
        p_parent_id := '<epic_id>',
        p_title := 'WP-2: AST Scanner',
        p_checklist := '[
+         {"id":"decomp-api-scan-success","text":"api: GET /api/layout/scan?dir=apps/studio/src returns 200 JSON with roots[] and warnings[]; evidence: route probe output","required":true,"checked":false},
          {"id":"test-assert-scanner-filters","text":"assert: scanFile returns only container components","required":true,"checked":false},
          {"id":"test-assert-nesting-warn","text":"assert: invalid nesting produces warnings","required":true,"checked":false},
          {"id":"test-smoke-scan-api","text":"smoke: GET /api/layout/scan returns 200","required":true,"checked":false},
@@ -114,7 +182,7 @@ description: "No epic exists and you need architecture + task breakdown. Produce
        ]'::jsonb
      );
      ```
-   - Agents MUST tick each `test-*` checklist item as they implement/verify it (via `update_checklist_item`)
+   - Agents MUST tick each `decomp-*` and `test-*` checklist item as they implement/verify it (via `update_checklist_item`)
    - `update_work_item_status('done')` will REJECT if any `required: true` item is unchecked — this is the enforcement gate
    - Set priorities: urgent/high/normal based on sequencing
 

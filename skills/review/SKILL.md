@@ -81,7 +81,8 @@ description: "Post-build quality gate: tsc, tests, stale docs, export conflicts 
 
 9. **Verification gate — dispatch the verify agent:**
    After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.
-   **Iron Law: no CLEAN verdict without fresh evidence.** Quote the vitest + tsc output in the report.
+   **Iron Law: no CLEAN verdict without fresh evidence.** Quote the checklist decomposition verdict, vitest output, and tsc output in the report.
+   The verify agent must reject any work item that lacks passed `decomp-*` checklist rows or whose rows are too coarse to prove one observable behavior at a time.
    If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.
 
 10. **Fix issues found:**
