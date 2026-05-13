@@ -140,30 +140,53 @@ function buildPluginCache(cacheDir, version, gitSha) {
 // Claude Code loads that directory AND the plugin cache, so any rdc skills left
 // there produce duplicate registrations and break the resolver.
 // This function nukes any entry whose frontmatter name starts with "rdc:".
+// Scans BOTH the immediate dir and nested .md files (e.g. `user/skill.md`,
+// `user/rdc-build/SKILL.md`) so pre-plugin orphans are caught regardless of
+// naming convention.
 function cleanUserSkills(userSkillsDir) {
   if (!fs.existsSync(userSkillsDir)) return 0;
   let removed = 0;
   for (const entry of fs.readdirSync(userSkillsDir, { withFileTypes: true })) {
     const candidate = path.join(userSkillsDir, entry.name);
-    let skillFile = null;
     if (entry.isDirectory()) {
-      // New format: <name>/SKILL.md or <name>/skill.md
+      // Subdir form: <name>/SKILL.md or <name>/skill.md
+      let skillFile = null;
       for (const sf of ['SKILL.md', 'skill.md']) {
         const p = path.join(candidate, sf);
         if (fs.existsSync(p)) { skillFile = p; break; }
       }
-    } else if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'skill.md' && entry.name !== 'SKILL.md' && entry.name !== 'README.md') {
-      // Old format: rdc-deploy.md flat file
-      skillFile = candidate;
+      if (!skillFile) continue;
+      const fm = readFrontmatter(skillFile);
+      if (fm.name && fm.name.startsWith('rdc:')) {
+        try { fs.rmSync(candidate, { recursive: true, force: true }); removed++; } catch {}
+      }
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      // ANY .md file at this level — including skill.md / SKILL.md / README.md
+      // if their frontmatter declares an rdc:* skill. A previous version skipped
+      // those names; that left an orphan rdc:build copy at user/skill.md which
+      // registered as a duplicate "user" skill.
+      const fm = readFrontmatter(candidate);
+      if (fm.name && fm.name.startsWith('rdc:')) {
+        try { fs.unlinkSync(candidate); removed++; } catch {}
+      }
     }
-    if (!skillFile) continue;
-    const fm = readFrontmatter(skillFile);
-    if (fm.name && fm.name.startsWith('rdc:')) {
-      try {
-        if (entry.isDirectory()) fs.rmSync(candidate, { recursive: true, force: true });
-        else fs.unlinkSync(candidate);
-        removed++;
-      } catch {}
+  }
+  return removed;
+}
+
+// Scrub legacy rdc orphans from ~/.claude/skills/ (top-level), not just user/.
+// Some older installs landed flat skill files alongside the plugin tree.
+function cleanGlobalSkillsRoot(skillsDir) {
+  if (!fs.existsSync(skillsDir)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
+    if (entry.name === 'user') continue; // handled separately
+    const candidate = path.join(skillsDir, entry.name);
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      const fm = readFrontmatter(candidate);
+      if (fm.name && fm.name.startsWith('rdc:')) {
+        try { fs.unlinkSync(candidate); removed++; } catch {}
+      }
     }
   }
   return removed;
@@ -192,11 +215,14 @@ function cleanStaleHooks(hooksDstDir) {
 }
 
 // ── Cache flush helper ────────────────────────────────────────────────────────
-function flushOldCaches(cacheBase, keepVersion) {
+// Only `latest/` is ever kept. Earlier versions wrote BOTH `<version>/` and
+// `latest/`, which caused the plugin loader to scan and register every rdc:*
+// skill twice (once per directory). The fix is permanent single-dir layout.
+function flushOldCaches(cacheBase /* keepVersion intentionally unused */) {
   if (!fs.existsSync(cacheBase)) return 0;
   let flushed = 0;
   for (const entry of fs.readdirSync(cacheBase)) {
-    if (entry === keepVersion || entry === 'latest') continue;
+    if (entry === 'latest') continue;
     try {
       fs.rmSync(path.join(cacheBase, entry), { recursive: true, force: true });
       flushed++;
@@ -211,7 +237,6 @@ function registerCLI(version, gitSha) {
   const mktDir     = path.join(pluginDir, 'marketplaces', MARKETPLACE);
   const mktPlugDir = path.join(mktDir, '.claude-plugin');
   const cacheBase  = path.join(pluginDir, 'cache', MARKETPLACE, 'rdc-skills');
-  const cacheDir   = path.join(cacheBase, version);
   const latestDir  = path.join(cacheBase, 'latest');
 
   // 1. Marketplace manifest
@@ -224,12 +249,11 @@ function registerCLI(version, gitSha) {
   knownMp[MARKETPLACE] = { source: { source: 'github', repo: 'LIFEAI/rdc-skills' }, installLocation: mktDir, lastUpdated: new Date().toISOString() };
   writeJson(kmpPath, knownMp, 4);
 
-  // 3. Flush stale version caches, then write versioned + stable latest
-  const flushed = flushOldCaches(cacheBase, version);
+  // 3. Flush every cache dir except `latest/`, then rewrite `latest/`. We
+  // intentionally do NOT keep a versioned dir — the plugin loader registers
+  // every dir it finds, so two dirs = duplicate skills.
+  const flushed = flushOldCaches(cacheBase);
   if (flushed > 0) info(`       flushed  : ${flushed} stale cache dir(s)`);
-  buildPluginCache(cacheDir, version, gitSha);
-  // Write to stable 'latest/' so open terminals can pick up changes if they
-  // re-read installed_plugins.json between skill invocations.
   if (fs.existsSync(latestDir)) fs.rmSync(latestDir, { recursive: true, force: true });
   buildPluginCache(latestDir, version, gitSha);
 
@@ -312,7 +336,6 @@ function registerCowork(version, gitSha) {
   for (const { dir, settingsFile } of bases) {
     const pluginsDir = path.join(dir, 'cowork_plugins');
     const cacheBase  = path.join(pluginsDir, 'cache', MARKETPLACE, 'rdc-skills');
-    const cacheDir   = path.join(cacheBase, version);
     const latestDir  = path.join(cacheBase, 'latest');
     const mktDir     = path.join(pluginsDir, 'marketplaces', MARKETPLACE);
     const mktPlugDir = path.join(mktDir, '.claude-plugin');
@@ -327,9 +350,8 @@ function registerCowork(version, gitSha) {
     knownMp[MARKETPLACE] = { source: { source: 'github', repo: 'LIFEAI/rdc-skills' }, installLocation: mktDir, lastUpdated: new Date().toISOString() };
     writeJson(kmpPath, knownMp, 4);
 
-    // Flush stale caches, write versioned + stable latest
-    flushOldCaches(cacheBase, version);
-    buildPluginCache(cacheDir, version, gitSha);
+    // Flush all non-latest caches and rewrite `latest/` only — single-dir layout
+    flushOldCaches(cacheBase);
     if (fs.existsSync(latestDir)) fs.rmSync(latestDir, { recursive: true, force: true });
     buildPluginCache(latestDir, version, gitSha);
 
@@ -622,6 +644,10 @@ async function main() {
     const userSkillsDir = path.join(claudeHome, 'skills', 'user');
     const purged = cleanUserSkills(userSkillsDir);
     if (purged > 0) ok(`[0.5a] Skills cleanup — removed ${purged} stale rdc: skill(s) from skills/user/`);
+    // Also scan the parent ~/.claude/skills/ for any flat-file rdc orphans.
+    const skillsRoot = path.join(claudeHome, 'skills');
+    const rootPurged = cleanGlobalSkillsRoot(skillsRoot);
+    if (rootPurged > 0) ok(`[0.5a] Skills cleanup — removed ${rootPurged} stale rdc: file(s) from skills/`);
   }
 
   // 0.5b. Stale hook cleanup — remove hooks we no longer ship
@@ -741,6 +767,53 @@ async function main() {
   console.log('');
   console.log('  \x1b[36mPreflight:\x1b[0m');
   runPreflight();
+
+  // 6.5 Post-install verification — duplication guard
+  console.log('');
+  console.log('  \x1b[36mPost-install verification:\x1b[0m');
+  let verifyFailed = false;
+  {
+    const cacheBase = path.join(claudeHome, 'plugins', 'cache', MARKETPLACE, 'rdc-skills');
+    const cacheDirs = fs.existsSync(cacheBase) ? fs.readdirSync(cacheBase) : [];
+    if (cacheDirs.length === 1 && cacheDirs[0] === 'latest') {
+      ok(`plugin cache    : 1 dir (latest/)`);
+    } else {
+      fail(`plugin cache    : expected exactly [latest/], found [${cacheDirs.join(', ')}]`);
+      verifyFailed = true;
+    }
+    const ipPath    = path.join(claudeHome, 'plugins', 'installed_plugins.json');
+    const installed = readJson(ipPath, { plugins: {} });
+    const rdcEntries = installed.plugins[PLUGIN_KEY] || [];
+    if (rdcEntries.length === 1) {
+      ok(`installed_plugins: 1 entry for ${PLUGIN_KEY}`);
+    } else {
+      fail(`installed_plugins: expected 1 entry, found ${rdcEntries.length}`);
+      verifyFailed = true;
+    }
+    const userSkillsDir = path.join(claudeHome, 'skills', 'user');
+    const stillThere = fs.existsSync(userSkillsDir)
+      ? fs.readdirSync(userSkillsDir).filter(f => {
+          const p = path.join(userSkillsDir, f);
+          const skillFile = fs.statSync(p).isDirectory()
+            ? ['SKILL.md','skill.md'].map(s => path.join(p, s)).find(fs.existsSync)
+            : (f.endsWith('.md') ? p : null);
+          if (!skillFile) return false;
+          const fm = readFrontmatter(skillFile);
+          return fm.name && fm.name.startsWith('rdc:');
+        })
+      : [];
+    if (stillThere.length === 0) {
+      ok(`skills/user/    : no rdc: orphans`);
+    } else {
+      fail(`skills/user/    : still has rdc: orphans: ${stillThere.join(', ')}`);
+      verifyFailed = true;
+    }
+  }
+  if (verifyFailed) {
+    console.log('');
+    fail('Post-install verification FAILED — duplicates or orphans remain. Investigate.');
+    process.exit(2);
+  }
 
   // Done
   console.log('');
