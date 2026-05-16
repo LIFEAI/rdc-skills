@@ -134,11 +134,57 @@ Severity rules:
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
 
+## Coolify Access — clauth + REST API
+
+All Coolify operations use the clauth daemon and the Coolify REST API directly.
+There is no Coolify MCP server. Do not reference `@masonator/coolify-mcp`.
+
+```bash
+# Get token (plain text — no JSON parsing needed)
+_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
+
+# List applications
+curl -s -H "Authorization: Bearer $_COOLIFY" \
+  https://deploy.regendevcorp.com/api/v1/applications
+
+# Get application details
+curl -s -H "Authorization: Bearer $_COOLIFY" \
+  https://deploy.regendevcorp.com/api/v1/applications/<uuid>
+
+# Deploy (trigger)
+curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
+  https://deploy.regendevcorp.com/api/v1/applications/<uuid>/deploy
+
+# Get deployment logs
+curl -s -H "Authorization: Bearer $_COOLIFY" \
+  https://deploy.regendevcorp.com/api/v1/deployments/<deployment-id>
+
+# Set env var
+curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"<KEY>","value":"<VALUE>"}' \
+  https://deploy.regendevcorp.com/api/v1/applications/<uuid>/envs
+
+# Set watch_paths
+curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
+  -H "Content-Type: application/json" \
+  -d '{"watch_paths":"apps/<name>/**\npackages/**"}' \
+  https://deploy.regendevcorp.com/api/v1/applications/<uuid>
+```
+
+**Never print `$_COOLIFY` to stdout.** Inline from clauth only — do not assign raw strings.
+
+If clauth daemon is not responding (`curl -s http://127.0.0.1:52437/ping` fails):
+```
+BLOCKED: clauth daemon is not responding.
+Fix: Run C:\Dev\regen-root\scripts\restart-clauth.bat, then unlock at http://127.0.0.1:52437
+I cannot proceed until this is resolved.
+```
+
 ## References
 
 - Type-specific checklists + DNS tree + gate commands: `docs/runbooks/coolify-deploy-checklist.md`
 - Rules / registry RPCs / hard limits: `.claude/context/coolify-deployment.md`
-- MCP server: `@masonator/coolify-mcp` (38 tools)
 - Infrastructure constants:
   ```
   Server UUID:     ih386anenvvvn6fy1umtyow0

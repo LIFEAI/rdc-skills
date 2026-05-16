@@ -49,6 +49,181 @@ const HOOKS_DIR = join(REPO_ROOT, "hooks");
 const PLUGIN_MANIFEST = join(REPO_ROOT, ".claude-plugin", "plugin.json");
 const PACKAGE_JSON = join(REPO_ROOT, "package.json");
 
+// ─── Guide-content validator constants ───────────────────────────────────────
+// Path to the regen-root project (sibling of rdc-skills).
+// Override with REGEN_ROOT env var when running from a non-standard location.
+const REGEN_ROOT = process.env.REGEN_ROOT || "C:/Dev/regen-root";
+
+// Terms that must NOT appear in guide/rule files as positive instructions.
+// A line is flagged only when it does NOT contain a known negation pattern.
+const GUIDE_BANNED_TERMS = [
+  "@masonator/coolify-mcp",
+  "@masonator",
+  "coolify-mcp",
+  "@regen/brand-studio",
+  "brand-studio",
+];
+
+// Negation patterns — if a line contains one of these, the banned-term
+// occurrence is an explicit "don't use" warning and should NOT be flagged.
+const GUIDE_NEGATION_PATTERNS = [
+  /\bdo not\b/i,
+  /\bnever\b/i,
+  /\bno such\b/i,
+  /\bdoes not exist\b/i,
+  /\bbanned\b/i,
+  /\bnot reference\b/i,
+  /\bnot use\b/i,
+  /\bavoid\b/i,
+  /\bremoved\b/i,
+  /\bdeprecated\b/i,
+  // Markdown table row showing a WRONG→CORRECT mapping (naming-corrections.md pattern)
+  /^\|[^|]*WRONG[^|]*\|/i,
+  // A table row where the term is in the WRONG column (first data column after the | WRONG | header)
+  // Heuristic: line starts with | and the term appears before the first CORRECT value
+  /^\|\s*(Brand Studio|brand-studio|@regen\/brand-studio|@masonator[^ |]*|coolify-mcp)[^|]*\|\s*\*\*/,
+];
+
+// Known valid clauth key names. Extend when new keys are added to the vault.
+// Source: C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md credential table
+//         + C:/Dev/regen-root/.claude/rules/clauth-endpoints.md
+const KNOWN_CLAUTH_KEYS = new Set([
+  "coolify-api",
+  "cloudflare",
+  "npm",
+  "supabase",
+  "supabase-anon",
+  "supabase-db",
+  "r2-access-key-id",
+  "r2-secret-key",
+  "anthropic",
+  "openai",
+  "github",
+  "github-token",
+  "vultr-dev-ssh",
+  "mcp-web-research-secret",
+  "mcp-regen-media-secret",
+  "web-research",
+  "regen-media",
+]);
+
+/**
+ * Audit a single guide or rule file for banned terms and clauth key validity.
+ *
+ * Returns an array of finding objects:
+ *   { level: 'error'|'warn', code: string, file: string, line: number, message: string }
+ */
+function auditGuideFile(filepath, relPath) {
+  const findings = [];
+  let text;
+  try {
+    text = readFileSync(filepath, "utf8");
+  } catch (e) {
+    findings.push({ level: "error", code: "guide-unreadable", file: relPath, line: 0, message: `cannot read: ${e.message}` });
+    return findings;
+  }
+
+  const lines = text.split(/\r?\n/);
+  lines.forEach((line, i) => {
+    const lineNo = i + 1;
+
+    // Check banned terms (skip negation lines and comment lines)
+    for (const term of GUIDE_BANNED_TERMS) {
+      if (line.includes(term)) {
+        const isNegated = GUIDE_NEGATION_PATTERNS.some((re) => re.test(line));
+        if (!isNegated) {
+          findings.push({
+            level: "error",
+            code: "guide-banned-term",
+            file: relPath,
+            line: lineNo,
+            message: `banned term "${term}" found as positive instruction — replace with clauth+REST pattern`,
+          });
+        }
+      }
+    }
+
+    // Check clauth /v/<key> references — flag unknown key names
+    // Pattern: /v/some-key-name (standalone path, not inside a larger URL path)
+    const clauthKeyRe = /\bhttp:\/\/127\.0\.0\.1:52437\/v\/([\w-]+)/g;
+    let m;
+    while ((m = clauthKeyRe.exec(line)) !== null) {
+      const key = m[1];
+      if (!KNOWN_CLAUTH_KEYS.has(key)) {
+        findings.push({
+          level: "warn",
+          code: "guide-clauth-key-unknown",
+          file: relPath,
+          line: lineNo,
+          message: `clauth key "${key}" not in known key list — verify it exists in the vault`,
+        });
+      }
+    }
+  });
+
+  return findings;
+}
+
+/**
+ * Run the guide-content validator across:
+ *   1. C:/Dev/rdc-skills/guides/**\/*.md  (base guides shipped with the plugin)
+ *   2. REGEN_ROOT/.rdc/guides/**\/*.md    (project-level agent guides)
+ *   3. REGEN_ROOT/.claude/rules/**\/*.md  (project auto-loaded rules)
+ *
+ * Also scans fixture guides under scripts/fixtures/guides/ when GUIDE_FIXTURE_DIR is set
+ * (used by the self-test's own test suite).
+ *
+ * Returns { findings[], ok, stats }
+ */
+function runGuideContentValidator({ fixtureDir } = {}) {
+  const allFindings = [];
+  let filesScanned = 0;
+
+  function scanDir(dir, prefix) {
+    if (!existsSync(dir)) return;
+    let entries;
+    try { entries = readdirSync(dir); } catch { return; }
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      let stat;
+      try { stat = statSync(fullPath); } catch { continue; }
+      if (stat.isDirectory()) {
+        scanDir(fullPath, `${prefix}/${entry}`);
+      } else if (entry.endsWith(".md")) {
+        const relPath = `${prefix}/${entry}`;
+        const findings = auditGuideFile(fullPath, relPath);
+        allFindings.push(...findings);
+        filesScanned++;
+      }
+    }
+  }
+
+  // 1. Base guides in rdc-skills repo
+  scanDir(GUIDES_DIR, "guides");
+
+  // 2. Regen-root agent guides
+  scanDir(join(REGEN_ROOT, ".rdc", "guides"), "regen-root/.rdc/guides");
+
+  // 3. Regen-root auto-loaded rules
+  scanDir(join(REGEN_ROOT, ".claude", "rules"), "regen-root/.claude/rules");
+
+  // 4. Fixture directory (for self-test's own test assertions)
+  if (fixtureDir && existsSync(fixtureDir)) {
+    scanDir(fixtureDir, "fixtures");
+  }
+
+  const errors = allFindings.filter((f) => f.level === "error");
+  const warnings = allFindings.filter((f) => f.level === "warn");
+
+  return {
+    findings: allFindings,
+    errors,
+    warnings,
+    ok: errors.length === 0,
+    stats: { files_scanned: filesScanned, errors: errors.length, warnings: warnings.length },
+  };
+}
+
 const STANDARD_BANNER = [
   "> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`",
   "> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.",
@@ -775,6 +950,8 @@ function main() {
       agentResults = agentFiles.map((f) => auditAgentGuide(join(AGENT_GUIDES_DIR, f)));
     }
 
+    const guideValidatorResultJson = !ONLY_SKILL ? runGuideContentValidator() : null;
+
     const failed = results.filter((r) => r.errors.length > 0);
     const warned = results.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
     const clean = results.filter((r) => r.errors.length === 0 && r.warnings.length === 0);
@@ -785,11 +962,13 @@ function main() {
       ...manifestAudit.findings.filter((f) => f.level === "error"),
       ...duplicateFindings.filter((f) => f.level === "error"),
       ...orphanHookFindings.filter((f) => f.level === "error"),
+      ...(guideValidatorResultJson ? guideValidatorResultJson.errors : []),
     ];
     const globalWarnings = [
       ...manifestAudit.findings.filter((f) => f.level === "warn"),
       ...duplicateFindings.filter((f) => f.level === "warn"),
       ...orphanHookFindings.filter((f) => f.level === "warn"),
+      ...(guideValidatorResultJson ? guideValidatorResultJson.warnings : []),
     ];
     const fail =
       failed.length > 0 ||
@@ -819,6 +998,13 @@ function main() {
             findings: manifestAudit.findings,
           },
           global_findings: [...duplicateFindings, ...orphanHookFindings],
+          guide_content_validator: guideValidatorResultJson
+            ? {
+                ok: guideValidatorResultJson.ok,
+                stats: guideValidatorResultJson.stats,
+                findings: guideValidatorResultJson.findings,
+              }
+            : null,
           results: results.map((r) => ({
             skill: r.skill,
             file: r.file,
@@ -918,6 +1104,28 @@ function main() {
     }
   }
 
+  // Guide-content validation — check .rdc/guides + .claude/rules for banned terms and invalid clauth keys
+  let guideValidatorResult = null;
+  if (!ONLY_SKILL) {
+    guideValidatorResult = runGuideContentValidator();
+    if (guideValidatorResult.stats.files_scanned > 0) {
+      console.log(`\nguide-content validator (${guideValidatorResult.stats.files_scanned} files)\n`);
+      console.log("─".repeat(80));
+      if (guideValidatorResult.findings.length === 0) {
+        console.log("  ✓ no banned terms or invalid clauth keys found");
+      } else {
+        for (const f of guideValidatorResult.findings) {
+          const tag = f.level === "error" ? "FAIL" : "WARN";
+          console.log(`  [${tag}] ${f.file}:${f.line}  ${f.code}  ${f.message}`);
+        }
+      }
+      console.log("─".repeat(80));
+      const gErrors = guideValidatorResult.errors.length;
+      const gWarnings = guideValidatorResult.warnings.length;
+      console.log(`total: ${guideValidatorResult.stats.files_scanned}  |  errors: ${gErrors}  |  warnings: ${gWarnings}`);
+    }
+  }
+
   // Cross-skill checks — deferred until all audits complete
   let duplicateFindings = [];
   let orphanHookFindings = [];
@@ -944,11 +1152,13 @@ function main() {
     ...manifestAudit.findings.filter((f) => f.level === "error"),
     ...duplicateFindings.filter((f) => f.level === "error"),
     ...orphanHookFindings.filter((f) => f.level === "error"),
+    ...(guideValidatorResult ? guideValidatorResult.errors : []),
   ];
   const globalWarnings = [
     ...manifestAudit.findings.filter((f) => f.level === "warn"),
     ...duplicateFindings.filter((f) => f.level === "warn"),
     ...orphanHookFindings.filter((f) => f.level === "warn"),
+    ...(guideValidatorResult ? guideValidatorResult.warnings : []),
   ];
 
   const fail =

@@ -120,11 +120,25 @@ Severity rules:
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
 
+## Coolify Access — clauth + REST API
+
+All Coolify operations use the clauth daemon and the Coolify REST API directly.
+There is no Coolify MCP server — do not reference `@masonator/coolify-mcp`.
+
+```bash
+_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
+curl -s -H "Authorization: Bearer $_COOLIFY" https://deploy.regendevcorp.com/api/v1/applications
+```
+
+If clauth daemon is not responding:
+```
+BLOCKED: clauth daemon not responding. Run scripts\restart-clauth.bat, unlock at http://127.0.0.1:52437
+```
+
 ## References
 
 - Type-specific checklists + DNS tree + gate commands: `docs/runbooks/coolify-deploy-checklist.md`
 - Rules / registry RPCs / hard limits: `.claude/rules/coolify-deployment.md`
-- MCP server: `@masonator/coolify-mcp` (38 tools)
 - Infrastructure constants:
   ```
   Server UUID:     ih386anenvvvn6fy1umtyow0
