@@ -1,13 +1,13 @@
 ---
-name: terminal-config
-description: "Read and safely modify Windows Terminal settings and cell startup sequencing. Contains the canonical file locations, profile GUIDs, keybinding map, and what NEVER to change."
+name: rdc:terminal-config
+description: "Usage `rdc:terminal-config <task>` — read and safely modify Windows Terminal settings and cell startup sequencing. Contains canonical file locations, profile GUIDs, keybinding map, and what NEVER to change."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
-# terminal-config — Windows Terminal & Cell Startup Reference
+# rdc:terminal-config — Windows Terminal & Cell Startup Reference
 
 ## When to Use
 - Before modifying any terminal setting, profile, or keybinding
@@ -31,7 +31,7 @@ description: "Read and safely modify Windows Terminal settings and cell startup 
 | File | Path | Purpose |
 |------|------|---------|
 | **Terminal settings** | `C:\Users\DaveLadouceur\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json` | Main config — profiles, keybindings, color schemes |
-| **Cell init script** | `C:\Dev\regen-root\scripts\cell-init.cmd` | Launched by each cell profile. Sets CELL_ROLE, prints banner, runs `claude --append-system-prompt` |
+| **Cell init script** | `C:\Dev\regen-root\scripts\cell-init.ps1` | Launched by each cell profile (PowerShell 7). Sets CELL_ROLE, prints banner, runs `claude --append-system-prompt` |
 | **Cell state dir** | `C:\Dev\regen-root\.cell-state\` | PID lockfiles per cell (`sv.lock`, `cell-portal.lock`, etc.) |
 | **Claude keybindings** | `C:\Users\DaveLadouceur\.claude\keybindings.json` | Claude Code keybindings (separate from Terminal) |
 | **Claude settings** | `C:\Dev\regen-root\.claude\settings.json` | Project-level Claude Code settings, hooks, permissions |
@@ -46,9 +46,9 @@ Every profile has a fixed GUID. Do not change them.
 | GUID | Name | Tab Color | Purpose |
 |------|------|-----------|---------|
 | `{574e775e-4f2a-5b96-ac1e-a2962a402336}` | PowerShell | — | **Default profile** — PowerShell 7 Core |
-| `{e7c1128b-e51f-4eba-bcdb-85f550c31b97}` | SV | `#1A6B3C` (green) | Supervisor cell — full repo access, runs `cell-init.cmd sv` |
-| `{190a2f39-f6ad-4638-8fef-e4c7aa58c349}` | Claude | `#B91C1C` (red) | Claude conversation cell, runs `cell-init.cmd sv` |
-| `{2d0248ef-7bb7-4b9e-b381-c4aa1f570f49}` | Codex | `#0F766E` (teal) | Codex AI cell — runs `powershell -NoLogo -NoExit -Command codex` |
+| `{e7c1128b-e51f-4eba-bcdb-85f550c31b97}` | SV | `#1A6B3C` (green) | Supervisor cell — full repo access, runs `cell-init.ps1 sv` |
+| `{190a2f39-f6ad-4638-8fef-e4c7aa58c349}` | Claude | `#B91C1C` (red) | Claude conversation cell, runs `cell-init.ps1 sv` |
+| `{2d0248ef-7bb7-4b9e-b381-c4aa1f570f49}` | Codex | `#0F766E` (teal) | Codex AI cell — runs `pwsh.exe -NoLogo -NoExit -Command codex` |
 | `{767642b0-606c-468c-89a0-4573df6fcdaf}` | VS Code | `#2D5986` (blue) | Launches `code-safe C:\Dev\regen-root` |
 | `{6cbd327a-5b5e-4e83-96f6-041615382d36}` | PowerShell (Admin) | `#1E3A5F` (dark blue) | Elevated PowerShell — uses `LIFEAI Slate` color scheme |
 | `{0caa0dad-35be-5f56-a8ff-afceeeaa6101}` | Command Prompt | — | Legacy CMD — visible but rarely used |
@@ -57,13 +57,14 @@ Every profile has a fixed GUID. Do not change them.
 ### Profile commandlines
 
 ```
-SV / Claude:   cmd.exe /k "C:\Dev\regen-root\scripts\cell-init.cmd" sv
-Codex:         powershell.exe -NoLogo -NoExit -Command codex
+SV / Claude:   pwsh.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "C:\Dev\regen-root\scripts\cell-init.ps1" sv
+Codex:         pwsh.exe -NoLogo -NoExit -Command codex
 VS Code:       cmd.exe /c start "" code-safe C:\Dev\regen-root
 Admin PS:      powershell.exe -NoLogo   (+ elevate: true)
 ```
 
 All cell profiles set `"startingDirectory": "C:\\Dev\\regen-root"`.
+SV / Claude / Codex all run on **PowerShell 7 (`pwsh.exe`)** — never bare `powershell.exe` (that resolves to legacy Windows PowerShell 5.1).
 
 ---
 
@@ -140,15 +141,14 @@ Font defaults (in `profiles.defaults`):
 
 ## Cell Startup Sequencing
 
-`cell-init.cmd` is the startup script for all cell profiles. It:
+`cell-init.ps1` is the PowerShell 7 startup script for all cell profiles. It:
 
-1. Accepts `ROLE` arg (`sv`, `cell-portal`, `cell-data`, `cell-cs2`, `cell-mktg`, `cell-infra`, `specialist`)
-2. Looks up `LABEL`, `COLOR`, `SCOPE`, `PATHS`, `PROMPT_SCOPE` from a role table
+1. Accepts `Role` arg (`sv`, `cell-portal`, `cell-data`, `cell-cs2`, `cell-mktg`, `cell-infra`, `specialist`)
+2. Looks up `Label`, `Color`, `Scope`, `Paths`, `Prompt` from the `$roles` hashtable
 3. Prints a colored banner
 4. Writes a PID lockfile to `.cell-state\<role>.lock`
 5. Runs `git log` filtered to that cell's path scope
-6. Opens VS Code for the project
-7. Launches: `claude --append-system-prompt "<PROMPT_SCOPE>"`
+6. Launches: `claude --append-system-prompt "<Prompt>"`
 
 ### Cell role → prompt scope mapping
 
@@ -184,9 +184,9 @@ Font defaults (in `profiles.defaults`):
 
 ### When editing cell startup
 
-Edit `C:\Dev\regen-root\scripts\cell-init.cmd` — it's in the repo, so changes are tracked.
-- Adding a new role: add a new `if "%ROLE%"=="..."` block with all five vars
-- Changing scope: update `PATHS` and `PROMPT_SCOPE` only — don't touch banner/lockfile/git logic
+Edit `C:\Dev\regen-root\scripts\cell-init.ps1` — it's in the repo, so changes are tracked.
+- Adding a new role: add a new entry to the `$roles` hashtable with all five keys (`Label`, `Color`, `Scope`, `Paths`, `Prompt`)
+- Changing scope: update `Paths` and `Prompt` only — don't touch banner/lockfile/git logic
 
 ---
 
@@ -211,7 +211,7 @@ If Windows Terminal settings keep getting corrupted or misedited, **WezTerm** is
 - Config is a Lua file (`~/.wezterm.lua` or `C:\Users\<user>\.config\wezterm\wezterm.lua`)
 - Committed to git — every change is a reviewable diff, not an opaque JSON blob
 - Startup layouts (tabs, panes, commands) are defined programmatically
-- Equivalent to current setup: `wezterm.mux.spawn_window()` per cell with `args` set to `cmd.exe /k cell-init.cmd <role>`
+- Equivalent to current setup: `wezterm.mux.spawn_window()` per cell with `args` set to `pwsh.exe -NoLogo -NoExit -File cell-init.ps1 <role>`
 - Download: https://wezfurlong.org/wezterm/installation.html
 
 Migration path: copy existing color schemes as `wezterm.color.get_default_colors()` override tables, map keybindings to `config.keys` array, define tab bar with cell roles.
