@@ -1,6 +1,6 @@
 ---
 name: rdc:plan
-description: "No epic exists and you need architecture + task breakdown. Produces design decisions, tradeoffs, and Supabase epics/tasks with DoD checklists that feed rdc:build. Use after rdc:preplan or when given clear architectural direction."
+description: "Usage `rdc:plan <topic>` — No epic exists and you need architecture + task breakdown. Produces design decisions, tradeoffs, and Supabase epics/tasks with DoD checklists that feed rdc:build. Use after rdc:preplan or when given clear architectural direction."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -182,8 +182,9 @@ description: "No epic exists and you need architecture + task breakdown. Produce
        ]'::jsonb
      );
      ```
-   - Agents MUST tick each `decomp-*` and `test-*` checklist item as they implement/verify it (via `update_checklist_item`)
-   - `update_work_item_status('done')` will REJECT if any `required: true` item is unchecked — this is the enforcement gate
+   - Agents MUST tick each `decomp-*` and `test-*` checklist item as they implement/verify it via `update_checklist_item(..., p_actor_session_id := '<agent-session-id>', p_actor_role := 'agent')`
+   - Agents submit `implementation_report.codeflow_post`, then move work to `review`; validators close `done`
+   - `update_work_item_status('done', ..., p_actor_role := 'validator')` rejects missing reports, unchecked required items, and supervisor/validator re-ticks
    - Set priorities: urgent/high/normal based on sequencing
 
 7. **Report results:**

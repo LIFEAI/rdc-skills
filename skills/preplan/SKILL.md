@@ -1,6 +1,6 @@
 ---
 name: rdc:preplan
-description: "Before committing to an architecture, research unknowns first. Codebase scan + web search, no code written, no work items created. Output feeds rdc:plan. Use for open-ended approach questions."
+description: "Usage `rdc:preplan <topic>` — Before committing to an architecture, research unknowns first. Codebase scan + web search, no code written, no work items created. Output feeds rdc:plan. Use for open-ended approach questions."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

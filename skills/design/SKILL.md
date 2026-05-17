@@ -1,6 +1,6 @@
 ---
 name: rdc:design
-description: "RDC-owned design work for Studio, Palette Library, and token-aware UI systems. Use for Rampant color work or design-system-first builds owned by the design cell. Not for general UI polish — use impeccable for that."
+description: "Usage `rdc:design <topic>` — RDC-owned design work for Studio, Palette Library, and token-aware UI systems. Use for Rampant color work or design-system-first builds owned by the design cell. Not for general UI polish — use impeccable for that."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -96,7 +96,7 @@ Project docs to read for Studio work:
      ```powershell
      curl.exe -s -X POST "http://127.0.0.1:52437/studio/debug/start" `
        -H "Content-Type: application/json" `
-       -d "{\"brandSlug\":\"<brandSlug>\",\"appSlug\":\"<appSlug>\",\"repoRoot\":\"C:/Dev/regen-root\",\"cwd\":\"C:/Dev/regen-root\",\"modeDefault\":\"direct_edit\",\"startedBy\":\"claude-cli\"}"
+       -d "{\"brandSlug\":\"<brandSlug>\",\"appSlug\":\"<appSlug>\",\"repoRoot\":\"{PROJECT_ROOT}\",\"cwd\":\"{PROJECT_ROOT}\",\"modeDefault\":\"direct_edit\",\"startedBy\":\"claude-cli\"}"
      ```
    - Expected successful response shape:
      ```json
@@ -128,7 +128,7 @@ Project docs to read for Studio work:
    - Allowed terminal statuses are `done`, `error`, `blocked`, and `needs_reference`.
    - Convenience helper, equivalent to the canonical start call plus attach URL construction:
      ```powershell
-     node scripts/studio-debug-start.mjs --target <url|domain|brand|app|file> [--brand <slug>] [--app <slug>] [--mode direct_edit|variant_edit|reference_replace|note] [--studio-origin http://localhost:3011] [--connector http://127.0.0.1:52437] [--repo-root C:/Dev/regen-root] [--cwd C:/Dev/regen-root] [--dev-url <url>] [--dev-command <command>] [--no-launch]
+     node scripts/studio-debug-start.mjs --target <url|domain|brand|app|file> [--brand <slug>] [--app <slug>] [--mode direct_edit|variant_edit|reference_replace|note] [--studio-origin http://localhost:3011] [--connector http://127.0.0.1:52437] [--repo-root {PROJECT_ROOT}] [--cwd {PROJECT_ROOT}] [--dev-url <url>] [--dev-command <command>] [--no-launch]
      ```
    - Helper output contract:
      ```txt

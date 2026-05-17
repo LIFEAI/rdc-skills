@@ -1,6 +1,6 @@
 ---
 name: rdc:overnight
-description: "Unattended end-to-end: drain the entire work queue autonomously (preplan → plan → build → review → report). Use when leaving Claude to run unsupervised for an extended session."
+description: "Usage `rdc:overnight [epic-id|label=<label>]` — Unattended end-to-end: drain the entire work queue autonomously (preplan → plan → build → review → report). Use when leaving Claude to run unsupervised for an extended session."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -29,13 +29,13 @@ description: "Unattended end-to-end: drain the entire work queue autonomously (p
 **First action — set the overnight sentinel** so the `no-stop-open-epics` Stop hook engages (interactive sessions are not gated by it):
 
 ```bash
-mkdir -p C:/Dev/regen-root/.rdc && touch C:/Dev/regen-root/.rdc/overnight.lock
+mkdir -p {PROJECT_ROOT}/.rdc && touch {PROJECT_ROOT}/.rdc/overnight.lock
 ```
 
 **Last action at end of run (success OR failure) — remove the sentinel:**
 
 ```bash
-rm -f C:/Dev/regen-root/.rdc/overnight.lock
+rm -f {PROJECT_ROOT}/.rdc/overnight.lock
 ```
 
 If the sentinel file does not exist, the Stop hook will NOT block — which means interactive sessions stop freely and only `rdc:overnight` is held to the "drain the queue" contract.

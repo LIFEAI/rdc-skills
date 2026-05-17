@@ -47,6 +47,7 @@ All skills have been converted from project-specific to generic/portable:
     ├── fixit/SKILL.md
     ├── status/SKILL.md
     ├── report/SKILL.md
+    ├── co-develop/SKILL.md   [peer-aware Claude/Codex co-development]
     ├── collab/SKILL.md       [claude.ai ↔ Claude Code relay]
     ├── handoff/SKILL.md
     ├── prototype/SKILL.md
@@ -91,6 +92,9 @@ All skills have been converted from project-specific to generic/portable:
 
 ### Quality (1)
 - rdc:self-test — static lint (tier1) + smoke tests (tier2)
+
+### Collaboration (1)
+- rdc:co-develop — peer-aware Claude/Codex co-development over clauth
 
 ### Agent Guides (10, in `guides/agents/`) — [agent-only — dispatched by rdc:build, not user-invocable]
 - frontend — React, UI, Tailwind

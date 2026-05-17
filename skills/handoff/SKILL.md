@@ -1,6 +1,6 @@
 ---
 name: rdc:handoff
-description: "Convert a finalized plan or prototype into CLI-ready artifacts: writes .rdc/plans/, creates Supabase work items with DoD checklists, registers prototype if present. Bridge between planning session and rdc:build."
+description: "Usage `rdc:handoff [--from-prototype <id>]` — Convert a finalized plan or prototype into CLI-ready artifacts: writes .rdc/plans/, creates Supabase work items with DoD checklists, registers prototype if present. Bridge between planning session and rdc:build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

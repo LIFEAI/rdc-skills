@@ -1,11 +1,33 @@
 {
   "name": "rdc",
-  "version": "0.9.32",
+  "version": "0.9.33",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
     "email": "support@lifeai.tools"
   },
   "homepage": "https://github.com/LIFEAI/rdc-skills",
-  "repository": "https://github.com/LIFEAI/rdc-skills"
+  "repository": "https://github.com/LIFEAI/rdc-skills",
+  "skills": [
+    "build",
+    "co-develop",
+    "collab",
+    "deploy",
+    "design",
+    "fixit",
+    "handoff",
+    "help",
+    "overnight",
+    "plan",
+    "preplan",
+    "prototype",
+    "release",
+    "report",
+    "review",
+    "self-test",
+    "status",
+    "terminal-config",
+    "watch",
+    "workitems"
+  ]
 }

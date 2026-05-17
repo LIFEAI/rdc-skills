@@ -1,6 +1,6 @@
 ---
 name: rdc:collab
-description: "Bidirectional relay with a claude.ai session — read inbox, do work, write outbox, loop. Use when coordinating with a parallel claude.ai conversation."
+description: "Usage `rdc:collab --session <session_id>` — Bidirectional relay with a claude.ai session — read inbox, do work, write outbox, loop. Use when coordinating with a parallel claude.ai conversation."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

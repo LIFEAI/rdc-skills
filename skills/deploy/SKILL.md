@@ -1,6 +1,6 @@
 ---
 name: rdc:deploy
-description: "Deploy an app to Coolify (production) or PM2 (staging), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, health checks, and post-deploy verification."
+description: "Usage `rdc:deploy <slug> [new|diagnose|audit] [--fix]` — Deploy an app to Coolify (production) or PM2 (staging), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, health checks, and post-deploy verification."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

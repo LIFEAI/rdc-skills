@@ -1,6 +1,6 @@
 ---
 name: rdc:help
-description: "Show all rdc:* skills with full argument syntax. Call when unsure which skill to use or what args it takes."
+description: "Usage `rdc:help` — Show all rdc:* skills with full argument syntax. Call when unsure which skill to use or what args it takes."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -52,6 +52,7 @@ description: "Show all rdc:* skills with full argument syntax. Call when unsure 
 | `rdc:prototype` | `rdc:prototype <description>` — JSX mock for review |
 | `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
 | `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
+| `rdc:co-develop` | `rdc:co-develop <start\|resume\|send\|poll\|status\|stop>` — Claude/Codex peer-aware co-development |
 | `rdc:design` | `rdc:design <command\|brief>` — RDC/Studio design, tokens, palettes, themes, Rampa CLI |
 
 ## Agent guides (dispatched by rdc:build, not user-invocable)
@@ -89,6 +90,7 @@ Project lead says → invoke
 "hand this off" / "give to agents"      → rdc:handoff
 "show me what it looks like"            → rdc:prototype
 "add to backlog" / "create a ticket"    → rdc:workitems
+"work together" / "partner review"       → rdc:co-develop start <name>
 "design/tokens/palette/theme"           → rdc:design <command>
 "what commands" / "what skills"         → rdc:help
 ```
@@ -99,4 +101,4 @@ Project lead says → invoke
 - NEVER commit to `main` without explicit approval. Default branch is `develop`.
 - NEVER overlap agents on the same files.
 - ALWAYS update work items in real time via RPCs (see `.claude/rules/work-items-rpc.md`).
-- ALWAYS credentials via clauth daemon: `curl -s http://127.0.0.1:52437/get/<service>`.
+- ALWAYS credentials via clauth daemon: `curl -s http://127.0.0.1:52437/v/<service>` (returns plain text).

@@ -1,6 +1,6 @@
 ---
 name: rdc:workitems
-description: "Manual work item CRUD outside the normal build flow: add to backlog, mark done, update status, list open epics, query by label."
+description: "Usage `rdc:workitems [add|done|status|list|query]` — Manual work item CRUD outside the normal build flow: add to backlog, mark done, update status, list open epics, query by label."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -80,9 +80,14 @@ Est: <hours>',
 
 ```sql
 SELECT update_work_item_status('<uuid>'::uuid, 'in_progress');
-SELECT update_work_item_status('<uuid>'::uuid, 'done', '["What was completed"]'::jsonb);
+SELECT update_work_item_status('<uuid>'::uuid, 'review', '["Implementation complete; ready for validator"]'::jsonb, '<agent-session-id>', 'agent');
+SELECT update_work_item_status('<uuid>'::uuid, 'done', '["Validator verified implementation report, CodeFlow post, and checklist evidence"]'::jsonb, '<validator-session-id>', 'validator');
 SELECT update_work_item_status('<uuid>'::uuid, 'blocked', '["Why it is blocked"]'::jsonb);
 ```
+
+Non-epic `done` is a validator-only close and requires an existing
+`implementation_report.codeflow_post`, checked required checklist evidence, and
+originating-agent tick audit.
 
 ## Read Tasks in an Epic
 

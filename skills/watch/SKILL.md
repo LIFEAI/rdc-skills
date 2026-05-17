@@ -1,6 +1,6 @@
 ---
 name: rdc:watch
-description: "Open a live browser viewer tailing this session's activity. Zero infrastructure — pure filesystem + static HTML."
+description: "Usage `rdc:watch` — Open a live browser viewer tailing this session's activity. Zero infrastructure — pure filesystem + static HTML."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

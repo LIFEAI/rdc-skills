@@ -1,6 +1,6 @@
 ---
 name: rdc:report
-description: "Write the nightly session summary to .rdc/reports/YYYY-MM-DD.md covering completed work, open items, per-project progress, and infra status. Call at session end."
+description: "Usage `rdc:report` — Write the nightly session summary to .rdc/reports/YYYY-MM-DD.md covering completed work, open items, per-project progress, and infra status. Call at session end."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

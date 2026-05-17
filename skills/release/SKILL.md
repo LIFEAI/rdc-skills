@@ -1,6 +1,6 @@
 ---
 name: rdc:release
-description: "Promote develop→main and deploy to production for any LIFEAI repo (clauth, rdc-skills, regen-root, etc.), or promote a staged app with rdc:release promote <slug>. Requires dev verification first."
+description: "Usage `rdc:release [promote <slug>|rdc-skills|clauth]` — Promote develop→main and deploy to production for any LIFEAI repo (clauth, rdc-skills, regen-root, etc.), or promote a staged app with rdc:release promote <slug>. Requires dev verification first."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -186,7 +186,7 @@ Only run this after the channel event confirms success — don't poll npm indepe
 - **rdc-skills:** none
 
 #### 8. Smoke test
-- **clauth:** `curl -s http://127.0.0.1:52437/get/supabase-anon | python3 -c "import sys,json; print('ok' if json.load(sys.stdin).get('value') else 'fail')"` — expect `ok`
+- **clauth:** `curl -s http://127.0.0.1:52437/v/supabase-anon` — expect a non-empty JWT string
 - **rdc-skills:** read frontmatter of one new/updated SKILL.md — parse succeeds
 
 ---

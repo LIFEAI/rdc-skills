@@ -1,6 +1,6 @@
 ---
 name: rdc:build
-description: "You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
+description: "Usage `rdc:build <epic-id>` — You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -28,9 +28,9 @@ description: "You have a planned epic with tasks ready to execute. Dispatches pa
 
 Every dispatched agent MUST read two files before starting — in this order:
 1. `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` — credentials, git rules, completion report format
-   (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` if `.rdc/` does not exist)
+   (fallback: `.rdc/guides/agent-bootstrap.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
 2. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
-   (fallback: `{PROJECT_ROOT}/.rdc/guides/<type>.md`)
+   (fallback: `.rdc/guides/<type>.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
 
 Include both lines in every agent prompt:
 ```
@@ -233,14 +233,14 @@ Read the task title and description, then:
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
      - **The decomposition items from the work item's checklist** (all `decomp-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
        ```
-       DECOMPOSITION CHECKLIST — you MUST implement/verify each row and tick it immediately via update_checklist_item:
+       DECOMPOSITION CHECKLIST — you MUST implement/verify each row and tick it immediately via update_checklist_item(..., p_actor_session_id := '<your-session-id>', p_actor_role := 'agent'):
        - decomp-ui-xxx: <route/file> | action=<action> | expect=<result> | evidence=<artifact>
        - decomp-api-xxx: <route/file> | action=<action> | expect=<result> | evidence=<artifact>
        Tick each item as soon as that specific behavior is implemented and proven. Do NOT batch.
        ```
      - **The test plan items from the work item's checklist** (all `test-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
        ```
-       TEST PLAN — you MUST implement/verify each of these and tick them off via update_checklist_item:
+       TEST PLAN — you MUST implement/verify each of these and tick them off via update_checklist_item(..., p_actor_session_id := '<your-session-id>', p_actor_role := 'agent'):
        - test-assert-xxx: <description> → write a vitest test that proves this
        - test-smoke-xxx: <description> → run the command and confirm the result
        - test-visual-xxx: <description> → note: delegate to UI audit (you cannot verify this yourself)
@@ -326,7 +326,7 @@ Read the task title and description, then:
 
     **If the validator finds failures:** fix them in a new wave, then re-run the validator. Do not skip.
     **File existence alone is NOT verification.** A route returning 500 is a failure regardless of tsc passing.
-    **Unchecked test plan items are a hard gate** — `update_work_item_status('done')` will raise an exception if any `required: true` checklist item is unchecked.
+    **Unchecked test plan items are a hard gate** — `update_work_item_status('done', ..., p_actor_role := 'validator')` will raise an exception if any `required: true` checklist item is unchecked, missing agent-session tick evidence, or re-ticked by a supervisor/validator.
 
 11. **After verification passes:**
     - All wave commits are already on develop and pushed (Step 9 pushes after each wave merge).

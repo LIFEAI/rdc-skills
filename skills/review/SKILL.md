@@ -1,6 +1,6 @@
 ---
 name: rdc:review
-description: "Post-build quality gate: tsc, tests, stale docs, export conflicts across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
+description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc, tests, stale docs, export conflicts across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -75,9 +75,10 @@ description: "Post-build quality gate: tsc, tests, stale docs, export conflicts 
    ORDER BY created_at DESC;
    ```
    For each orphaned task found:
-   - If it clearly belongs to an open epic → attach it: `UPDATE work_items SET parent_id = '<epic-id>' WHERE id = '<task-id>'`
+   - If it clearly belongs to an open epic → **do not run raw SQL**. No RPC exists for re-parenting. Create a work item: `SELECT insert_work_item(p_title := 'Re-parent orphaned task <task-id> to epic <epic-id>', p_priority := 'normal', p_source := 'agent')` and flag for supervisor to re-parent manually.
    - If unclear → report (interactive) or flag in REVIEW_STATUS (unattended)
    - Never silently leave orphaned tasks
+   - **⛔ Raw `UPDATE work_items SET parent_id = ...` is forbidden** — bypasses RLS and all constraint checks
 
 9. **Verification gate — dispatch the verify agent:**
    After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.

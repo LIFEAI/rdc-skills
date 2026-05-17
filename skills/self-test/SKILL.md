@@ -1,6 +1,6 @@
 ---
 name: rdc:self-test
-description: "Validate all rdc:* skills, plugin manifest, and tooling consistency. Use after editing skills, upgrading the plugin, or when a skill behaves unexpectedly."
+description: "Usage `rdc:self-test [--strict]` — Validate all rdc:* skills, plugin manifest, and tooling consistency. Use after editing skills, upgrading the plugin, or when a skill behaves unexpectedly."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

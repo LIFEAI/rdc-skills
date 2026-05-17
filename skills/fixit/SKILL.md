@@ -1,6 +1,6 @@
 ---
 name: rdc:fixit
-description: "Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, closes. The only sanctioned bypass of rdc:build."
+description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, closes. The only sanctioned bypass of rdc:build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -88,21 +88,31 @@ fi
 
 ### 6. Close and clean up
 
-Submit implementation report first, then mark done:
+Submit implementation report first, move to review, then close as validator:
 
 ```sql
 SELECT submit_implementation_report('<id>'::uuid,
-  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[],"transactional":false,"memory_records":[]}'::jsonb
+  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[],"transactional":false,"memory_records":[],"codeflow_post":{"agent_session_id":"<agent-session-id>","summary":"<what changed and why>","files_changed":["<path>"],"verification":["<command/evidence>"],"commit":"<hash optional>"}}'::jsonb
+);
+
+SELECT update_work_item_status('<id>'::uuid, 'review',
+  '["Fixed via rdc:fixit; ready for validation"]'::jsonb,
+  '<agent-session-id>',
+  'agent'
 );
 
 SELECT update_work_item_status('<id>'::uuid, 'done',
-  '["Fixed via rdc:fixit"]'::jsonb
+  '["Validator verified rdc:fixit report, CodeFlow post, and checklist evidence"]'::jsonb,
+  '<validator-session-id>',
+  'validator'
 );
 ```
 
 If the fix touched a transactional flow, API boundary, or package contract, set `"transactional": true` and populate `memory_records` (see `agent-bootstrap.md`), then run:
 ```bash
 node scripts/work-item-memory.mjs <work-item-id>
+# Note: verify script exists first: ls {PROJECT_ROOT}/scripts/work-item-memory.mjs
+# If the script is absent, skip this step and note it in the implementation report.
 ```
 
 ```bash

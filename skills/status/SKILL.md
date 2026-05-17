@@ -1,6 +1,6 @@
 ---
 name: rdc:status
-description: "Read-only snapshot of open epics, work items, Coolify health, blockers, and next recommended action. Safe to call anytime. Start here when disoriented or resuming a session."
+description: "Usage `rdc:status` — Read-only snapshot of open epics, work items, Coolify health, blockers, and next recommended action. Safe to call anytime. Start here when disoriented or resuming a session."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -59,6 +59,8 @@ description: "Read-only snapshot of open epics, work items, Coolify health, bloc
 6. **Dev server health (PM2):**
    SSH into the Coolify server and check PM2 process state:
    ```bash
+   # Note: clauth key name for the SSH key may vary by project. Common names: ssh-key-path, vultr-ssh-key, dev-ssh-key.
+   # Check available keys with: curl -s http://127.0.0.1:52437/list-services
    SSH_KEY=$(curl -s http://127.0.0.1:52437/v/ssh-key-path)
    ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no root@64.237.54.189 "pm2 jlist 2>/dev/null"
    ```
