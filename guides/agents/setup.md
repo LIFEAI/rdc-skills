@@ -142,7 +142,7 @@ Use `mcp__claude_ai_Supabase__execute_sql` — no `project_id` needed.
 ## Work Items
 SELECT get_open_epics();
 SELECT insert_work_item(p_title := '...', p_priority := 'high');
-SELECT update_work_item_status('<id>'::uuid, 'done');
+SELECT update_work_item_status('<id>'::uuid, 'review', '["Implementation complete; ready for validator"]'::jsonb, '<agent-session-id>', 'agent');
 Create work items BEFORE starting work.
 
 ## Completion Report
@@ -206,11 +206,13 @@ agents, manages git, enforces hooks, and ships to production.
 
 | Capability | Tool |
 |-----------|------|
-| Read/write repo files | `fs_read`, `fs_write`, `fs_glob`, `fs_grep` |
+| Read/write/import repo files | `fs_read`, `fs_write`, `fs_write_chunk`, `fs_ingest_url`, `fs_import_git_files`, `fs_glob`, `fs_grep` |
 | Query Supabase | Supabase MCP `execute_sql` |
 | GitHub operations | Github Proxy MCP |
 | Credentials | clauth MCP `clauth_get` |
 | Trigger Claude Code | `monkey_dispatch` MCP |
+
+For filesystem decisions, load `rdc:fs-mcp`. It defines when to use direct FS writes, chunked writes, URL ingest, or GitHub-branch import into the dirty local monorepo.
 
 ## Two-Claude Relay
 
