@@ -132,7 +132,7 @@ Read the task title and description, then:
 9. **As agents complete:**
    - Verify commit landed on the development branch
    - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
-   - Set work item to `done` with notes
+   - Ensure the agent submitted `implementation_report.codeflow_post`, then set the work item to `review`; the validator closes `done`
    - Continue to next wave
 
    **If an agent fails:**
@@ -142,7 +142,7 @@ Read the task title and description, then:
      BUILD_STATUS: { wave, tasks_done, tasks_failed, commits, escalated: true }
      ```
 
-10. **Final verification gate (mandatory — before marking epic done):**
+10. **Final verification gate (mandatory — before marking work or epic done):**
     Dispatch the verify agent (see `guides/agents/verify.md`) across every package/app touched in this build.
     The Iron Law: **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
     - Run `npx vitest run --dir <pkg>` fresh for each touched package

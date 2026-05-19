@@ -7,7 +7,7 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`), then `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md` (fallback: `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md`).
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 
@@ -82,6 +82,7 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
 
 9. **Verification gate — dispatch the verify agent:**
    After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.
+   Apply `guides/engineering-behavior.md` while reviewing: flag unnecessary abstraction, drive-by refactors, missing assumptions, hidden uncertainty, out-of-scope edits, and prose-only verification.
    **Iron Law: no CLEAN verdict without fresh evidence.** Quote the checklist decomposition verdict, vitest output, and tsc output in the report.
    The verify agent must reject any work item that lacks passed `decomp-*` checklist rows or whose rows are too coarse to prove one observable behavior at a time.
    If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.

@@ -37,7 +37,7 @@ After `apply_migration`: always verify with queries.
 ```sql
 SELECT get_open_epics();
 SELECT insert_work_item(p_title := 'Task', p_priority := 'high', p_labels := ARRAY['data'], p_source := 'agent');
-SELECT update_work_item_status('<uuid>'::uuid, 'done');
+SELECT update_work_item_status('<uuid>'::uuid, 'review', '["Implementation complete; ready for validator"]'::jsonb, '<agent-session-id>', 'agent');
 SELECT get_work_items_by_epic('<epic-uuid>'::uuid);
 ```
 

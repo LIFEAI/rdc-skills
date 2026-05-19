@@ -10,6 +10,10 @@ You are a subagent dispatched by the rdc:build supervisor. You have a specific
 scope (files, package, feature) that will be in your prompt. Stay in that scope.
 NEVER modify files outside it.
 
+Read `guides/engineering-behavior.md` next when it is available. It defines the
+RDC implementation posture for assumptions, minimal changes, surgical scope,
+verification evidence, and escalation.
+
 ---
 
 ## Credentials — Daemon Access Pattern
@@ -85,6 +89,18 @@ Read the project-specific agent-bootstrap.md overlay for exact connection detail
 Never run `pnpm build` or equivalent full builds locally — they consume excessive memory.
 Type-check only: `npx tsc --noEmit --project <path>/tsconfig.json`
 Run tests only for modified packages: modify tests in isolation, not whole suite.
+
+### No Foreground Windows
+
+Agent-launched processes must not steal focus. This is a hard local-operator
+rule, not a preference.
+
+- Playwright must run headless. Do not use `--headed`, `--ui`, `codegen`, `open`, `show-report`, or `PWDEBUG=1` in agent sessions.
+- Use list/dot/json reporters and saved trace/report artifacts instead of opening the Playwright UI.
+- PowerShell helpers must use `-WindowStyle Hidden -NonInteractive`, or a hidden wrapper.
+- `Start-Process` must include `-WindowStyle Hidden` or `-WindowStyle Minimized`.
+- `cmd /c start` must use `/min` for intentionally visible tools or `/b` for background work.
+- Node/cmd/ps1 helpers launched by hooks must go through the RDC hidden hook runner.
 
 Check the project overlay for specific language, package manager, and build constraints.
 
@@ -183,36 +199,83 @@ If you discover that fixing your assigned task would also require changing files
 
 ---
 
-## ⛔ Implementation Report Contract
+## ⛔ Implementation Report + CodeFlow Exit Contract
 
-Every agent MUST follow this protocol before closing any work item as `done`.
+Every implementation agent MUST follow this protocol before moving a work item
+to `review`. Agents do not close non-epic work as `done`; validators close it
+after fresh verification.
 
 ### Step 1 — Tick checklist items as you complete them
 
 ```sql
-SELECT update_checklist_item('<work-item-id>'::uuid, 'item-id', true);
+SELECT update_checklist_item(
+  '<work-item-id>'::uuid,
+  'item-id',
+  true,
+  '<agent-session-id>',
+  'agent',
+  'rpc'
+);
 ```
 
-Call this for each item AS you complete it — not all at once at the end.
+Call this for each item AS you complete it — not all at once at the end. The
+database records every tick in `work_item_checklist_events`. Supervisor and
+validator re-ticks are rejected by the exit gate.
 
 ### Step 2 — Submit implementation report BEFORE marking done
 
 ```sql
 SELECT submit_implementation_report(
   '<work-item-id>'::uuid,
-  '{"tldr":"...","assumptions":[],"deviations":[],"uncertainty":[],"detail":"...","flags":[]}'::jsonb
+  '{
+    "tldr":"...",
+    "assumptions":[],
+    "deviations":[],
+    "uncertainty":[],
+    "detail":"...",
+    "flags":[],
+    "codeflow_post":{
+      "agent_session_id":"<agent-session-id>",
+      "summary":"...",
+      "files_changed":["path/to/file"],
+      "verification":["command or evidence"],
+      "commit":"<optional commit hash>"
+    }
+  }'::jsonb
 );
 ```
 
 Returns `{ flags_count, deviations_count, has_deviations }`. Include this signal in your `AGENT_COMPLETE` report.
 
-### Step 3 — Mark done
+### Step 3 — Move to review
 
 ```sql
-SELECT update_work_item_status('<work-item-id>'::uuid, 'done');
+SELECT update_work_item_status(
+  '<work-item-id>'::uuid,
+  'review',
+  '["Implementation complete; ready for validator"]'::jsonb,
+  '<agent-session-id>',
+  'agent'
+);
 ```
 
-If any `required: true` checklist item is still unchecked, the DB raises EXCEPTION — fix it first.
+If the report or `codeflow_post` is missing, the database raises EXCEPTION.
+
+### Validator close — mark done only after fresh review
+
+```sql
+SELECT update_work_item_status(
+  '<work-item-id>'::uuid,
+  'done',
+  '["Validator verified implementation report, CodeFlow post, and checklist evidence"]'::jsonb,
+  '<validator-session-id>',
+  'validator'
+);
+```
+
+If any `required: true` checklist item is still unchecked, was re-ticked by a
+supervisor/validator, or was ticked by a different session than the originating
+agent, the DB and PreToolUse hook reject the close.
 
 ### Supervisor workflow
 

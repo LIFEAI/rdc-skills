@@ -7,7 +7,7 @@ description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 m
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
-> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`).
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`), then `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md` (fallback: `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md`).
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 
@@ -73,6 +73,10 @@ Do the minimal work. Scope creep rule: if you discover the fix requires more tha
 1. Close the work item: `update_work_item_status('<id>', 'blocked', '["Escalated — scope exceeded fixit threshold"]')`
 2. Delete the marker file
 3. Tell the user to use `/rdc:build` instead
+
+Apply `guides/engineering-behavior.md`: state material assumptions in the
+implementation report, avoid speculative abstractions, touch only required
+files, and verify behavior before moving the work item to `review`.
 
 ### 5. Commit
 

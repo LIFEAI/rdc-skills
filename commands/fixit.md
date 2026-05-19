@@ -87,11 +87,23 @@ else
 fi
 ```
 
-### 6. Close and clean up
+### 6. Report, review, close, and clean up
 
 ```sql
+SELECT submit_implementation_report('<id>'::uuid,
+  '{"tldr":"<one sentence>","assumptions":[],"deviations":[],"uncertainty":[],"detail":"<what was fixed>","flags":[],"transactional":false,"memory_records":[],"codeflow_post":{"agent_session_id":"<agent-session-id>","summary":"<what changed and why>","files_changed":["<path>"],"verification":["<command/evidence>"],"commit":"<hash optional>"}}'::jsonb
+);
+
+SELECT update_work_item_status('<id>'::uuid, 'review',
+  '["Fixed via rdc:fixit; ready for validation"]'::jsonb,
+  '<agent-session-id>',
+  'agent'
+);
+
 SELECT update_work_item_status('<id>'::uuid, 'done',
-  '["Fixed via rdc:fixit"]'::jsonb
+  '["Validator verified rdc:fixit report, CodeFlow post, and checklist evidence"]'::jsonb,
+  '<validator-session-id>',
+  'validator'
 );
 ```
 

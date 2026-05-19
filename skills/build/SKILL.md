@@ -29,12 +29,14 @@ description: "Usage `rdc:build <epic-id>` — You have a planned epic with tasks
 Every dispatched agent MUST read two files before starting — in this order:
 1. `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` — credentials, git rules, completion report format
    (fallback: `.rdc/guides/agent-bootstrap.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
-2. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
+2. `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md` — assumptions, minimal changes, surgical scope, verification evidence
+   (fallback: `.rdc/guides/engineering-behavior.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
+3. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
    (fallback: `.rdc/guides/<type>.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
 
 Include both lines in every agent prompt:
 ```
-"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."
+"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/engineering-behavior.md (fallback: .rdc/guides/engineering-behavior.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."
 ```
 
 | Agent Type | Guide File | When to dispatch |
@@ -212,7 +214,7 @@ Read the task title and description, then:
    You are a frontend agent building <WP name>. Work item: <uuid>.
    Scope: <one sentence>. Files: <list>. Verification: tsc --noEmit.
    Set item to review when done, return AGENT_COMPLETE with verification evidence.
-   Read .rdc/guides/agent-bootstrap.md + .rdc/guides/frontend.md before starting.
+   Read .rdc/guides/agent-bootstrap.md + .rdc/guides/engineering-behavior.md + .rdc/guides/frontend.md before starting.
    ```
 
    **When the supervisor has NOT read the plan** (e.g. dispatching from a fresh `rdc:build` call with
@@ -224,6 +226,7 @@ Read the task title and description, then:
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
+     - `"Read {PROJECT_ROOT}/.rdc/guides/engineering-behavior.md (fallback: .rdc/guides/engineering-behavior.md) before editing; follow it for assumptions, minimal changes, surgical scope, evidence, and escalation."`
      - Specific files to create/modify (or omit if forked agent inherits plan context)
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
@@ -299,6 +302,7 @@ Read the task title and description, then:
 
     ```
     "Read C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md then C:/Dev/regen-root/.rdc/guides/verify.md.
+     Read C:/Dev/regen-root/.rdc/guides/engineering-behavior.md before validating scope, deviations, and evidence.
      Validate these work items: [list of IDs and titles].
      Apps touched: [list].
      Git diff since build start: [attach or reference].

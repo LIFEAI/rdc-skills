@@ -57,8 +57,8 @@ SELECT insert_work_item(
   p_source := 'agent'
 );
 
--- Update
-SELECT update_work_item_status('<uuid>'::uuid, 'done', '["What was done"]'::jsonb);
+-- Implementation agents submit report + CodeFlow post, then move to review
+SELECT update_work_item_status('<uuid>'::uuid, 'review', '["Implementation complete; ready for validator"]'::jsonb, '<agent-session-id>', 'agent');
 ```
 
 **NEVER write raw INSERT/UPDATE against work items.**

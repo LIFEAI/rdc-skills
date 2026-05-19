@@ -58,7 +58,7 @@ if (-not (Test-Path $hooksDir)) {
 }
 
 $srcHooks  = Join-Path $repoRoot "hooks"
-$hookFiles = Get-ChildItem -Path $srcHooks -Filter "*.js" -ErrorAction SilentlyContinue
+$hookFiles = Get-ChildItem -Path $srcHooks -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @(".js", ".ps1") }
 foreach ($f in $hookFiles) {
     Copy-Item -Path $f.FullName -Destination (Join-Path $hooksDir $f.Name) -Force
 }
@@ -85,47 +85,53 @@ if ($SkipHooks) {
         SessionStart = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-cwd.js`"" },
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-stale-work-items.js`""; statusMessage = "Checking for stale work items..." }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-cwd.js`"" },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-stale-work-items.js`""; statusMessage = "Checking for stale work items..." }
                 )
             }
         )
         PreToolUse = @(
             [PSCustomObject]@{
+                hooks   = @(
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/foreground-process-gate.js`""; statusMessage = "Checking foreground process policy..." },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/work-item-exit-gate.js`""; statusMessage = "Checking work item exit gates..." }
+                )
+            },
+            [PSCustomObject]@{
                 matcher = "Bash"
                 hooks   = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/require-work-item-on-commit.js`"" }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/require-work-item-on-commit.js`"" }
                 )
             }
         )
         PostToolUse = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/check-services.js`"" }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-services.js`"" }
                 )
             }
         )
         PreCompact = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/precompact-log.js`"" }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/precompact-log.js`"" }
                 )
             }
         )
         PostCompact = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/postcompact-log.js`"" },
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/restart-brief.js`""; statusMessage = "Writing restart brief..." }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/postcompact-log.js`"" },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/restart-brief.js`""; statusMessage = "Writing restart brief..." }
                 )
             }
         )
         Stop = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." },
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." },
-                    [PSCustomObject]@{ type = "command"; command = "node `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
                 )
             }
         )

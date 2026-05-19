@@ -88,5 +88,5 @@ Never hardcode hex values in components. Always use CSS variables from the app's
 - NEVER overlap with other agents on the same files
 - NEVER modify files outside your assigned scope
 - After completing: commit with descriptive message, push *(skip push if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
-- Update work item to `done` via `update_work_item_status()`
+- Submit `implementation_report.codeflow_post`, then update work item to `review` via `update_work_item_status(..., p_actor_role := 'agent')`; validators close `done`
 - Write tests FIRST — red → implement → green

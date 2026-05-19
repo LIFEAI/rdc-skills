@@ -124,6 +124,20 @@ function auditGuideFile(filepath, relPath) {
   }
 
   const lines = text.split(/\r?\n/);
+
+  if (
+    relPath === "guides/agent-bootstrap.md" &&
+    !text.includes("guides/engineering-behavior.md")
+  ) {
+    findings.push({
+      level: "error",
+      code: "guide-engineering-behavior-missing",
+      file: relPath,
+      line: 1,
+      message: "agent bootstrap must reference guides/engineering-behavior.md",
+    });
+  }
+
   lines.forEach((line, i) => {
     const lineNo = i + 1;
 

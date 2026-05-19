@@ -77,6 +77,18 @@ function copyDir(src, dst, ext) {
   return count;
 }
 
+function copyHookFiles(src, dst) {
+  if (!fs.existsSync(src)) { warn(`Source not found: ${src}`); return 0; }
+  fs.mkdirSync(dst, { recursive: true });
+  const files = fs.readdirSync(src).filter(f => /\.(?:js|ps1)$/i.test(f));
+  let count = 0;
+  for (const f of files) {
+    const s = path.join(src, f);
+    if (fs.statSync(s).isFile()) { fs.copyFileSync(s, path.join(dst, f)); count++; }
+  }
+  return count;
+}
+
 function copyDirRecursive(src, dst) {
   if (!fs.existsSync(src)) return;
   fs.mkdirSync(dst, { recursive: true });
@@ -86,6 +98,22 @@ function copyDirRecursive(src, dst) {
     if (entry.isDirectory()) copyDirRecursive(s, d);
     else fs.copyFileSync(s, d);
   }
+}
+
+function copyMissingProjectGuides(projectRoot) {
+  if (!projectRoot) return 0;
+  const src = path.join(repoRoot, 'guides');
+  const dst = path.join(projectRoot, '.rdc', 'guides');
+  if (!fs.existsSync(src) || !fs.existsSync(dst)) return 0;
+  let copied = 0;
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    const target = path.join(dst, entry.name);
+    if (fs.existsSync(target)) continue;
+    fs.copyFileSync(path.join(src, entry.name), target);
+    copied++;
+  }
+  return copied;
 }
 
 function readJson(p, fallback = {}) {
@@ -207,6 +235,29 @@ function cleanStaleHooks(hooksDstDir) {
   let removed = 0;
   for (const f of ORPHANED_HOOKS) {
     const p = path.join(hooksDstDir, f);
+    if (fs.existsSync(p)) {
+      try { fs.unlinkSync(p); removed++; } catch {}
+    }
+  }
+  return removed;
+}
+
+// Project-local hookify docs were a temporary workaround for work item exit
+// enforcement. The plugin hook is now authoritative, so installs clean those
+// local shims from known RDC workspaces instead of leaving two gates to drift.
+function cleanProjectHookifyShims(projectRoot) {
+  if (!projectRoot) return 0;
+  const hookifyDir = path.join(projectRoot, '.claude');
+  if (!fs.existsSync(hookifyDir)) return 0;
+  const stale = [
+    'hookify.work-item-done-gate-bash.local.md',
+    'hookify.work-item-done-gate-mcp.local.md',
+    'hookify.work-item-review-gate-bash.local.md',
+    'hookify.work-item-review-gate-mcp.local.md',
+  ];
+  let removed = 0;
+  for (const f of stale) {
+    const p = path.join(hookifyDir, f);
     if (fs.existsSync(p)) {
       try { fs.unlinkSync(p); removed++; } catch {}
     }
@@ -479,7 +530,7 @@ function buildZip(version) {
         ? 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'
         : 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
       execSync(
-        `"${psExe}" -NoProfile -Command "Compress-Archive -Path '${tmp}\\*' -DestinationPath '${zipPath}' -Force"`,
+        `"${psExe}" -NoProfile -NonInteractive -WindowStyle Hidden -Command "Compress-Archive -Path '${tmp}\\*' -DestinationPath '${zipPath}' -Force"`,
         { stdio: 'pipe' }
       );
       fs.rmSync(tmp, { recursive: true, force: true });
@@ -498,7 +549,10 @@ function buildZip(version) {
 function buildHooksConfig(hooksDir) {
   const base = hooksDir.replace(/\\/g, '/');
   const cmd  = (file, msg) => {
-    const entry = { type: 'command', command: `node "${base}/${file}"` };
+    const command = process.platform === 'win32'
+      ? `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${base}/run-hidden-hook.ps1" "${base}/${file}"`
+      : `node "${base}/${file}"`;
+    const entry = { type: 'command', command };
     if (msg) entry.statusMessage = msg;
     return entry;
   };
@@ -507,9 +561,15 @@ function buildHooksConfig(hooksDir) {
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
     ]}],
-    PreToolUse: [{ matcher: 'Bash', hooks: [
-      cmd('require-work-item-on-commit.js'),
-    ]}],
+    PreToolUse: [
+      { hooks: [
+        cmd('foreground-process-gate.js', 'Checking foreground process policy...'),
+        cmd('work-item-exit-gate.js', 'Checking work item exit gates...'),
+      ]},
+      { matcher: 'Bash', hooks: [
+        cmd('require-work-item-on-commit.js'),
+      ]},
+    ],
     PostToolUse: [{ hooks: [
       cmd('check-services.js'),
     ]}],
@@ -654,6 +714,8 @@ async function main() {
   {
     const staleRemoved = cleanStaleHooks(hooksDst);
     if (staleRemoved > 0) ok(`[0.5b] Hook cleanup — removed ${staleRemoved} orphaned hook file(s)`);
+    const shimRemoved = cleanProjectHookifyShims(codexRoot);
+    if (shimRemoved > 0) ok(`[0.5b] Hook cleanup — removed ${shimRemoved} project-local work-item hookify shim(s)`);
   }
 
   // 0.5. Legacy cleanup — remove old commands/rdc/ (pre-plugin-system format)
@@ -722,9 +784,7 @@ async function main() {
       } catch {}
       try {
         if (process.platform === 'win32') {
-          const winLink   = linkPath.replace(/\//g, '\\');
-          const winTarget = target.replace(/\//g, '\\');
-          execSync(`cmd /c mklink /J "${winLink}" "${winTarget}"`, { stdio: 'pipe' });
+          fs.symlinkSync(target, linkPath, 'junction');
         } else {
           fs.symlinkSync(target, linkPath, 'dir');
         }
@@ -736,12 +796,18 @@ async function main() {
     } else {
       info('[2.7] Symlinks   — no rdc skill links created (skills may already be linked)');
     }
+    const projectGuideCount = copyMissingProjectGuides(codexRoot);
+    if (projectGuideCount > 0) {
+      ok(`[2.8] Guides     — ${projectGuideCount} missing guide(s) copied to ${path.join(codexRoot, '.rdc', 'guides')}`);
+    } else {
+      info('[2.8] Guides     — project .rdc/guides already has base guide files or is absent');
+    }
   } else {
     info('[2.7] Symlinks   — skipped (no codex root found)');
   }
 
   // 3. Hook files
-  const hookCount = copyDir(hooksSrc, hooksDst, '.js');
+  const hookCount = copyHookFiles(hooksSrc, hooksDst);
   ok(`[3/6] Hook files — ${hookCount} file(s) → ${hooksDst}`);
 
   // 4. Hook wiring

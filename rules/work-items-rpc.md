@@ -135,6 +135,10 @@ const { data } = await supabase.rpc('insert_work_item', {
 
 Transition a work item's status. Auto-manages `completed_at`.
 
+**Hard gate:** implementation agents do not set non-epic work directly to `done`.
+They submit a report and move the item to `review`. A validator closes it as
+`done` only after fresh verification.
+
 **Supabase SQL:**
 ```sql
 SELECT update_work_item_status(
@@ -144,8 +148,18 @@ SELECT update_work_item_status(
 
 SELECT update_work_item_status(
   'work-item-uuid'::uuid,
+  'review',
+  '["Implementation complete; ready for validator"]'::jsonb,
+  'agent-session-id',
+  'agent'
+);
+
+SELECT update_work_item_status(
+  'work-item-uuid'::uuid,
   'done',
-  '["Completed by agent session xyz"]'::jsonb
+  '["Validator verified implementation report, CodeFlow post, and checklist evidence"]'::jsonb,
+  'validator-session-id',
+  'validator'
 );
 ```
 
@@ -158,8 +172,18 @@ const { data } = await supabase.rpc('update_work_item_status', {
 
 const { data } = await supabase.rpc('update_work_item_status', {
   p_id: itemId,
+  p_status: 'review',
+  p_notes_append: ['Implementation complete; ready for validator'],
+  p_actor_session_id: agentSessionId,
+  p_actor_role: 'agent'
+});
+
+const { data } = await supabase.rpc('update_work_item_status', {
+  p_id: itemId,
   p_status: 'done',
-  p_notes_append: ['Completed by agent session xyz']
+  p_notes_append: ['Validator verified implementation report, CodeFlow post, and checklist evidence'],
+  p_actor_session_id: validatorSessionId,
+  p_actor_role: 'validator'
 });
 ```
 
@@ -170,10 +194,13 @@ const { data } = await supabase.rpc('update_work_item_status', {
 | `p_id` | uuid | yes | work_item ID |
 | `p_status` | text | yes | One of: `todo`, `in_progress`, `blocked`, `review`, `done`, `archived` |
 | `p_notes_append` | jsonb | no | Array of strings appended to existing notes |
+| `p_actor_session_id` | text | review/done | Current agent or validator session ID |
+| `p_actor_role` | text | review/done | `agent` for `review`, `validator` for `done` |
 
 **Behavior:**
 - Setting `done` auto-sets `completed_at = now()`
-- Setting `done` raises EXCEPTION if any `required: true` checklist item has `checked: false` — DoD gate
+- Setting non-epic work to `review` raises EXCEPTION unless `implementation_report.codeflow_post` exists and caller role is `agent`
+- Setting non-epic work to `done` raises EXCEPTION unless current status is `review`, caller role is `validator`, `implementation_report.codeflow_post` exists, every required checklist item is checked, and required checklist evidence was ticked by the originating agent session
 - Setting `todo`, `in_progress`, `blocked`, or `review` clears `completed_at`
 - `updated_at` always refreshed to current timestamp
 - Raises exception if ID not found
@@ -190,7 +217,10 @@ const { data } = await supabase.rpc('update_work_item_status', {
 SELECT update_checklist_item(
   'work-item-uuid'::uuid,
   'tsc-clean',   -- string id of the checklist item
-  true           -- checked state
+  true,          -- checked state
+  'agent-session-id',
+  'agent',
+  'rpc'
 );
 ```
 
@@ -201,8 +231,13 @@ SELECT update_checklist_item(
 | `p_work_item_id` | uuid | yes | the work item ID |
 | `p_item_id` | text | yes | the `id` field of the checklist item |
 | `p_checked` | boolean | yes | `true` = checked, `false` = unchecked |
+| `p_actor_session_id` | text | yes for checked=true | originating implementation agent session ID |
+| `p_actor_role` | text | yes for checked=true | must be `agent` for completion evidence ticks |
+| `p_event_source` | text | no | source label, default `rpc` |
 
 Call this as each checklist item is completed — not all at once at the end.
+The tick is written to `work_item_checklist_events`; supervisor or validator
+re-ticks are rejected by the exit gate.
 
 **Returns:** updated checklist JSONB array.
 
@@ -210,7 +245,7 @@ Call this as each checklist item is completed — not all at once at the end.
 
 ### 5. submit_implementation_report — File agent completion narrative
 
-MUST be called BEFORE `update_work_item_status('done')`.
+MUST be called BEFORE `update_work_item_status(..., 'review', ...)`.
 
 **Supabase SQL:**
 ```sql
@@ -222,7 +257,14 @@ SELECT submit_implementation_report(
     "deviations": [],
     "uncertainty": [],
     "detail": "Full narrative",
-    "flags": []
+    "flags": [],
+    "codeflow_post": {
+      "agent_session_id": "agent-session-id",
+      "summary": "What changed and why",
+      "files_changed": ["path/to/file"],
+      "verification": ["command or evidence"],
+      "commit": "optional commit hash"
+    }
   }'::jsonb
 );
 ```
@@ -244,7 +286,14 @@ SELECT submit_implementation_report(
   "deviations": ["string — deviation from plan", "..."],
   "uncertainty": ["string — anything unclear", "..."],
   "detail": "string — full narrative",
-  "flags": ["string — supervisor attention needed", "..."]
+  "flags": ["string — supervisor attention needed", "..."],
+  "codeflow_post": {
+    "agent_session_id": "string — originating implementation session",
+    "summary": "string — agent-authored CodeFlow post",
+    "files_changed": ["string", "..."],
+    "verification": ["string", "..."],
+    "commit": "string — optional"
+  }
 }
 ```
 
