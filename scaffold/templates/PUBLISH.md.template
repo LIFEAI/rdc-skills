@@ -1,0 +1,21 @@
+---
+schema_version: "1.0"
+entity_slug: "ENTITY_SLUG"
+artifact_type: "ARTIFACT_TYPE"
+environments: [dev]
+status: draft
+notes: ""
+---
+
+# ENTITY_SLUG
+
+<!-- SURFACE:website -->
+path: /
+source_dir: SOURCE_DIR
+build_type: BUILD_TYPE
+visibility: public
+cache: no-store
+watch_paths:
+  - SOURCE_DIR/**
+  - packages/ui/**
+<!-- /SURFACE:website -->

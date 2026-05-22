@@ -33,5 +33,8 @@
     "validate": "node tests/validate-skills.js",
     "rdc-design": "node scripts/rdc-design-cli.mjs",
     "test:hooks": "node scripts/test-rdc-hooks.mjs"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
   }
 }
