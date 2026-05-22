@@ -557,6 +557,12 @@ function buildHooksConfig(hooksDir) {
     return entry;
   };
   return {
+    UserPromptExpansion: [{ hooks: [
+      cmd('rdc-invocation-marker.js', 'Marking RDC slash command...'),
+    ]}],
+    UserPromptSubmit: [{ hooks: [
+      cmd('rdc-invocation-marker.js', 'Marking RDC prompt...'),
+    ]}],
     SessionStart: [{ hooks: [
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
@@ -582,6 +588,7 @@ function buildHooksConfig(hooksDir) {
     ]}],
     Stop: [{ hooks: [
       cmd('rate-limit-retry.js',   'Checking for rate limits...'),
+      cmd('rdc-output-contract-gate.js', 'Checking RDC output contract...'),
       cmd('post-work-check.js',    'Checking for undocumented work...'),
       cmd('no-stop-open-epics.js', 'Checking for open epics...'),
     ]}],

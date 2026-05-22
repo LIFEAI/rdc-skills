@@ -82,6 +82,20 @@ if ($SkipHooks) {
     $hooksBase = $hooksDir.Replace("\", "/")
 
     $hooksConfig = [PSCustomObject]@{
+        UserPromptExpansion = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rdc-invocation-marker.js`""; statusMessage = "Marking RDC slash command..." }
+                )
+            }
+        )
+        UserPromptSubmit = @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rdc-invocation-marker.js`""; statusMessage = "Marking RDC prompt..." }
+                )
+            }
+        )
         SessionStart = @(
             [PSCustomObject]@{
                 hooks = @(
@@ -130,6 +144,7 @@ if ($SkipHooks) {
             [PSCustomObject]@{
                 hooks = @(
                     [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rdc-output-contract-gate.js`""; statusMessage = "Checking RDC output contract..." },
                     [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." },
                     [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
                 )

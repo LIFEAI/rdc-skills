@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.9.35 — RDC output-contract hook enforcement
+
+### Added
+
+- **RDC slash-command marker hook.** `rdc-invocation-marker.js` marks direct `/rdc:*` skill invocations through `UserPromptExpansion`, with a `UserPromptSubmit` fallback for older runtimes, and injects the output/engineering contract reminder.
+- **RDC Stop gate.** `rdc-output-contract-gate.js` blocks completion for active RDC invocations until the final assistant message includes both a checklist row and a verdict line.
+- **Installer wiring and self-test coverage.** The Node and PowerShell installers now wire the RDC marker/gate hooks, and `self-test` fails when required hook files or installer references are missing.
+
+---
+
 ## 0.6.1 — Tier 2 stability + rdc:watch session watcher
 
 ### Added

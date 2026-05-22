@@ -699,6 +699,7 @@ function auditOrphanHooks(results) {
       })
       .map((f) => join(SKILLS_DIR, f, "SKILL.md")),
     join(REPO_ROOT, ".claude", "settings.json"),
+    join(REPO_ROOT, "scripts", "install-rdc-skills.js"),
     PLUGIN_MANIFEST,
   ];
   for (const src of sources) {
@@ -726,6 +727,78 @@ function auditOrphanHooks(results) {
       });
     }
   }
+  return findings;
+}
+
+function auditRequiredHookWiring() {
+  const findings = [];
+  const required = [
+    {
+      file: join(REPO_ROOT, "scripts", "install-rdc-skills.js"),
+      label: "scripts/install-rdc-skills.js",
+      tokens: [
+        "UserPromptExpansion",
+        "UserPromptSubmit",
+        "Stop",
+        "rdc-invocation-marker.js",
+        "rdc-output-contract-gate.js",
+      ],
+    },
+    {
+      file: join(REPO_ROOT, "scripts", "install.ps1"),
+      label: "scripts/install.ps1",
+      tokens: [
+        "UserPromptExpansion",
+        "UserPromptSubmit",
+        "Stop",
+        "rdc-invocation-marker.js",
+        "rdc-output-contract-gate.js",
+      ],
+    },
+  ];
+
+  for (const hookFile of [
+    "rdc-invocation-marker.js",
+    "rdc-output-contract-gate.js",
+  ]) {
+    if (!existsSync(join(HOOKS_DIR, hookFile))) {
+      findings.push({
+        level: "error",
+        code: "required-hook-missing",
+        message: `hooks/${hookFile} is required for RDC output-contract enforcement`,
+      });
+    }
+  }
+
+  for (const target of required) {
+    if (!existsSync(target.file)) {
+      findings.push({
+        level: "error",
+        code: "hook-installer-missing",
+        message: `${target.label} not found for RDC hook wiring audit`,
+      });
+      continue;
+    }
+    let text = "";
+    try { text = readFileSync(target.file, "utf8"); } catch (e) {
+      findings.push({
+        level: "error",
+        code: "hook-installer-unreadable",
+        message: `${target.label} unreadable: ${e.message}`,
+      });
+      continue;
+    }
+    for (const token of target.tokens) {
+      if (!text.includes(token)) {
+        findings.push({
+          level: "error",
+          code: "required-hook-wiring-missing",
+          message: `${target.label} must reference ${token}`,
+        });
+      }
+    }
+  }
+
   return findings;
 }
 
@@ -1143,14 +1216,16 @@ function main() {
   // Cross-skill checks — deferred until all audits complete
   let duplicateFindings = [];
   let orphanHookFindings = [];
+  let requiredHookFindings = [];
   if (!ONLY_SKILL) {
     duplicateFindings = auditDuplicates(results);
     orphanHookFindings = auditOrphanHooks(results);
+    requiredHookFindings = auditRequiredHookWiring();
   }
 
-  if (duplicateFindings.length + orphanHookFindings.length > 0) {
+  if (duplicateFindings.length + orphanHookFindings.length + requiredHookFindings.length > 0) {
     console.log("\nglobal findings\n");
-    for (const f of [...duplicateFindings, ...orphanHookFindings]) {
+    for (const f of [...duplicateFindings, ...orphanHookFindings, ...requiredHookFindings]) {
       console.log(`  [${f.level}] ${f.code}: ${f.message}`);
     }
   }
@@ -1166,12 +1241,14 @@ function main() {
     ...manifestAudit.findings.filter((f) => f.level === "error"),
     ...duplicateFindings.filter((f) => f.level === "error"),
     ...orphanHookFindings.filter((f) => f.level === "error"),
+    ...requiredHookFindings.filter((f) => f.level === "error"),
     ...(guideValidatorResult ? guideValidatorResult.errors : []),
   ];
   const globalWarnings = [
     ...manifestAudit.findings.filter((f) => f.level === "warn"),
     ...duplicateFindings.filter((f) => f.level === "warn"),
     ...orphanHookFindings.filter((f) => f.level === "warn"),
+    ...requiredHookFindings.filter((f) => f.level === "warn"),
     ...(guideValidatorResult ? guideValidatorResult.warnings : []),
   ];
 
