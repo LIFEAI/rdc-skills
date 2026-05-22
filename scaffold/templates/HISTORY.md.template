@@ -1,0 +1,39 @@
+---
+schema_version: "1.0"
+prt_slug: "PRT_SLUG"
+project_type: PROJECT_TYPE
+location:
+  county: LOCATION_COUNTY
+  state: LOCATION_STATE
+  country: LOCATION_COUNTRY
+  parcel_apn: PARCEL_APN
+  area_acres: AREA_ACRES
+  centroid: [LAT, LNG]
+acquired: "ACQUIRED_DATE"
+steward: STEWARD_NAME
+research_status: draft
+last_reviewed: "LAST_REVIEWED_DATE"
+contributors: []
+---
+
+> This is a draft stub. Research pending. Status will be promoted to in-research once primary sources are identified.
+
+## Land lineage
+
+TODO: Research land lineage of PROJECT_NAME. Cover indigenous stewardship, land grants, ownership transitions, and government survey references (PLSS township/range/section).
+
+## Stewardship transitions
+
+TODO: Document major ownership and use transitions for PROJECT_NAME from earliest recorded title to present. Include conservation easements, deed restrictions, and use-change inflection points.
+
+## Ecological context
+
+TODO: Document the ecoregion, watershed, soil classifications (NRCS Web Soil Survey), vegetation communities, water resources, wildlife corridors, and fire history for PROJECT_NAME.
+
+## Cultural significance
+
+TODO: Research indigenous place names and cultural associations, historic structures, archaeological sites, community significance (grazing allotments, water rights, access traditions), and scenic values for PROJECT_NAME.
+
+## Regulatory record
+
+TODO: Document zoning, conservation easements, water rights adjudications, federal and state permits, tax status, and any open title or lien issues of record for PROJECT_NAME.
