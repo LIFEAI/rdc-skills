@@ -32,7 +32,8 @@
     "uninstall:unix": "bash scripts/uninstall.sh",
     "validate": "node tests/validate-skills.js",
     "rdc-design": "node scripts/rdc-design-cli.mjs",
-    "test:hooks": "node scripts/test-rdc-hooks.mjs"
+    "test:hooks": "node scripts/test-rdc-hooks.mjs",
+    "prepack": "node scripts/validate-publish-manifests.js --mode warn || true"
   },
   "devDependencies": {
     "yaml": "^2.9.0"
