@@ -24,7 +24,7 @@ description: >-
    ```bash
    node ${CLAUDE_PLUGIN_ROOT}/scripts/watch-init.mjs
    ```
-   (If `CLAUDE_PLUGIN_ROOT` is not set, resolve the plugin path from your invocation context. On Windows it's typically `C:/Dev/rdc-skills`.)
+   (If `CLAUDE_PLUGIN_ROOT` is not set, resolve the plugin path from your invocation context or the installed plugin cache.)
 
 2. **Parse the output.** The script prints `run_id`, `log_path`, `current`, `viewer`, and `open_hint`. Capture `log_path` and `viewer` for the rest of the session.
 

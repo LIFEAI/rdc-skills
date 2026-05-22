@@ -55,7 +55,7 @@ rdc:deploy: <slug> → <domain>
 ```
 rdc:deploy new: <slug>
 [ ] Registry entry loaded (or interactive create)
-[ ] DNS path chosen (A: *.dev.place.fund  B: apex  C: other zone)
+[ ] DNS path chosen (A: staging wildcard  B: apex  C: other zone)
 [ ] DNS record verified or wildcard confirmed
 [ ] Cloudflare proxy setting correct for DNS path
 [ ] server_uuid, project_uuid, environment_uuid, github_app_uuid resolved
@@ -103,7 +103,7 @@ rdc:deploy audit: fleet scan
 [ ] Env var drift (registry.env_vars_needed vs Coolify env)
 [ ] Branch mismatches (Coolify git_branch ≠ expected)
 [ ] Disk space on 64.237.54.189
-[ ] CF proxy misconfigs on *.dev.place.fund
+[ ] DNS/proxy misconfigs on configured staging wildcard
 [ ] Duplicate apps (same repo, multiple UUIDs)
 
 Findings:
@@ -127,7 +127,7 @@ There is no Coolify MCP server — do not reference `@masonator/coolify-mcp`.
 
 ```bash
 _COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
-curl -s -H "Authorization: Bearer $_COOLIFY" https://deploy.regendevcorp.com/api/v1/applications
+curl -s -H "Authorization: Bearer $_COOLIFY" "$DEPLOY_API_BASE/api/v1/applications"
 ```
 
 If clauth daemon is not responding:
@@ -143,7 +143,7 @@ BLOCKED: clauth daemon not responding. Run scripts\restart-clauth.bat, unlock at
   ```
   Server UUID:     ih386anenvvvn6fy1umtyow0
   Server IP:       64.237.54.189
-  Dashboard:       https://deploy.regendevcorp.com
+  Dashboard:       <deployment-dashboard-url>
   GitHub App UUID: xdmcy60putp5h9j7k4kwg9c3
   ```
 

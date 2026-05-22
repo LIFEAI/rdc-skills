@@ -19,7 +19,7 @@ RDC-owned design execution for Studio and LIFEAI interfaces. This skill is the S
 
 - Studio, Palette Library, brand-token, theme, component, or live-editor work
 - Any design task that must understand RDC's real token tables and Studio routes
-- UI critique, audit, polish, colorize, type, layout, or craft work in `regen-root`
+- UI critique, audit, polish, colorize, type, layout, or craft work in `{PROJECT_ROOT}`
 - Agent-side color-system exploration using Rampa CLI
 - Preparing token-aware implementation instructions for frontend/backend/data agents
 
@@ -166,7 +166,7 @@ Project docs to read for Studio work:
 8. **Verify.**
    - Run scoped tests only.
    - For Studio: prefer route smoke checks, token API checks, and browser screenshots when UI changed.
-   - For CLI prompt work: run `node C:/Dev/rdc-skills/scripts/rdc-design-cli.mjs <command> <brief>` and inspect the generated report under `.rdc/reports/rdc-design-cli/`.
+   - For CLI prompt work: run `node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs <command> <brief>` and inspect the generated report under `.rdc/reports/rdc-design-cli/`.
 
 ## Command Menu
 
@@ -188,15 +188,15 @@ Project docs to read for Studio work:
 Use the local helper to see exactly how much instruction text the skill is generating before sending it through an agent:
 
 ```powershell
-node C:/Dev/rdc-skills/scripts/rdc-design-cli.mjs studio "audit the Studio palette page"
-node C:/Dev/rdc-skills/scripts/rdc-design-cli.mjs palette "generate a PRT palette workflow"
-node C:/Dev/rdc-skills/scripts/rdc-design-cli.mjs --json theme "RDC earth-forward light theme"
+node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs studio "audit the Studio palette page"
+node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs palette "generate a PRT palette workflow"
+node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs --json theme "RDC earth-forward light theme"
 ```
 
 The helper writes logs to:
 
 ```text
-C:/Dev/rdc-skills/.rdc/reports/rdc-design-cli/
+{RDC_SKILLS_ROOT}/.rdc/reports/rdc-design-cli/
 ```
 
 Each run includes character count, word count, approximate token count, references loaded, and the final prompt text.

@@ -110,7 +110,7 @@ the source of truth.
   "skill": "rdc:review",
   "task": "Audit the current diff for regressions before merge.",
   "context": {
-    "repo": "C:\\Dev\\regen-root",
+    "repo": "{PROJECT_ROOT}",
     "work_item_id": "<optional-uuid>",
     "branch": "develop",
     "owned_files": []

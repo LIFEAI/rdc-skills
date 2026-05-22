@@ -11,7 +11,7 @@ description: "Usage `rdc:fs-mcp <task>` — Use the File System MCP bridge for l
 # rdc:fs-mcp — File System MCP Bridge
 
 ## When to Use
-- Claude.ai, Cowork, or another remote surface needs live access to `C:/Dev/regen-root` through the File System MCP.
+- Claude.ai, Cowork, or another remote surface needs live access to `{PROJECT_ROOT}` through the File System MCP.
 - You need to read, search, or list current local repo files without relying on GitHub freshness.
 - You need to write a small/scratch file through FS MCP.
 - You need to move a larger cloud file into the local repo.
@@ -88,7 +88,7 @@ Required Claude.ai handoff shape:
 
 ```json
 {
-  "repo": "LIFEAI/regen-root",
+  "repo": "<owner>/<repo>",
   "remote": "origin",
   "ref": "claude-ai/docs-upload-123",
   "paths": ["docs/plans/foo.md"],

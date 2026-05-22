@@ -15,7 +15,7 @@ Use `skills/design/SKILL.md` as the source of truth.
 
 - Studio, Palette Library, brand-token, theme, component, or live-editor work
 - Any design task that must understand RDC's real token tables and Studio routes
-- UI critique, audit, polish, colorize, type, layout, or craft work in `regen-root`
+- UI critique, audit, polish, colorize, type, layout, or craft work in `{PROJECT_ROOT}`
 - Agent-side color-system exploration using Rampa CLI
 
 ## Arguments

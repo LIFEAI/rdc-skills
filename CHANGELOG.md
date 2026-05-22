@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.9.38 — Clean-box npm install hardening
+
+### Fixed
+
+- **Fresh Claude home install.** The installer now creates `CLAUDE_HOME` and `settings.json` when they do not exist, so a first-time machine is not blocked before Claude has written config files.
+- **Public package portability.** Removed the most brittle user-machine paths from public skill docs and hooks, replacing them with `{PROJECT_ROOT}`, `{RDC_SKILLS_ROOT}`, or environment-derived paths.
+- **Hook path fallback.** Commit hygiene hooks now use the current OS home directory instead of a user-specific fallback path.
+
+### Added
+
+- **npm binaries.** `rdc-skills-install` and `rdc-skills-self-test` are exposed from the npm package for simpler clean-box installs.
+
+---
+
 ## v0.9.37 — RDC hook loop guard and behavior tests
 
 ### Fixed

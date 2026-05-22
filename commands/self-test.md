@@ -29,7 +29,7 @@ description: >-
 
 1. **Run the linter:**
    ```bash
-   node C:/Dev/rdc-skills/scripts/self-test.mjs
+   node {RDC_SKILLS_ROOT}/scripts/self-test.mjs
    ```
 
 2. **Interpret exit codes:**

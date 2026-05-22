@@ -31,7 +31,7 @@ description: "Usage `rdc:self-test [--strict]` — Validate all rdc:* skills, pl
 Launch the interactive menu — pick tier, pick skill, see live output:
 
 ```bash
-node C:/Dev/rdc-skills/scripts/self-test-ui.mjs
+node {RDC_SKILLS_ROOT}/scripts/self-test-ui.mjs
 ```
 
 Menu options:
@@ -45,9 +45,9 @@ Test output streams live to the terminal. No server, no extra processes.
 
 1. **Run the linter (direct or via UI):**
    ```bash
-   node C:/Dev/rdc-skills/scripts/self-test.mjs
+   node {RDC_SKILLS_ROOT}/scripts/self-test.mjs
    # or interactively:
-   node C:/Dev/rdc-skills/scripts/self-test-ui.mjs
+   node {RDC_SKILLS_ROOT}/scripts/self-test-ui.mjs
    ```
 
 2. **Interpret exit codes:**

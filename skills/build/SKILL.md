@@ -301,8 +301,8 @@ Read the task title and description, then:
     ⚠️ The validator does NOT use `isolation: "worktree"` — it must read the fully merged develop branch. Omit the isolation parameter for this dispatch only.
 
     ```
-    "Read C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md then C:/Dev/regen-root/.rdc/guides/verify.md.
-     Read C:/Dev/regen-root/.rdc/guides/engineering-behavior.md before validating scope, deviations, and evidence.
+    "Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md then {PROJECT_ROOT}/.rdc/guides/verify.md.
+     Read {PROJECT_ROOT}/.rdc/guides/engineering-behavior.md before validating scope, deviations, and evidence.
      Validate these work items: [list of IDs and titles].
      Apps touched: [list].
      Git diff since build start: [attach or reference].

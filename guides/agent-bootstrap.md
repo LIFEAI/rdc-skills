@@ -137,7 +137,7 @@ When `RDC_TEST=1` is set, the skill is running inside the Tier 2 sandbox harness
 **Bash pattern:**
 ```bash
 if [ "$RDC_TEST" != "1" ]; then
-  curl -X POST "https://deploy.regendevcorp.com/api/v1/applications/$UUID/deploy" ...
+  curl -X POST "$DEPLOY_API_BASE/api/v1/applications/$UUID/deploy" ...
 else
   echo "[RDC_TEST] skipping Coolify deploy"
 fi
@@ -156,7 +156,7 @@ if (process.env.RDC_TEST !== '1') {
 
 **New-skill contract:** every new `rdc:*` skill MUST honor `RDC_TEST` before shipping. Tier 2 manifests will fail any skill that writes to external state under the flag.
 
-**Known blocker:** The `check-cwd.js` SessionStart hook hard-blocks Claude sessions launched from `C:/Dev/rdc-skills`. The hook must check `process.env.RDC_TEST === '1'` and call `process.exit(0)` early to allow Tier 2 sandbox runs. Without this bypass, all Tier 2 headless invocations fail with `exit_code: -1`. File: `~/.claude/hooks/check-cwd.js`.
+**Known blocker:** Project-specific cwd hooks must check `process.env.RDC_TEST === '1'` and call `process.exit(0)` early to allow Tier 2 sandbox runs. Without this bypass, headless self-test invocations can fail before the skill loads. File: `~/.claude/hooks/check-cwd.js`.
 
 ---
 

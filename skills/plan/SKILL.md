@@ -227,7 +227,7 @@ Q1. Which Coolify project does this app belong to?
     → Record: project_uuid + environment_uuid (staging or production)
 
 Q2. What is the domain?
-    → *.dev.place.fund subdomain? (staging / internal tools)
+    → staging wildcard subdomain? (staging / internal tools)
     → Custom subdomain on an existing zone? (e.g. app.regendevcorp.com)
     → Apex domain? (e.g. place.fund itself)
     → Domain on a different zone entirely? (e.g. skymesasouth.com)
@@ -238,7 +238,7 @@ Q3. Is this domain already in our Cloudflare account?
     → If NS not delegated to Cloudflare: A record in Cloudflare does nothing — must go to registrar
 
 Q4. Does this app need Cloudflare proxy (orange cloud)?
-    → *.dev.place.fund: NEVER proxy — breaks Traefik Let's Encrypt HTTP-01 cert provisioning
+    → Traefik/Let's Encrypt HTTP-01 staging wildcards are often safest unproxied; verify your platform's DNS requirements.
     → Custom domain needing DDoS/CDN: proxy OK only if SSL mode = Full (strict) + origin cert provisioned
     → Any doubt: start unproxied, add proxy after confirming SSL works
 

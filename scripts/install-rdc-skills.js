@@ -766,8 +766,12 @@ async function main() {
   console.log('');
 
   if (!fs.existsSync(claudeHome)) {
-    fail(`CLAUDE_HOME not found: ${claudeHome}`);
-    process.exit(1);
+    fs.mkdirSync(claudeHome, { recursive: true });
+    warn(`CLAUDE_HOME did not exist — created ${claudeHome}`);
+  }
+  if (!fs.existsSync(settingsPath)) {
+    writeJson(settingsPath, {});
+    info(`       created settings.json`);
   }
 
   // Read version + git SHA once

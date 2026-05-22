@@ -5,7 +5,7 @@
  * Fires on every Stop event where Claude decided to end_turn.
  * Queries get_open_epics() via Supabase REST.
  * Only blocks if epics with status=todo exist — in_progress means another session owns them.
- * Only fires in the regen-root project (scope guard on event.cwd).
+ * Only fires in the configured project scope (scope guard on event.cwd).
  *
  * Exit codes:
  *   0 = allow stop
@@ -15,8 +15,9 @@
  *   NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
  *   NEXT_PUBLIC_SUPABASE_ANON_KEY=<key>
  *
- * PROJECT SCOPE in package.json or plugin config:
- *   "hookScope": "regen-root"   ← folder name that must appear in event.cwd
+ * PROJECT SCOPE:
+ *   RDC_PROJECT_SCOPE=<folder-name>   folder name that must appear in event.cwd
+ *   RDC_PROJECT_ROOT=<path>           root used to find .rdc/overnight.lock and .env.local
  */
 
 const fs = require('fs');
@@ -24,11 +25,12 @@ const path = require('path');
 
 // ── Config — override these per project ──────────────────────────────────────
 
-const PROJECT_SCOPE = 'regen-root'; // only block in sessions inside this folder name
-const OVERNIGHT_SENTINEL = 'C:/Dev/regen-root/.rdc/overnight.lock'; // only fire when this exists
+const PROJECT_SCOPE = process.env.RDC_PROJECT_SCOPE || 'regen-root'; // LIFEAI default; override per project
+const PROJECT_ROOT = process.env.RDC_PROJECT_ROOT || process.cwd();
+const OVERNIGHT_SENTINEL = process.env.RDC_OVERNIGHT_LOCK || path.join(PROJECT_ROOT, '.rdc', 'overnight.lock');
 const ENV_PATHS = [
-  'C:/Dev/regen-root/apps/rdc-marketing-engine/.env.local',
-  'C:/Dev/regen-root/.env.local',
+  ...(process.env.RDC_ENV_PATHS ? process.env.RDC_ENV_PATHS.split(path.delimiter) : []),
+  path.join(PROJECT_ROOT, '.env.local'),
 ];
 const SUPABASE_URL = process.env.SUPABASE_URL || readEnvVar('NEXT_PUBLIC_SUPABASE_URL');
 

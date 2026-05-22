@@ -18,10 +18,11 @@
 
 const fs      = require('fs');
 const path    = require('path');
+const os      = require('os');
 const hookLog = require('./hook-logger');
 
 const MARKER_FILE = path.join(
-  process.env.USERPROFILE || process.env.HOME || 'C:/Users/DaveLadouceur',
+  process.env.USERPROFILE || process.env.HOME || os.homedir(),
   '.claude',
   'fixit.marker'
 );

@@ -66,10 +66,10 @@ Template selection:
 
 ```
 rdc:deploy new: <slug>
-[ ] .dockerignore present at regen-root root (ls C:/Dev/regen-root/.dockerignore — STOP if missing)
+[ ] .dockerignore present at project root (`ls {PROJECT_ROOT}/.dockerignore` — STOP if missing)
 [ ] Template loaded from docs/runbooks/coolify-app-templates.json (pick nextjs-app / static-site / mcp-server)
 [ ] Required vars substituted: NAME, APP_PATH, DOMAIN, BRANCH, PROJECT_UUID, ENVIRONMENT_UUID [+ TURBO_FILTER / PORT]
-[ ] DNS path chosen (A: *.dev.place.fund  B: apex  C: other zone)
+[ ] DNS path chosen (A: staging wildcard  B: apex  C: other zone)
 [ ] DNS record verified or wildcard confirmed
 [ ] Cloudflare proxy setting correct for DNS path
 [ ] Application created via POST /applications/private-github-app (template payload)
@@ -117,7 +117,7 @@ rdc:deploy audit: fleet scan
 [ ] Env var drift (registry.env_vars_needed vs Coolify env)
 [ ] Branch mismatches (Coolify git_branch ≠ expected)
 [ ] Disk space on 64.237.54.189
-[ ] CF proxy misconfigs on *.dev.place.fund
+[ ] DNS/proxy misconfigs on configured staging wildcard
 [ ] Duplicate apps (same repo, multiple UUIDs)
 
 Findings:
@@ -145,39 +145,39 @@ _COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
 
 # List applications
 curl -s -H "Authorization: Bearer $_COOLIFY" \
-  https://deploy.regendevcorp.com/api/v1/applications
+  "$DEPLOY_API_BASE/api/v1/applications"
 
 # Get application details
 curl -s -H "Authorization: Bearer $_COOLIFY" \
-  https://deploy.regendevcorp.com/api/v1/applications/<uuid>
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
 
 # Deploy (trigger)
 curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
-  https://deploy.regendevcorp.com/api/v1/applications/<uuid>/deploy
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>/deploy"
 
 # Get deployment logs
 curl -s -H "Authorization: Bearer $_COOLIFY" \
-  https://deploy.regendevcorp.com/api/v1/deployments/<deployment-id>
+  "$DEPLOY_API_BASE/api/v1/deployments/<deployment-id>"
 
 # Set env var
 curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
   -H "Content-Type: application/json" \
   -d '{"key":"<KEY>","value":"<VALUE>"}' \
-  https://deploy.regendevcorp.com/api/v1/applications/<uuid>/envs
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>/envs"
 
 # Set watch_paths
 curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
   -H "Content-Type: application/json" \
   -d '{"watch_paths":"apps/<name>/**\npackages/**"}' \
-  https://deploy.regendevcorp.com/api/v1/applications/<uuid>
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
 ```
 
 **Never print `$_COOLIFY` to stdout.** Inline from clauth only — do not assign raw strings.
 
 If clauth daemon is not responding (`curl -s http://127.0.0.1:52437/ping` fails):
 ```
-BLOCKED: clauth daemon is not responding.
-Fix: Run C:\Dev\regen-root\scripts\restart-clauth.bat, then unlock at http://127.0.0.1:52437
+BLOCKED: credential provider is not responding.
+Fix: start the project's credential provider or configure deployment credentials through env vars, then retry.
 I cannot proceed until this is resolved.
 ```
 
@@ -189,7 +189,7 @@ I cannot proceed until this is resolved.
   ```
   Server UUID:     ih386anenvvvn6fy1umtyow0
   Server IP:       64.237.54.189
-  Dashboard:       https://deploy.regendevcorp.com
+  Dashboard:       <deployment-dashboard-url>
   GitHub App UUID: xdmcy60putp5h9j7k4kwg9c3
   ```
 

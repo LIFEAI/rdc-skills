@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// Hard blocks session if CWD is not the regen-root project directory.
+// Hard blocks session if CWD is not the expected project directory.
 // Exits with code 1 to fail the hook + outputs a blocking systemMessage.
 
 const { execSync } = require('child_process');
 const hookLog = require('./hook-logger');
 const cwd     = process.cwd().replace(/\\/g, '/');
 
-let expected = 'regen-root';
+let expected = process.env.RDC_PROJECT_SCOPE || 'regen-root';
 try {
   expected = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', stdio: 'pipe' })
     .trim().replace(/\\/g, '/');
 } catch (_) {}
 
-if (!cwd.endsWith('regen-root')) {
+if (!cwd.endsWith(expected)) {
   hookLog('check-cwd', 'SessionStart', 'block', { cwd, expected });
   process.stdout.write(JSON.stringify({
     systemMessage:
