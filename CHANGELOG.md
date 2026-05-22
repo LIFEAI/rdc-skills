@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.9.37 — RDC hook loop guard and behavior tests
+
+### Fixed
+
+- **Stop hook reentry.** `rdc-output-contract-gate.js` now exits cleanly when Claude is already inside an active Stop-hook retry, preventing noncompliant-but-legitimate turns from hard-looping the session.
+- **Marker deduplication.** `rdc-invocation-marker.js` now preserves the original marker when `UserPromptExpansion` and `UserPromptSubmit` both fire for the same RDC command within the same second.
+
+### Added
+
+- **Hook behavioral tests.** New `scripts/test-rdc-hooks.mjs` executes the marker and Stop hooks against real JSON payloads, and `self-test --strict` now fails if those behavioral checks fail.
+
+---
+
 ## v0.9.36 — Portable installer profiles and startup onboarding
 
 ### Added

@@ -31,6 +31,7 @@
 import { readFileSync, readdirSync, existsSync, writeFileSync, appendFileSync, renameSync, mkdirSync, statSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { loadAllManifests } from "./lib/manifest-schema.mjs";
 import { runManifest } from "./lib/runner.mjs";
 import {
@@ -802,6 +803,19 @@ function auditRequiredHookWiring() {
   return findings;
 }
 
+function runHookBehaviorTests() {
+  const result = spawnSync(process.execPath, [join(REPO_ROOT, "scripts", "test-rdc-hooks.mjs")], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
+  return {
+    ok: result.status === 0,
+    status: result.status,
+    stdout: (result.stdout || "").trim(),
+    stderr: (result.stderr || "").trim(),
+  };
+}
+
 // ─── Tier 2 behavioral runner ──────────────────────────────────────────────
 
 async function runPool(items, concurrency, worker) {
@@ -1038,6 +1052,7 @@ function main() {
     }
 
     const guideValidatorResultJson = !ONLY_SKILL ? runGuideContentValidator() : null;
+    const hookBehaviorResultJson = !ONLY_SKILL ? runHookBehaviorTests() : null;
 
     const failed = results.filter((r) => r.errors.length > 0);
     const warned = results.filter((r) => r.warnings.length > 0 && r.errors.length === 0);
@@ -1050,6 +1065,11 @@ function main() {
       ...duplicateFindings.filter((f) => f.level === "error"),
       ...orphanHookFindings.filter((f) => f.level === "error"),
       ...(guideValidatorResultJson ? guideValidatorResultJson.errors : []),
+      ...(hookBehaviorResultJson && !hookBehaviorResultJson.ok ? [{
+        level: "error",
+        code: "hook-behavior-test-failed",
+        message: hookBehaviorResultJson.stderr || hookBehaviorResultJson.stdout || `exit ${hookBehaviorResultJson.status}`,
+      }] : []),
     ];
     const globalWarnings = [
       ...manifestAudit.findings.filter((f) => f.level === "warn"),
@@ -1092,6 +1112,7 @@ function main() {
                 findings: guideValidatorResultJson.findings,
               }
             : null,
+          hook_behavior_tests: hookBehaviorResultJson,
           results: results.map((r) => ({
             skill: r.skill,
             file: r.file,
@@ -1217,10 +1238,12 @@ function main() {
   let duplicateFindings = [];
   let orphanHookFindings = [];
   let requiredHookFindings = [];
+  let hookBehaviorResult = null;
   if (!ONLY_SKILL) {
     duplicateFindings = auditDuplicates(results);
     orphanHookFindings = auditOrphanHooks(results);
     requiredHookFindings = auditRequiredHookWiring();
+    hookBehaviorResult = runHookBehaviorTests();
   }
 
   if (duplicateFindings.length + orphanHookFindings.length + requiredHookFindings.length > 0) {
@@ -1228,6 +1251,14 @@ function main() {
     for (const f of [...duplicateFindings, ...orphanHookFindings, ...requiredHookFindings]) {
       console.log(`  [${f.level}] ${f.code}: ${f.message}`);
     }
+  }
+
+  if (hookBehaviorResult) {
+    console.log("\nhook behavior tests\n");
+    console.log("─".repeat(80));
+    console.log(hookBehaviorResult.ok ? "  pass  rdc marker/gate behavioral smoke tests" : "  FAIL  rdc marker/gate behavioral smoke tests");
+    if (hookBehaviorResult.stdout) console.log(`  ${hookBehaviorResult.stdout}`);
+    if (hookBehaviorResult.stderr) console.log(`  ${hookBehaviorResult.stderr}`);
   }
 
   if (FIXED_FILES.length > 0) {
@@ -1243,6 +1274,11 @@ function main() {
     ...orphanHookFindings.filter((f) => f.level === "error"),
     ...requiredHookFindings.filter((f) => f.level === "error"),
     ...(guideValidatorResult ? guideValidatorResult.errors : []),
+    ...(hookBehaviorResult && !hookBehaviorResult.ok ? [{
+      level: "error",
+      code: "hook-behavior-test-failed",
+      message: hookBehaviorResult.stderr || hookBehaviorResult.stdout || `exit ${hookBehaviorResult.status}`,
+    }] : []),
   ];
   const globalWarnings = [
     ...manifestAudit.findings.filter((f) => f.level === "warn"),

@@ -60,6 +60,14 @@ function pass(marker) {
   process.exit(0);
 }
 
+function passReentry(marker) {
+  try { fs.unlinkSync(marker.path); } catch {}
+  hookLog('rdc-output-contract-gate', 'Stop', 'pass-reentry', {
+    command: marker.data.command || null,
+  });
+  process.exit(0);
+}
+
 async function main() {
   let raw;
   try { raw = JSON.parse(await readStdin()); } catch { process.exit(0); }
@@ -70,6 +78,7 @@ async function main() {
   const checklist = hasChecklist(message);
   const verdict = hasVerdict(message);
   if (checklist && verdict) pass(marker);
+  if (raw.stop_hook_active === true) passReentry(marker);
 
   const command = marker.data.command || 'rdc';
   const missing = [];

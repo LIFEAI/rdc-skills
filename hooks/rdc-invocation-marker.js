@@ -76,7 +76,7 @@ function detectRdc(raw) {
 
   if (event === 'UserPromptSubmit') {
     const prompt = String(raw.prompt || '').trim();
-    const m = prompt.match(/^\/(?:rdc[:-])?([a-z][a-z0-9-]*)\b/i);
+    const m = prompt.match(/^\/rdc[:-]([a-z][a-z0-9-]*)\b/i);
     if (!m) return null;
     const command = normalizeCommandName(m[1]);
     if (RDC_COMMANDS.has(command)) return command;
@@ -87,6 +87,20 @@ function detectRdc(raw) {
 
 function writeMarker(raw, command) {
   fs.mkdirSync(markerDir(), { recursive: true });
+  const p = markerPath(raw.session_id);
+  if (fs.existsSync(p)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const started = Date.parse(existing.started_at || '');
+      const isRecentDuplicate = Number.isFinite(started) &&
+        Date.now() - started <= 1000 &&
+        existing.session_id === (raw.session_id || null) &&
+        existing.command === command;
+      if (isRecentDuplicate) {
+        return { ...existing, deduped: true };
+      }
+    } catch {}
+  }
   const marker = {
     session_id: raw.session_id || null,
     command,
@@ -98,7 +112,7 @@ function writeMarker(raw, command) {
     started_at: new Date().toISOString(),
     hook_event_name: raw.hook_event_name || null,
   };
-  fs.writeFileSync(markerPath(raw.session_id), JSON.stringify(marker, null, 2));
+  fs.writeFileSync(p, JSON.stringify(marker, null, 2));
   return marker;
 }
 
@@ -127,7 +141,7 @@ async function main() {
 
   try {
     const marker = writeMarker(raw, command);
-    hookLog('rdc-invocation-marker', raw.hook_event_name || 'unknown', 'marked', {
+    hookLog('rdc-invocation-marker', raw.hook_event_name || 'unknown', marker.deduped ? 'deduped' : 'marked', {
       command,
       session_id: marker.session_id,
     });
