@@ -45,6 +45,27 @@ rm -rf ~/.claude/plugins/cache/rdc-skills/rdc-skills/0.7.*
 
 Use **one method only**: plugin (Option A or B) OR manual install — never both.
 
+### Installer profiles
+
+`scripts/install-rdc-skills.js` supports profiles:
+
+```bash
+node scripts/install-rdc-skills.js --profile core
+node scripts/install-rdc-skills.js --profile lifeai
+```
+
+- `core` is safe for a clean machine with only rdc-skills installed. It wires portable hooks only: RDC output-contract enforcement, foreground-process policy, commit-message hygiene, and non-blocking work logging.
+- `lifeai` is for the LIFEAI/regen-root workstation. It additionally wires the regen-root cwd lock, clauth/Supabase work-item gates, overnight queue guard, and LIFEAI session hooks.
+- `auto` is the default. It chooses `lifeai` only when a sibling `regen-root` project is detected; otherwise it chooses `core`.
+
+To add managed startup instructions to a project:
+
+```bash
+node scripts/install-rdc-skills.js --project-root /path/to/project --write-startup-blocks
+```
+
+This writes `.rdc/guides/rdc-skills-startup.md` and managed RDC sections in `CLAUDE.md` and `AGENTS.md`.
+
 ### Legacy install scripts (deprecated since v0.6.0)
 
 `scripts/install.sh` and `scripts/install.ps1` copy files into `~/.claude/skills/user/`. These exist only for environments that cannot use the plugin system. Running them alongside the plugin creates duplicates. Do not use them if you have the plugin installed.
@@ -176,7 +197,7 @@ python3 -c "import json; print(json.load(open('package.json'))['version'])"
 /rdc:help
 ```
 
-Current version: **v0.9.35**
+Current version: **v0.9.36**
 
 ## Quick Start
 

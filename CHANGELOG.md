@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.9.36 — Portable installer profiles and startup onboarding
+
+### Added
+
+- **Installer profiles.** `--profile core` installs clean-box-safe hooks only; `--profile lifeai` keeps the LIFEAI/regen-root cwd, clauth, Supabase, and overnight hooks. `auto` chooses `lifeai` only when a sibling `regen-root` project is detected.
+- **Managed startup guide.** New `guides/rdc-skills-startup.md` explains what RDC skills add, the active profiles, and where to find skills, commands, guides, hooks, and installer behavior.
+- **Optional startup block writer.** `--project-root <path> --write-startup-blocks` writes `.rdc/guides/rdc-skills-startup.md` plus managed RDC sections in project `CLAUDE.md` and `AGENTS.md`.
+- **Install welcome.** The installer now prints the selected profile, what it enables, and where to look next.
+
+### Changed
+
+- The default clean-box profile no longer wires regen-root-specific hooks such as cwd lock, Supabase work-item exit gate, rate-limit retry, or overnight open-epic guard.
+
+---
+
 ## v0.9.35 — RDC output-contract hook enforcement
 
 ### Added

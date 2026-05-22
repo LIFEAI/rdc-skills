@@ -5,9 +5,12 @@
  * Usage:
  *   node scripts/install-rdc-skills.js                      ← standard
  *   node scripts/install-rdc-skills.js --skip-hooks         ← skip hook wiring
+ *   node scripts/install-rdc-skills.js --profile core       ← clean-box portable hooks
+ *   node scripts/install-rdc-skills.js --profile lifeai     ← LIFEAI/regen-root hooks
  *   node scripts/install-rdc-skills.js --claude-home <path> ← custom CLI home
  *   node scripts/install-rdc-skills.js --codex-root <path>  ← also install to .agents/skills/user/
  *   node scripts/install-rdc-skills.js --codex-skill-dir <path> ← also install to a Codex skill dir
+ *   node scripts/install-rdc-skills.js --project-root <path> --write-startup-blocks
  *   node scripts/install-rdc-skills.js --migrate <path>     ← migrate docs/ → .rdc/
  *
  * What it does:
@@ -32,11 +35,16 @@ const { execSync } = require('child_process');
 // ── Args ──────────────────────────────────────────────────────────────────────
 const args       = process.argv.slice(2);
 const skipHooks  = args.includes('--skip-hooks');
+const profileIdx = args.indexOf('--profile');
+const profileArg = profileIdx >= 0 ? String(args[profileIdx + 1] || '').toLowerCase() : 'auto';
 const homeIdx    = args.indexOf('--claude-home');
 const claudeHome = homeIdx >= 0 ? args[homeIdx + 1] : path.join(os.homedir(), '.claude');
 const migrateIdx = args.indexOf('--migrate');
 const doMigrate  = migrateIdx >= 0;
 const migratePath = doMigrate ? (args[migrateIdx + 1] || process.cwd()) : null;
+const projectIdx = args.indexOf('--project-root');
+const projectRootArg = projectIdx >= 0 ? path.resolve(args[projectIdx + 1]) : null;
+const shouldWriteStartupBlocks = args.includes('--write-startup-blocks');
 
 const repoRoot     = path.resolve(__dirname, '..');
 
@@ -44,6 +52,7 @@ const codexIdx   = args.indexOf('--codex-root');
 const codexRoot  = codexIdx >= 0
   ? path.resolve(args[codexIdx + 1])
   : (() => {
+      if (projectRootArg) return null;
       const sibling = path.resolve(repoRoot, '..', 'regen-root');
       return fs.existsSync(path.join(sibling, '.agents')) ? sibling : null;
     })();
@@ -54,6 +63,18 @@ const explicitCodexSkillDir = codexSkillDirIdx >= 0
 const hooksSrc     = path.join(repoRoot, 'hooks');
 const hooksDst     = path.join(claudeHome, 'hooks');
 const settingsPath = path.join(claudeHome, 'settings.json');
+const detectedLifeaiRoot = (() => {
+  const sibling = path.resolve(repoRoot, '..', 'regen-root');
+  return fs.existsSync(path.join(sibling, 'CLAUDE.md')) && fs.existsSync(path.join(sibling, '.rdc')) ? sibling : null;
+})();
+const installProfile = (() => {
+  if (profileArg === 'core' || profileArg === 'lifeai') return profileArg;
+  if (profileArg !== 'auto') {
+    console.log(`  \x1b[33m⚠\x1b[0m Unknown --profile "${profileArg}" — using auto`);
+  }
+  return detectedLifeaiRoot ? 'lifeai' : 'core';
+})();
+const projectRoot = projectRootArg || codexRoot || detectedLifeaiRoot;
 
 const PLUGIN_KEY   = 'rdc-skills@rdc-skills';
 const MARKETPLACE  = 'rdc-skills';
@@ -108,6 +129,7 @@ function copyMissingProjectGuides(projectRoot) {
   let copied = 0;
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    if (entry.name === 'rdc-skills-startup.md') continue; // installed only by --write-startup-blocks
     const target = path.join(dst, entry.name);
     if (fs.existsSync(target)) continue;
     fs.copyFileSync(path.join(src, entry.name), target);
@@ -124,6 +146,53 @@ function readJson(p, fallback = {}) {
 function writeJson(p, data, indent = 2) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, JSON.stringify(data, null, indent));
+}
+
+function upsertManagedBlock(filePath, title, body) {
+  const begin = `<!-- BEGIN RDC-SKILLS:${title} -->`;
+  const end = `<!-- END RDC-SKILLS:${title} -->`;
+  const block = `${begin}\n${body.trim()}\n${end}\n`;
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const re = new RegExp(`${begin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'm');
+  const next = re.test(current)
+    ? current.replace(re, block)
+    : `${current.replace(/\s*$/, '')}${current.trim() ? '\n\n' : ''}${block}`;
+  if (next !== current) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, next);
+    return true;
+  }
+  return false;
+}
+
+function writeStartupBlocks(targetRoot, profile) {
+  if (!targetRoot) return { wrote: 0, skipped: 'no-project-root' };
+  const startupSrc = path.join(repoRoot, 'guides', 'rdc-skills-startup.md');
+  const guidesDir = path.join(targetRoot, '.rdc', 'guides');
+  const startupDst = path.join(guidesDir, 'rdc-skills-startup.md');
+  fs.mkdirSync(guidesDir, { recursive: true });
+  fs.copyFileSync(startupSrc, startupDst);
+
+  let wrote = 1;
+  const claudeBody = [
+    '## RDC Skills',
+    '',
+    '@.rdc/guides/rdc-skills-startup.md',
+    '',
+    `Installed profile: \`${profile}\`.`,
+    'For `/rdc:*` work, follow `.rdc/guides/output-contract.md` and `.rdc/guides/engineering-behavior.md`.',
+  ].join('\n');
+  const agentsBody = [
+    '## RDC Skills',
+    '',
+    'Read `.rdc/guides/rdc-skills-startup.md` before using any `rdc:*` workflow.',
+    `Installed profile: \`${profile}\`.`,
+    'For `/rdc:*` work, follow `.rdc/guides/output-contract.md` and `.rdc/guides/engineering-behavior.md`.',
+  ].join('\n');
+
+  if (upsertManagedBlock(path.join(targetRoot, 'CLAUDE.md'), 'STARTUP', claudeBody)) wrote++;
+  if (upsertManagedBlock(path.join(targetRoot, 'AGENTS.md'), 'STARTUP', agentsBody)) wrote++;
+  return { wrote, skipped: null };
 }
 
 // ── Frontmatter parser ────────────────────────────────────────────────────────
@@ -546,7 +615,7 @@ function buildZip(version) {
 }
 
 // ── Hook config ───────────────────────────────────────────────────────────────
-function buildHooksConfig(hooksDir) {
+function buildHooksConfig(hooksDir, profile = 'core') {
   const base = hooksDir.replace(/\\/g, '/');
   const cmd  = (file, msg) => {
     const command = process.platform === 'win32'
@@ -556,21 +625,16 @@ function buildHooksConfig(hooksDir) {
     if (msg) entry.statusMessage = msg;
     return entry;
   };
-  return {
+  const config = {
     UserPromptExpansion: [{ hooks: [
       cmd('rdc-invocation-marker.js', 'Marking RDC slash command...'),
     ]}],
     UserPromptSubmit: [{ hooks: [
       cmd('rdc-invocation-marker.js', 'Marking RDC prompt...'),
     ]}],
-    SessionStart: [{ hooks: [
-      cmd('check-cwd.js'),
-      cmd('check-stale-work-items.js', 'Checking for stale work items...'),
-    ]}],
     PreToolUse: [
       { hooks: [
         cmd('foreground-process-gate.js', 'Checking foreground process policy...'),
-        cmd('work-item-exit-gate.js', 'Checking work item exit gates...'),
       ]},
       { matcher: 'Bash', hooks: [
         cmd('require-work-item-on-commit.js'),
@@ -579,20 +643,36 @@ function buildHooksConfig(hooksDir) {
     PostToolUse: [{ hooks: [
       cmd('check-services.js'),
     ]}],
-    PreCompact: [{ hooks: [
-      cmd('precompact-log.js'),
-    ]}],
-    PostCompact: [{ hooks: [
-      cmd('postcompact-log.js'),
-      cmd('restart-brief.js', 'Writing restart brief...'),
-    ]}],
     Stop: [{ hooks: [
-      cmd('rate-limit-retry.js',   'Checking for rate limits...'),
       cmd('rdc-output-contract-gate.js', 'Checking RDC output contract...'),
       cmd('post-work-check.js',    'Checking for undocumented work...'),
-      cmd('no-stop-open-epics.js', 'Checking for open epics...'),
     ]}],
   };
+
+  if (profile === 'lifeai') {
+    config.SessionStart = [{ hooks: [
+      cmd('check-cwd.js'),
+      cmd('check-stale-work-items.js', 'Checking for stale work items...'),
+    ]}];
+    config.PreToolUse[0].hooks.push(
+      cmd('work-item-exit-gate.js', 'Checking work item exit gates...'),
+    );
+    config.PreCompact = [{ hooks: [
+      cmd('precompact-log.js'),
+    ]}];
+    config.PostCompact = [{ hooks: [
+      cmd('postcompact-log.js'),
+      cmd('restart-brief.js', 'Writing restart brief...'),
+    ]}];
+    config.Stop[0].hooks.unshift(
+      cmd('rate-limit-retry.js', 'Checking for rate limits...'),
+    );
+    config.Stop[0].hooks.push(
+      cmd('no-stop-open-epics.js', 'Checking for open epics...'),
+    );
+  }
+
+  return config;
 }
 
 // ── Preflight ─────────────────────────────────────────────────────────────────
@@ -682,6 +762,7 @@ async function main() {
   console.log('');
   console.log(`  CLAUDE_HOME : ${claudeHome}`);
   console.log(`  Plugin root : ${repoRoot}`);
+  console.log(`  Profile     : ${installProfile}${profileArg === 'auto' ? ' (auto)' : ''}`);
   console.log('');
 
   if (!fs.existsSync(claudeHome)) {
@@ -822,9 +903,18 @@ async function main() {
     info('[4/6] Hook wiring — skipped (--skip-hooks)');
   } else {
     const settings = readJson(settingsPath);
-    settings.hooks = buildHooksConfig(hooksDst);
+    settings.hooks = buildHooksConfig(hooksDst, installProfile);
     writeJson(settingsPath, settings);
     ok(`[4/6] Hook wiring — ${settingsPath}`);
+  }
+
+  // 4.5 Optional startup blocks
+  if (shouldWriteStartupBlocks) {
+    const startup = writeStartupBlocks(projectRoot, installProfile);
+    if (startup.skipped) warn(`[4.5] Startup   — skipped (${startup.skipped})`);
+    else ok(`[4.5] Startup   — wrote managed startup guide/block(s) under ${projectRoot}`);
+  } else {
+    info('[4.5] Startup   — skipped (use --project-root <path> --write-startup-blocks)');
   }
 
   // 5. Zip for claude.ai / distribution
@@ -897,6 +987,15 @@ async function main() {
   console.log('  Cowork : restart Claude Desktop — /rdc:status in a new Cowork session');
   console.log('  claude.ai : no plugin install needed — use FS MCP to read commands on demand');
   console.log('            dist/rdc-skills-plugin-v' + version + '.zip available if needed');
+  console.log('');
+  console.log(`  Profile: ${installProfile}`);
+  if (installProfile === 'core') {
+    console.log('  Core hooks are portable: RDC output contract + foreground process + commit-message hygiene.');
+    console.log('  Project services are not provisioned. Configure work items, credentials, deploys, and project guides before using infrastructure-heavy skills.');
+  } else {
+    console.log('  LIFEAI hooks are active: regen-root cwd lock, Supabase work-item gates, clauth-aware checks, and overnight queue guard.');
+  }
+  console.log('  Startup blocks: run with --project-root <path> --write-startup-blocks to add managed CLAUDE.md/AGENTS.md sections.');
 
   listCommands();
 

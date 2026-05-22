@@ -7,10 +7,14 @@
 # Usage:
 #   ./install.ps1                  # standard install
 #   ./install.ps1 -SkipHooks       # skip hooks registration (e.g. if you manage hooks manually)
+#   ./install.ps1 -Profile core    # portable hooks only
+#   ./install.ps1 -Profile lifeai  # LIFEAI/regen-root hooks
 #   ./install.ps1 -ClaudeHome <path>  # custom CLAUDE_HOME
 
 param(
     [string]$ClaudeHome = "",
+    [ValidateSet("auto", "core", "lifeai")]
+    [string]$Profile = "auto",
     [switch]$SkipHooks = $false,
     [switch]$Force = $false
 )
@@ -22,6 +26,12 @@ if (-not $ClaudeHome) {
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot  = Split-Path -Parent $scriptDir
+$lifeaiRoot = Join-Path (Split-Path -Parent $repoRoot) "regen-root"
+$installProfile = if ($Profile -eq "auto") {
+    if ((Test-Path (Join-Path $lifeaiRoot "CLAUDE.md")) -and (Test-Path (Join-Path $lifeaiRoot ".rdc"))) { "lifeai" } else { "core" }
+} else {
+    $Profile
+}
 
 Write-Host ""
 Write-Host "  rdc-skills Installer" -ForegroundColor Green
@@ -29,6 +39,7 @@ Write-Host "  ====================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  CLAUDE_HOME : $ClaudeHome" -ForegroundColor Cyan
 Write-Host "  Plugin root : $repoRoot" -ForegroundColor Cyan
+Write-Host "  Profile     : $installProfile$(if ($Profile -eq 'auto') { ' (auto)' } else { '' })" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path $ClaudeHome)) {
@@ -96,19 +107,10 @@ if ($SkipHooks) {
                 )
             }
         )
-        SessionStart = @(
-            [PSCustomObject]@{
-                hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-cwd.js`"" },
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-stale-work-items.js`""; statusMessage = "Checking for stale work items..." }
-                )
-            }
-        )
         PreToolUse = @(
             [PSCustomObject]@{
                 hooks   = @(
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/foreground-process-gate.js`""; statusMessage = "Checking foreground process policy..." },
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/work-item-exit-gate.js`""; statusMessage = "Checking work item exit gates..." }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/foreground-process-gate.js`""; statusMessage = "Checking foreground process policy..." }
                 )
             },
             [PSCustomObject]@{
@@ -125,14 +127,30 @@ if ($SkipHooks) {
                 )
             }
         )
-        PreCompact = @(
+        Stop = @(
             [PSCustomObject]@{
                 hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/precompact-log.js`"" }
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rdc-output-contract-gate.js`""; statusMessage = "Checking RDC output contract..." },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." }
                 )
             }
         )
-        PostCompact = @(
+    }
+
+    if ($installProfile -eq "lifeai") {
+        $hooksConfig | Add-Member -NotePropertyName "SessionStart" -NotePropertyValue @(
+            [PSCustomObject]@{
+                hooks = @(
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-cwd.js`"" },
+                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/check-stale-work-items.js`""; statusMessage = "Checking for stale work items..." }
+                )
+            }
+        )
+        $hooksConfig.PreToolUse[0].hooks += [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/work-item-exit-gate.js`""; statusMessage = "Checking work item exit gates..." }
+        $hooksConfig | Add-Member -NotePropertyName "PreCompact" -NotePropertyValue @(
+            [PSCustomObject]@{ hooks = @([PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/precompact-log.js`"" }) }
+        )
+        $hooksConfig | Add-Member -NotePropertyName "PostCompact" -NotePropertyValue @(
             [PSCustomObject]@{
                 hooks = @(
                     [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/postcompact-log.js`"" },
@@ -140,15 +158,10 @@ if ($SkipHooks) {
                 )
             }
         )
-        Stop = @(
-            [PSCustomObject]@{
-                hooks = @(
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." },
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rdc-output-contract-gate.js`""; statusMessage = "Checking RDC output contract..." },
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/post-work-check.js`""; statusMessage = "Checking for undocumented work..." },
-                    [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
-                )
-            }
+        $hooksConfig.Stop[0].hooks = @(
+            [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/rate-limit-retry.js`""; statusMessage = "Checking for rate limits..." }
+        ) + $hooksConfig.Stop[0].hooks + @(
+            [PSCustomObject]@{ type = "command"; command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$hooksBase/run-hidden-hook.ps1`" `"$hooksBase/no-stop-open-epics.js`""; statusMessage = "Checking for open epics..." }
         )
     }
 
@@ -162,6 +175,8 @@ if ($SkipHooks) {
     # Write back with 2-space indent
     $settings | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding UTF8
     Write-Host "  [3/3] Hook wiring ✓  registered in $settingsPath" -ForegroundColor Green
+}
+}
 }
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -184,3 +199,4 @@ Write-Host "  4. Run /rdc:status in Claude Code to verify"
 Write-Host ""
 Write-Host "  Docs: https://github.com/LIFEAI/rdc-skills#readme" -ForegroundColor Cyan
 Write-Host ""
+}
