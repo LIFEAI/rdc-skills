@@ -44,6 +44,8 @@ rdc:deploy: <slug> → <domain>
 [ ] Build-id resolved (default: HEAD of watched branch)
 [ ] Env vars present in Coolify (compare to registry)
 [ ] Type-specific preflight (see docs/runbooks/coolify-deploy-checklist.md)
+[ ] PUBLISH.md read from app root (warn if absent; fail if present but invalid)
+[ ] watch_paths derived from PUBLISH.md surfaces (union of all surface watch_paths arrays) and updated in app_deployments
 [ ] Deploy triggered
 [ ] Deployment reached "finished" state
 [ ] Gate: HTTP 200
@@ -51,6 +53,7 @@ rdc:deploy: <slug> → <domain>
 [ ] Gate: cache headers correct on HTML
 [ ] Gate: container running on declared port
 [ ] Cloudflare cache purged (if proxied)
+[ ] artifact_registry INSERT per PUBLISH.md surface (if PUBLISH.md present)
 [ ] deployment_registry updated (last_deploy_at, status)
 ✅ rdc:deploy: <slug> deployed in Nm Ns
 ```
@@ -133,6 +136,76 @@ Severity rules:
 - **LOW** — cleanup (orphans, duplicates, registry status stale)
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
+
+## PUBLISH.md Integration
+
+Every deploy reads `PUBLISH.md` from the app's source root to derive `watch_paths` and to register surfaces in Studio `artifact_registry`.
+
+### Step 6 — Read PUBLISH.md from the app root
+
+```bash
+MONOREPO_PATH=$(get_app_deployments_monorepo_path "$SLUG")
+PUBLISH_MD="$MONOREPO_PATH/PUBLISH.md"
+
+if [ ! -f "$PUBLISH_MD" ]; then
+  echo "WARN: PUBLISH.md missing for $SLUG — using app_deployments.watch_paths only"
+  # Deploy continues; watch_paths derivation and artifact_registry INSERT are skipped
+fi
+```
+
+PUBLISH.md format: see `C:/Dev/rdc-skills/guides/publish-md-spec.md` (authoritative).
+
+Required frontmatter fields: `schema_version`, `entity_slug`, `artifact_type`, `environments`, `status`.
+One or more `<!-- SURFACE:<id> -->` … `<!-- /SURFACE:<id> -->` blocks per surface (each with `path`, `source_dir`, `build_type`, `visibility`, `cache`, `watch_paths`).
+
+If PUBLISH.md is **present but invalid** (missing required field, bad enum, no surface blocks): abort deploy with `BLOCKED: PUBLISH.md parse error for <slug> — <reason>`.
+
+### Step 7 — Derive watch_paths from PUBLISH.md surfaces
+
+Union all `watch_paths` arrays across every surface section in PUBLISH.md. Update `app_deployments.watch_paths` for the app slug to this derived union before triggering the Coolify deploy.
+
+```sql
+UPDATE app_deployments
+SET watch_paths = '<union-of-surface-watch_paths>'
+WHERE app_slug = '<slug>';
+```
+
+Also PATCH the Coolify application's `watch_paths` field:
+
+```bash
+_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
+WATCH_PATHS_JSON=$(derive_watch_paths_union "$PUBLISH_MD")
+curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
+  -H "Content-Type: application/json" \
+  -d "{\"watch_paths\":\"$WATCH_PATHS_JSON\"}" \
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
+```
+
+### Step 15 — storeArtifact per surface (after successful deploy)
+
+After the deployment reaches "finished" state, INSERT one row into Studio `artifact_registry` for each surface declared in PUBLISH.md:
+
+| Column | Value |
+|--------|-------|
+| `entity_slug` | from PUBLISH.md frontmatter `entity_slug` |
+| `artifact_type` | from PUBLISH.md frontmatter `artifact_type` |
+| `canonical_url` | `https://<app_deployments.url><surface.path>` |
+| `surface_id` | surface name from `<!-- SURFACE:<id> -->` marker |
+| `commit_sha` | HEAD SHA of the deploy |
+| `published_at` | `now()` |
+
+Use the Supabase MCP (`mcp__claude_ai_Supabase__execute_sql`) from the supervisor session:
+
+```sql
+INSERT INTO artifact_registry (entity_slug, artifact_type, canonical_url, surface_id, commit_sha, published_at)
+VALUES ('<entity_slug>', '<artifact_type>', 'https://<url><path>', '<surface_id>', '<commit_sha>', now())
+ON CONFLICT (entity_slug, surface_id) DO UPDATE SET
+  canonical_url = EXCLUDED.canonical_url,
+  commit_sha = EXCLUDED.commit_sha,
+  published_at = EXCLUDED.published_at;
+```
+
+If the INSERT fails, surface the failure in the deploy output but **do NOT roll back the deploy**. The artifact registry is a post-deploy record, not a deploy gate.
 
 ## Coolify Access — clauth + REST API
 

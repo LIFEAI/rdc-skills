@@ -32,6 +32,7 @@ If `<repo>` is not resolvable from the current workspace, ask for its local path
 
 ```
 rdc:release: <repo> vX.Y.Z -> vA.B.C
+[ ] PUBLISH.md status gate: status=active AND prod in environments (block if not)
 [ ] Source path resolved
 [ ] Release metadata read
 [ ] Working tree clean or user-approved dirty scope identified
@@ -50,6 +51,27 @@ rdc:release: <repo> vX.Y.Z -> vA.B.C
 [ ] Smoke test passed
 ✅ rdc:release <repo>: vA.B.C live and verified
 ```
+
+## PUBLISH.md Status Gate (Step 0 — before any production-touching step)
+
+Before touching any production system, read `PUBLISH.md` from the app root and validate promotion eligibility.
+
+```bash
+PUBLISH_MD="<monorepo_path>/PUBLISH.md"
+```
+
+**Block promotion if ANY of the following are true:**
+
+1. **PUBLISH.md is missing AND the app has a row in `app_deployments`** — emit warn and continue (during rollout period); becomes a hard block after Option A rollout is complete.
+2. **PUBLISH.md exists AND `status` field is NOT `active`** — hard block regardless of rollout status.
+   - `status: draft` → `BLOCKED: PUBLISH.md status=draft for <slug> — promote requires status=active`
+   - `status: deprecated` → `BLOCKED: PUBLISH.md status=deprecated for <slug> — promote requires status=active`
+3. **PUBLISH.md exists AND `environments` array does not include `prod`** → `BLOCKED: PUBLISH.md environments=[dev] for <slug> — prod must be declared before promotion`
+4. **Any required surface field is missing** (`source_dir` or `path` absent on any surface) → `BLOCKED: PUBLISH.md surface <id> missing required field for <slug>`
+
+If blocked, abort immediately with the message above. Do NOT proceed to the version bump, commit, or any Coolify call.
+
+If PUBLISH.md is absent and app has no `app_deployments` row (library/package), skip this gate.
 
 ## Resolution Order
 
