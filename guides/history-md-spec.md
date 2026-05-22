@@ -44,6 +44,7 @@ A `prt_projects` row **requires** a `places/<slug>/HISTORY.md` when ALL of:
    - `total_acres IS NOT NULL`
    - `lat IS NOT NULL`
    - `EXISTS (SELECT 1 FROM geo_parcels WHERE project_id = prt_projects.id)`
+   - `EXISTS (SELECT 1 FROM geo_projects WHERE prt_project_id = prt_projects.id)` — a geo_projects join indicates real GIS data exists for this place, even if lat/lng on prt_projects is unset
 
 **Excluded by default:** `project_type IN ('credit','water','tech','regenerative-model')` — these
 are credit instruments or abstract models, not physical land parcels. Individual rows may be
@@ -64,6 +65,7 @@ WHERE is_template IS NOT TRUE
     OR total_acres IS NOT NULL
     OR lat IS NOT NULL
     OR EXISTS (SELECT 1 FROM geo_parcels WHERE project_id = prt_projects.id)
+    OR EXISTS (SELECT 1 FROM geo_projects WHERE prt_project_id = prt_projects.id)
   )
 ORDER BY slug;
 ```

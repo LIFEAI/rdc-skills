@@ -254,6 +254,28 @@ Fix: start the project's credential provider or configure deployment credentials
 I cannot proceed until this is resolved.
 ```
 
+## Deployment Event Log — `coolify_events`
+
+Every Coolify deploy emits a webhook → `coolify_events` row. Use this for last-N-deploys queries, debugging failed deploys, and reconciling local state with Coolify state.
+
+Query the last 5 events for an app:
+```sql
+SELECT created_at, event_type, status, branch, commit_hash, duration_seconds
+FROM coolify_events
+WHERE app_uuid = '<uuid>' OR app_name = '<slug>'
+ORDER BY created_at DESC LIMIT 5;
+```
+
+Fields:
+- `app_uuid` — Coolify application UUID (matches `app_deployments.coolify_uuid`)
+- `event_type` — `started | succeeded | failed | cancelled` (canonical values; consult webhook receiver for full enum)
+- `status` — overall deploy status
+- `branch`, `commit_hash`, `commit_message` — git context
+- `duration_seconds` — total deploy time
+- `payload` — full webhook payload (jsonb) for forensic debugging
+
+When diagnosing a broken deploy in Mode 3: query `coolify_events` FIRST before re-running the deploy — the most recent event row tells you whether the previous deploy actually triggered, whether it failed, and how long it ran. Faster than checking the Coolify UI.
+
 ## References
 
 - Type-specific checklists + DNS tree + gate commands: `docs/runbooks/coolify-deploy-checklist.md`

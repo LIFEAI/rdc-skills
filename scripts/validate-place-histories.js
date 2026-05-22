@@ -19,7 +19,8 @@
  *                    'regenerative-agriculture','real-estate','development')
  *   AND name IS NOT NULL
  *   AND (location_state IS NOT NULL OR location_city IS NOT NULL OR country IS NOT NULL
- *        OR total_acres IS NOT NULL OR lat IS NOT NULL)
+ *        OR total_acres IS NOT NULL OR lat IS NOT NULL
+ *        OR EXISTS (SELECT 1 FROM geo_projects WHERE prt_project_id = prt_projects.id))
  */
 
 'use strict';
@@ -363,12 +364,15 @@ function validateProject(slug) {
 function matchesTriggerPredicate(row) {
   if (!TRIGGERING_PROJECT_TYPES.has(row.project_type)) return false;
   if (!row.name) return false;
+  // geo_projects is an embedded resource array from PostgREST; non-empty = GIS data exists
+  const hasGeoProject = Array.isArray(row.geo_projects) && row.geo_projects.length > 0;
   return (
     row.location_state !== null ||
     row.location_city !== null ||
     row.country !== null ||
     row.total_acres !== null ||
-    row.lat !== null
+    row.lat !== null ||
+    hasGeoProject
   );
 }
 
@@ -394,7 +398,7 @@ async function main() {
   // 2. Query prt_projects — fetch triggering columns for all non-template rows
   let rows;
   try {
-    let qpath = '/rest/v1/prt_projects?is_template=neq.true&select=slug,name,project_type,location_state,location_city,country,total_acres,lat&order=slug.asc';
+    let qpath = '/rest/v1/prt_projects?is_template=neq.true&select=slug,name,project_type,location_state,location_city,country,total_acres,lat,geo_projects(id)&order=slug.asc';
     if (slugFilter) {
       qpath += `&slug=eq.${encodeURIComponent(slugFilter)}`;
     }
