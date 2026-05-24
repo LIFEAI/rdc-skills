@@ -1,6 +1,6 @@
 ---
 name: rdc:review
-description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc, tests, stale docs, export conflicts across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
+description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc, tests, stale docs, export conflicts, and a mandatory pr-review-toolkit:code-reviewer pass across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -79,6 +79,32 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
    - If unclear → report (interactive) or flag in REVIEW_STATUS (unattended)
    - Never silently leave orphaned tasks
    - **⛔ Raw `UPDATE work_items SET parent_id = ...` is forbidden** — bypasses RLS and all constraint checks
+
+8b. **Mandatory code-review gate — dispatch pr-review-toolkit:code-reviewer:**
+
+   ⛔ **No CLEAN verdict without a code-review pass.** This is the second half of the quality gate; tsc/vitest catch type and behavior errors, code-reviewer catches logic, security, and convention drift.
+
+   Dispatch ONE `pr-review-toolkit:code-reviewer` agent on the full diff under review:
+
+   ```
+   Agent({
+     subagent_type: "pr-review-toolkit:code-reviewer",
+     description: "rdc:review code-review pass",
+     prompt: "Review `git diff origin/main...HEAD` on the development branch.
+              Focus on: bugs, logic errors, security vulnerabilities, project-convention
+              adherence (.claude/rules/*, CLAUDE.md, engineering-behavior.md).
+              Confidence-based filtering — high-confidence findings only.
+              Return CODE_REVIEW_COMPLETE with: { critical_count, high_count, medium_count,
+              low_count, findings: [{severity, file:line, issue, suggested_fix}] }."
+   })
+   ```
+
+   **Severity gate:**
+   - `critical` or `high` → verdict cannot be CLEAN. Interactive: report and pause. Unattended: auto-fix if mechanical (rename, missing await, obvious null check), otherwise escalate via advisor and mark HAS_ISSUES.
+   - `medium` or `low` → record in the review report's "Issues" section; verdict can still be CLEAN.
+   - Zero findings → log `CODE_REVIEW: CLEAN` and continue.
+
+   Under `RDC_TEST=1`: echo `[RDC_TEST] skipping code-review dispatch` and continue.
 
 9. **Verification gate — dispatch the verify agent:**
    After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.

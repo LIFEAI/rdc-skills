@@ -44,6 +44,7 @@ rdc:deploy: <slug> → <domain>
 [ ] Build-id resolved (default: HEAD of watched branch)
 [ ] Env vars present in Coolify (compare to registry)
 [ ] Type-specific preflight (see docs/runbooks/coolify-deploy-checklist.md)
+[ ] Mandatory pre-deploy code-review (pr-review-toolkit:code-reviewer on `git diff <last-deployed-sha>..HEAD` for this app's paths). Block deploy on `critical`/`high` findings; record `medium`/`low` and proceed.
 [ ] PUBLISH.md read from app root (warn if absent; fail if present but invalid)
 [ ] watch_paths derived from PUBLISH.md surfaces (union of all surface watch_paths arrays) and updated in app_deployments
 [ ] Deploy triggered

@@ -1,6 +1,6 @@
 ---
 name: rdc:fixit
-description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, closes. The only sanctioned bypass of rdc:build."
+description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, runs a mandatory code-review pass (pr-review-toolkit:code-reviewer), closes. The only sanctioned bypass of rdc:build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -89,6 +89,31 @@ else
   echo "[RDC_TEST] skipping git push origin {development-branch}"
 fi
 ```
+
+### 5.5 Mandatory code-review gate (before submitting implementation report)
+
+⛔ **No fixit closes without a code-review pass.** Even single-file changes go through review.
+
+Dispatch ONE `pr-review-toolkit:code-reviewer` agent on the fixit commit:
+
+```
+Agent({
+  subagent_type: "pr-review-toolkit:code-reviewer",
+  description: "fixit code review",
+  prompt: "Review `git show HEAD` on the development branch. Focus on:
+           bugs, logic errors, security, project-convention adherence (.claude/rules/*).
+           Confidence-based filtering — high-confidence findings only.
+           Return CODE_REVIEW_COMPLETE with: { critical_count, high_count, medium_count,
+           low_count, findings: [{severity, file:line, issue, suggested_fix}] }."
+})
+```
+
+**Severity gate:**
+- `critical` or `high` findings → fix in this same fixit session (do not escalate to rdc:build for the fix itself; the original fixit owns the cleanup), re-commit, re-run review until clean
+- `medium` or `low` findings → record in `implementation_report.flags`; proceed to close
+- Zero findings → proceed to close
+
+Under `RDC_TEST=1`: echo `[RDC_TEST] skipping code-review dispatch` and proceed.
 
 ### 6. Close and clean up
 

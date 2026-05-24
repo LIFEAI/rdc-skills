@@ -1,6 +1,6 @@
 ---
 name: rdc:overnight
-description: "Usage `rdc:overnight [epic-id|label=<label>]` — Unattended end-to-end: drain the entire work queue autonomously (preplan → plan → build → review → report). Use when leaving Claude to run unsupervised for an extended session."
+description: "Usage `rdc:overnight [epic-id|label=<label>]` — Unattended end-to-end: drain the entire work queue autonomously (preplan → plan → build → review → report). Inherits mandatory per-wave code-review (pr-review-toolkit:code-reviewer) from rdc:build and rdc:review. Use when leaving Claude to run unsupervised for an extended session."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -118,6 +118,8 @@ Agents receive the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guid
 
 After each wave: check `BUILD_STATUS`. If `escalated: true`, log the escalation
 in the overnight doc and continue — don't stop the loop.
+
+**Mandatory code-review gate inherited from rdc:build (Step 9b).** Every wave inside `rdc:build` runs a `pr-review-toolkit:code-reviewer` pass before the next wave dispatches. Critical/high findings reopen the affected work items to `todo` and the next wave fixes them. Overnight does not skip or weaken this gate. If a wave's code-review escalates twice, advisor decides; otherwise the loop continues.
 
 ### 3d. Review
 

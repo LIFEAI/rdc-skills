@@ -41,6 +41,7 @@ rdc:release: <repo> vX.Y.Z -> vA.B.C
 [ ] Dry-run gate handled
 [ ] Version files updated
 [ ] Tests/self-test passed
+[ ] Mandatory release code-review (pr-review-toolkit:code-reviewer on `git diff <last-released-tag>..HEAD`). Block release on `critical`/`high` findings; record `medium`/`low` in the release notes and proceed.
 [ ] Commit created
 [ ] Tag created
 [ ] Branch and tag pushed

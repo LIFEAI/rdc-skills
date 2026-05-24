@@ -1,6 +1,6 @@
 ---
 name: rdc:build
-description: "Usage `rdc:build <epic-id>` — You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
+description: "Usage `rdc:build <epic-id>` — You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, runs a mandatory per-wave code-review gate (pr-review-toolkit:code-reviewer), closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -284,6 +284,7 @@ Read the task title and description, then:
      fi
      ```
    - Then run the post-wave test gate (Step 8) on the merged state
+   - Then run the code-review gate (Step 9b) before the next wave dispatches
    - Continue to next wave
 
    **If an agent fails (returns no worktree branch):**
@@ -292,6 +293,32 @@ Read the task title and description, then:
      ```
      BUILD_STATUS: { wave, tasks_done, tasks_failed, commits, escalated: true }
      ```
+
+9b. **Mandatory per-wave code-review gate (runs after merge + test gate, BEFORE next wave dispatches):**
+
+    ⛔ **NO wave may dispatch until the previous wave's code-review pass clears.** Memory `feedback_code_review_per_wave.md` — Davesend 2026-05-24 incident.
+
+    Dispatch ONE `pr-review-toolkit:code-reviewer` agent with the wave's merged diff:
+
+    ```
+    Agent({
+      subagent_type: "pr-review-toolkit:code-reviewer",
+      description: "Wave <N> code review",
+      prompt: "Review the diff `git diff <wave-base-sha>..HEAD` on develop.
+               Focus on: bugs, logic errors, security vulnerabilities, project-convention adherence
+               (.claude/rules/*, CLAUDE.md). Apply confidence-based filtering — high-confidence
+               findings only. Report severity per finding: critical | high | medium | low.
+               Return CODE_REVIEW_COMPLETE with: { critical_count, high_count, medium_count,
+               low_count, findings: [{severity, file:line, issue, suggested_fix}] }."
+    })
+    ```
+
+    **Severity gate (default — high+ blocks):**
+    - `critical` or `high` findings → reopen affected work items to `todo` with finding text in notes; fix in a new wave before continuing
+    - `medium` or `low` findings → append to each work item's `implementation_report.flags`; do NOT reopen; validator sees them
+    - Zero findings → log `CODE_REVIEW: CLEAN` and proceed to next wave
+
+    Under `RDC_TEST=1`: echo `[RDC_TEST] skipping code-review dispatch` and proceed.
 
 10. **Mandatory validator gate (runs after ALL waves complete — before any work item closes):**
 
