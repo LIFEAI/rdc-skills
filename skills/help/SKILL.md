@@ -1,104 +1,99 @@
 ---
 name: rdc:help
-description: "Usage `rdc:help` — Show all rdc:* skills with full argument syntax. Call when unsure which skill to use or what args it takes."
+description: "Usage `rdc:help` — Show all rdc:* skills with usage, requirements, and codeflow status. Reads `.claude-plugin/plugin.json` skills_meta (single source of truth). Call when unsure which skill to use or what args it takes."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
-> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
-# rdc:help — Command Reference
+# rdc:help — Command Reference (manifest-driven)
 
-> **⚠️ HARD OUTPUT RULE:** Your ENTIRE response MUST be the block below, copied verbatim.
-> No preamble. No follow-up question. No summary. No "what would you like to do?".
-> Do NOT add any text before or after the block. Emit it exactly as written. This is non-negotiable.
+> **⚠️ HARD OUTPUT RULE:** Read the plugin manifest, render the table, exit.
+> No preamble. No follow-up question. No summary.
 
-## When to Use
+## Procedure
 
-- The project lead asks what RDC commands exist
-- The active task is unclear and needs command selection
-- A user needs syntax for planning, build, review, deployment, design, or release workflows
+1. Resolve the plugin manifest path. Try in order, take the first that exists:
+   - `{PLUGIN_ROOT}/.claude-plugin/plugin.json`  ← preferred when running from the published plugin
+   - `C:/Dev/rdc-skills/.claude-plugin/plugin.json` ← source-checkout fallback
+   - `~/.claude/plugins/cache/rdc-skills/rdc-skills/latest/.claude-plugin/plugin.json` ← installed cache
+2. Read it. Parse JSON. Read `skills_meta`.
+3. Group entries by `category` in this order: `planning, build, deploy, release, dev-loop, reporting, tooling, infra`.
+4. For each entry render one row: `{slash}  —  {usage}  —  needs: {requires.join(',')}  —  cf: {codeflow_required ? 'yes' : 'no'}`.
+5. Print a Decision Tree at the end that maps natural-language phrases to skills, derived from each entry's `triggers[]`.
+6. Hard rules section at the bottom (see below — verbatim).
 
-## Arguments
-
-- `rdc:help` — print the full command reference menu
-- `rdc` — alias; same as `rdc:help`
-
-## Workflow — the RDC loop
-
-| Command | Usage |
-|---|---|
-| `rdc:preplan` | `rdc:preplan <topic> [--unattended]` — research, no code |
-| `rdc:plan` | `rdc:plan <topic> [--unattended]` — architecture + epic/tasks |
-| `rdc:build` | `rdc:build <epic-id\|topic> [--unattended]` — dispatch agents, commit, close items |
-| `rdc:review` | `rdc:review [--unattended]` — typecheck, tests, fix, commit |
-| `rdc:report` | `rdc:report [--unattended]` — write `.rdc/reports/YYYY-MM-DD.md` |
-| `rdc:overnight` | `rdc:overnight [epic-id\|label=X]` — chain preplan→plan→build→review→report |
-| `rdc:status` | `rdc:status` — read-only dashboard |
-| `rdc:fixit` | `rdc:fixit <description>` — bypass the loop, <5 files / <30 min |
-
-## Ops
-
-| Command | Usage |
-|---|---|
-| `rdc:deploy` | `rdc:deploy <slug> [build-id]` · `rdc:deploy new <slug>` · `rdc:deploy diagnose <slug>` · `rdc:deploy audit [--fix]` |
-| `rdc:release` | `rdc:release <repo> [version]` · `rdc:release <repo> --patch\|--minor\|--major` · `rdc:release <repo> --dry-run` |
-
-## Planning ↔ CLI bridge
-
-| Command | Usage |
-|---|---|
-| `rdc:handoff` | `rdc:handoff <topic>` — finalize plan → work items for CLI |
-| `rdc:prototype` | `rdc:prototype <description>` — JSX mock for review |
-| `rdc:workitems` | `rdc:workitems <add\|update\|done\|list\|epics> [args]` |
-| `rdc:collab` | `rdc:collab --session <id>` — claude.ai bidirectional relay |
-| `rdc:co-develop` | `rdc:co-develop <start\|resume\|send\|poll\|status\|stop>` — Claude/Codex peer-aware co-development |
-| `rdc:design` | `rdc:design <command\|brief>` — RDC/Studio design, tokens, palettes, themes, Rampa CLI |
-
-## Agent guides (dispatched by rdc:build, not user-invocable)
-
-These live under `guides/agents/` — they are role playbooks the build skill spawns as sub-agents. You do NOT invoke them directly.
-
-- `guides/agents/frontend.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/backend.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/data.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/design.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/infrastructure.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/content.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/cs2.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/viz.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/setup.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-- `guides/agents/verify.md` — [agent-only — dispatched by rdc:build, not user-invocable]
-
-Each agent reads `.rdc/guides/agent-bootstrap.md` first, then its role guide.
-
-## Decision tree
+## Required output format
 
 ```
-Project lead says → invoke
-─────────────────────────────────────────────────
-"research this" / "how do others do"    → rdc:preplan <topic>
-"plan this out" / "architect"           → rdc:plan <topic>
-"build it" / "go" / "execute"           → rdc:build <topic>
-"run overnight" / "while I sleep"       → rdc:overnight
-"quick fix" / "hotfix" / "typo"         → rdc:fixit <desc>
-"review" / "is it clean"                → rdc:review
-"report" / "summarize"                  → rdc:report
-"status" / "where are we"               → rdc:status
-"deploy" / "ship"                       → rdc:deploy <slug>
-"release" / "publish"                   → rdc:release <repo>
-"hand this off" / "give to agents"      → rdc:handoff
-"show me what it looks like"            → rdc:prototype
-"add to backlog" / "create a ticket"    → rdc:workitems
-"work together" / "partner review"       → rdc:co-develop start <name>
-"design/tokens/palette/theme"           → rdc:design <command>
-"what commands" / "what skills"         → rdc:help
-```
+RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
 
-## Hard rules (apply everywhere)
+## planning
+  /rdc:preplan <topic>      needs: codeflow                                                      cf: yes
+  /rdc:plan <topic>         needs: supabase,clauth,codeflow,work-items-rpc                       cf: yes
+  /rdc:handoff [--from-prototype <id>]  needs: supabase,clauth,codeflow,work-items-rpc,git       cf: yes
 
-- NEVER `pnpm build` — crashes the machine. Typecheck with `npx tsc --noEmit`.
+## build
+  /rdc:build <epic-id>      needs: supabase,clauth,codeflow,agent-dispatch,work-items-rpc,git    cf: yes
+  /rdc:design <topic>       needs: supabase,clauth,codeflow,git                                  cf: yes
+  /rdc:prototype <desc>     needs: supabase,clauth,codeflow                                      cf: yes
+  /rdc:overnight [scope]    needs: supabase,clauth,codeflow,agent-dispatch,work-items-rpc,git    cf: yes
+  /rdc:review [--unattended] needs: supabase,clauth,codeflow,agent-dispatch,git                  cf: yes
+
+## deploy
+  /rdc:deploy <slug> [new|diagnose|audit] [--fix]   needs: clauth,coolify,pm2,supabase,codeflow  cf: yes
+
+## release
+  /rdc:release <repo> [version|--patch|--minor|--major|--dry-run]  needs: clauth,git,npm,coolify  cf: no
+    ⚠ Production promotion requires explicit user go-ahead.
+
+## dev-loop
+  /rdc:fixit <description>  needs: supabase,clauth,codeflow,agent-dispatch,work-items-rpc,git    cf: yes
+    constraint: < 5 files AND < 30 min — otherwise use /rdc:plan
+  /rdc:collab --session <id>  needs: clauth,git                                                   cf: yes
+  /rdc:co-develop <ask|reply|inbox|start|resume|status>  needs: clauth                            cf: no
+
+## reporting
+  /rdc:status               needs: supabase,clauth                                               cf: no
+  /rdc:report               needs: supabase,clauth,codeflow                                      cf: yes
+  /rdc:watch                needs: (none)                                                        cf: no
+  /rdc:help                 needs: (none)                                                        cf: no
+
+## tooling
+  /rdc:workitems [add|done|status|list|query]  needs: supabase,clauth,work-items-rpc             cf: no
+  /rdc:fs-mcp <task>        needs: clauth                                                        cf: no
+
+## infra
+  /rdc:self-test [--strict] needs: clauth                                                        cf: no
+  /rdc:terminal-config <task>  needs: git                                                        cf: no
+
+## Decision tree (derived from skills_meta[].triggers)
+
+  "research before planning" / "what should we use"     → /rdc:preplan
+  "plan this" / "architecture" / "epic breakdown"       → /rdc:plan
+  "build the epic" / "execute the plan" / "go"          → /rdc:build
+  "let claude run" / "overnight" / "drain queue"        → /rdc:overnight
+  "quick fix" / "typo" / "<5 files"                     → /rdc:fixit
+  "code review" / "audit" / "tsc check"                 → /rdc:review
+  "session report" / "summarize"                        → /rdc:report
+  "where are we" / "snapshot"                           → /rdc:status
+  "deploy to dev" / "audit watch paths"                 → /rdc:deploy
+  "promote" / "push to prod" / "ship"                   → /rdc:release
+  "convert prototype" / "finalize plan"                 → /rdc:handoff
+  "mock it up" / "show me"                              → /rdc:prototype
+  "add work item" / "list epics"                        → /rdc:workitems
+  "ask codex" / "peer-aware"                            → /rdc:co-develop
+  "claude.ai relay" / "collab session"                  → /rdc:collab
+  "palette" / "studio design" / "tokens"                → /rdc:design
+
+## Hard rules
+
+- `cf: yes` skills MUST consult CodeFlow before acting. Hooks fail-closed on unreachable CodeFlow for these.
+- NEVER `pnpm build` at monorepo level — single scoped builds only.
 - NEVER commit to `main` without explicit approval. Default branch is `develop`.
 - NEVER overlap agents on the same files.
 - ALWAYS update work items in real time via RPCs (see `.claude/rules/work-items-rpc.md`).
-- ALWAYS credentials via clauth daemon: `curl -s http://127.0.0.1:52437/v/<service>` (returns plain text).
+- ALWAYS credentials via clauth daemon: `curl -s http://127.0.0.1:52437/v/<service>` (plain text).
+```
+
+> If the manifest file is unreachable, fall back to the static table above (the manifest values it was generated from). Tell the user the fallback was used so they know to investigate.

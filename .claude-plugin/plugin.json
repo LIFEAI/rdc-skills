@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.9.38",
+  "version": "0.11.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -30,5 +30,908 @@
     "terminal-config",
     "watch",
     "workitems"
-  ]
+  ],
+  "skills_meta_schema": {
+    "$comment": "Schema for entries in skills_meta. Each skill object has the same shape.",
+    "name": "string — skill slug (matches directory name under skills/)",
+    "slash": "string — slash-command form, e.g. 'rdc:build'",
+    "category": "planning | build | deploy | release | reporting | tooling | infra | dev-loop",
+    "usage": "string — single-line invocation example",
+    "args": {
+      "positional": "array of { name, required, description, accepts }",
+      "flags": "array of { name, type, default, description }"
+    },
+    "requires": "array of capabilities — subset of: supabase, clauth, codeflow, neo4j, github, coolify, pm2, npm, git, codeflow-http, agent-dispatch, work-items-rpc",
+    "produces": "array of side effects — subset of: work_items, git_commits, supabase_writes, git_pushes, deploys, npm_publishes, .rdc/plans/, .rdc/reports/, prototype_registry, akg_ingests",
+    "default_model": "opus | sonnet | haiku | inherit",
+    "triggers": "array of natural-language phrases that should suggest this skill",
+    "follows": "array of skill names that typically run before this one",
+    "leads_to": "array of skill names that typically run after this one",
+    "sandbox_aware": "bool — true if skill honors RDC_TEST=1 short-circuit",
+    "output_contract": "string — relative path to the skill's output contract (usually guides/output-contract.md)",
+    "enabled_default": "bool — installer default; user can override in settings.json",
+    "codeflow_required": "bool — true if the skill MUST consult CodeFlow before acting on the codebase"
+  },
+  "skills_meta": {
+    "build": {
+      "name": "build",
+      "slash": "rdc:build",
+      "category": "build",
+      "usage": "rdc:build <epic-id>",
+      "args": {
+        "positional": [
+          {
+            "name": "epic-id",
+            "required": true,
+            "description": "UUID of a work_items epic with todo children",
+            "accepts": "uuid"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--no-review",
+            "type": "bool",
+            "default": false,
+            "description": "Skip the mandatory per-wave code-review gate (NOT recommended)"
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "agent-dispatch",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "work_items",
+        "supabase_writes",
+        "git_pushes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "build the epic",
+        "execute the plan",
+        "dispatch agents",
+        "run rdc build"
+      ],
+      "follows": [
+        "plan",
+        "handoff"
+      ],
+      "leads_to": [
+        "review",
+        "report"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "co-develop": {
+      "name": "co-develop",
+      "slash": "rdc:co-develop",
+      "category": "dev-loop",
+      "usage": "rdc:co-develop <ask|reply|inbox|start|resume|status>",
+      "args": {
+        "positional": [
+          {
+            "name": "subcommand",
+            "required": true,
+            "description": "Action verb",
+            "accepts": "ask | reply | inbox | start | resume | status"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--wait",
+            "type": "bool",
+            "default": false,
+            "description": "Block until peer responds (default for `ask`)"
+          }
+        ]
+      },
+      "requires": [
+        "clauth"
+      ],
+      "produces": [],
+      "default_model": "inherit",
+      "triggers": [
+        "ask codex",
+        "send to codex",
+        "claude codex co-development",
+        "peer-aware delegation"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "collab": {
+      "name": "collab",
+      "slash": "rdc:collab",
+      "category": "dev-loop",
+      "usage": "rdc:collab --session <session_id>",
+      "args": {
+        "positional": [],
+        "flags": [
+          {
+            "name": "--session",
+            "type": "string",
+            "default": null,
+            "description": "claude.ai session id to relay with",
+            "required": true
+          }
+        ]
+      },
+      "requires": [
+        "clauth",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "git_pushes"
+      ],
+      "default_model": "inherit",
+      "triggers": [
+        "collab with claude ai",
+        "relay session",
+        "bidirectional session"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "deploy": {
+      "name": "deploy",
+      "slash": "rdc:deploy",
+      "category": "deploy",
+      "usage": "rdc:deploy <slug> [new|diagnose|audit] [--fix]",
+      "args": {
+        "positional": [
+          {
+            "name": "slug",
+            "required": true,
+            "description": "app_deployments.app_slug or pm2_name",
+            "accepts": "string"
+          },
+          {
+            "name": "action",
+            "required": false,
+            "description": "Operation kind",
+            "accepts": "new | diagnose | audit | (omit for default deploy)"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--fix",
+            "type": "bool",
+            "default": false,
+            "description": "Apply remediation during diagnose/audit"
+          }
+        ]
+      },
+      "requires": [
+        "clauth",
+        "coolify",
+        "pm2",
+        "supabase",
+        "codeflow"
+      ],
+      "produces": [
+        "deploys",
+        "supabase_writes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "deploy to dev",
+        "deploy to coolify",
+        "audit watch paths",
+        "fix deploy"
+      ],
+      "follows": [
+        "build",
+        "review"
+      ],
+      "leads_to": [
+        "release"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "design": {
+      "name": "design",
+      "slash": "rdc:design",
+      "category": "build",
+      "usage": "rdc:design <topic>",
+      "args": {
+        "positional": [
+          {
+            "name": "topic",
+            "required": true,
+            "description": "Design subject — palette, token system, Studio surface",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "supabase_writes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "design palette",
+        "studio design",
+        "token-aware ui",
+        "rampant color work"
+      ],
+      "follows": [],
+      "leads_to": [
+        "build"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "fixit": {
+      "name": "fixit",
+      "slash": "rdc:fixit",
+      "category": "dev-loop",
+      "usage": "rdc:fixit <description>",
+      "args": {
+        "positional": [
+          {
+            "name": "description",
+            "required": true,
+            "description": "Short prose description of the fix",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "agent-dispatch",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "work_items",
+        "supabase_writes",
+        "git_pushes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "quick fix",
+        "small fix",
+        "hotfix",
+        "typo fix",
+        "less than 5 files"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true,
+      "constraint": "Files touched MUST be < 5 AND time MUST be < 30 min. Otherwise use rdc:plan."
+    },
+    "fs-mcp": {
+      "name": "fs-mcp",
+      "slash": "rdc:fs-mcp",
+      "category": "tooling",
+      "usage": "rdc:fs-mcp <task>",
+      "args": {
+        "positional": [
+          {
+            "name": "task",
+            "required": true,
+            "description": "Free-text task referencing fs_read/fs_write/fs_import_git_files",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "clauth"
+      ],
+      "produces": [],
+      "default_model": "inherit",
+      "triggers": [
+        "file system mcp",
+        "fs_read",
+        "fs_write",
+        "fs_import_git_files",
+        "claude.ai filesystem"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "handoff": {
+      "name": "handoff",
+      "slash": "rdc:handoff",
+      "category": "planning",
+      "usage": "rdc:handoff [--from-prototype <id>]",
+      "args": {
+        "positional": [],
+        "flags": [
+          {
+            "name": "--from-prototype",
+            "type": "string",
+            "default": null,
+            "description": "prototype_registry id to convert into a plan"
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "work_items",
+        "supabase_writes",
+        "git_commits",
+        ".rdc/plans/",
+        "prototype_registry"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "handoff to build",
+        "convert prototype to plan",
+        "finalize plan"
+      ],
+      "follows": [
+        "plan",
+        "prototype"
+      ],
+      "leads_to": [
+        "build"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "help": {
+      "name": "help",
+      "slash": "rdc:help",
+      "category": "reporting",
+      "usage": "rdc:help",
+      "args": {
+        "positional": [],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "haiku",
+      "triggers": [
+        "rdc help",
+        "what rdc skills exist",
+        "list skills"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "overnight": {
+      "name": "overnight",
+      "slash": "rdc:overnight",
+      "category": "build",
+      "usage": "rdc:overnight [epic-id|label=<label>]",
+      "args": {
+        "positional": [
+          {
+            "name": "scope",
+            "required": false,
+            "description": "Specific epic UUID or label=<labelname> to drain",
+            "accepts": "uuid | label=string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "agent-dispatch",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "work_items",
+        "supabase_writes",
+        "git_pushes",
+        ".rdc/reports/"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "unattended build",
+        "overnight run",
+        "drain queue",
+        "let claude run"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "plan": {
+      "name": "plan",
+      "slash": "rdc:plan",
+      "category": "planning",
+      "usage": "rdc:plan <topic>",
+      "args": {
+        "positional": [
+          {
+            "name": "topic",
+            "required": true,
+            "description": "What you want planned",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "work-items-rpc"
+      ],
+      "produces": [
+        "work_items",
+        "supabase_writes",
+        ".rdc/plans/"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "plan an epic",
+        "break down work",
+        "architecture decision",
+        "design decisions"
+      ],
+      "follows": [
+        "preplan"
+      ],
+      "leads_to": [
+        "handoff",
+        "build"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "preplan": {
+      "name": "preplan",
+      "slash": "rdc:preplan",
+      "category": "planning",
+      "usage": "rdc:preplan <topic>",
+      "args": {
+        "positional": [
+          {
+            "name": "topic",
+            "required": true,
+            "description": "What you want researched",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "codeflow"
+      ],
+      "produces": [],
+      "default_model": "opus",
+      "triggers": [
+        "research before planning",
+        "preplan",
+        "research unknowns",
+        "what should we use"
+      ],
+      "follows": [],
+      "leads_to": [
+        "plan"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "prototype": {
+      "name": "prototype",
+      "slash": "rdc:prototype",
+      "category": "build",
+      "usage": "rdc:prototype <description>",
+      "args": {
+        "positional": [
+          {
+            "name": "description",
+            "required": true,
+            "description": "What to mock up",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow"
+      ],
+      "produces": [
+        "supabase_writes",
+        "prototype_registry"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "mock it up",
+        "prototype this",
+        "show me what it looks like",
+        "jsx mockup"
+      ],
+      "follows": [],
+      "leads_to": [
+        "handoff",
+        "plan"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "release": {
+      "name": "release",
+      "slash": "rdc:release",
+      "category": "release",
+      "usage": "rdc:release <repo> [version|--patch|--minor|--major|--dry-run]",
+      "args": {
+        "positional": [
+          {
+            "name": "repo",
+            "required": true,
+            "description": "package slug or repo name",
+            "accepts": "string"
+          },
+          {
+            "name": "version",
+            "required": false,
+            "description": "Explicit semver",
+            "accepts": "semver"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--patch",
+            "type": "bool",
+            "default": false,
+            "description": "Bump patch"
+          },
+          {
+            "name": "--minor",
+            "type": "bool",
+            "default": false,
+            "description": "Bump minor"
+          },
+          {
+            "name": "--major",
+            "type": "bool",
+            "default": false,
+            "description": "Bump major"
+          },
+          {
+            "name": "--dry-run",
+            "type": "bool",
+            "default": false,
+            "description": "Show actions without executing"
+          }
+        ]
+      },
+      "requires": [
+        "clauth",
+        "git",
+        "npm",
+        "coolify"
+      ],
+      "produces": [
+        "git_commits",
+        "git_pushes",
+        "npm_publishes",
+        "deploys"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "promote to production",
+        "release the package",
+        "push to main",
+        "bump version and ship"
+      ],
+      "follows": [
+        "deploy",
+        "review"
+      ],
+      "leads_to": [
+        "report"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false,
+      "production_gate": "Promotion to main/production requires explicit user go-ahead. Dev deploys do not."
+    },
+    "report": {
+      "name": "report",
+      "slash": "rdc:report",
+      "category": "reporting",
+      "usage": "rdc:report",
+      "args": {
+        "positional": [],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow"
+      ],
+      "produces": [
+        ".rdc/reports/"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "session report",
+        "nightly report",
+        "summarize work done"
+      ],
+      "follows": [
+        "build",
+        "review",
+        "deploy",
+        "release"
+      ],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "review": {
+      "name": "review",
+      "slash": "rdc:review",
+      "category": "build",
+      "usage": "rdc:review [--unattended]",
+      "args": {
+        "positional": [],
+        "flags": [
+          {
+            "name": "--unattended",
+            "type": "bool",
+            "default": false,
+            "description": "Auto-fix what is fixable; escalate the rest"
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "agent-dispatch",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "supabase_writes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "code review",
+        "post-build review",
+        "audit the work",
+        "tsc check"
+      ],
+      "follows": [
+        "build",
+        "fixit"
+      ],
+      "leads_to": [
+        "deploy",
+        "release",
+        "report"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "self-test": {
+      "name": "self-test",
+      "slash": "rdc:self-test",
+      "category": "infra",
+      "usage": "rdc:self-test [--strict]",
+      "args": {
+        "positional": [],
+        "flags": [
+          {
+            "name": "--strict",
+            "type": "bool",
+            "default": false,
+            "description": "Fail on any warning"
+          }
+        ]
+      },
+      "requires": [
+        "clauth"
+      ],
+      "produces": [],
+      "default_model": "opus",
+      "triggers": [
+        "self test rdc skills",
+        "validate plugin",
+        "skill manifest consistency"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "status": {
+      "name": "status",
+      "slash": "rdc:status",
+      "category": "reporting",
+      "usage": "rdc:status",
+      "args": {
+        "positional": [],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth"
+      ],
+      "produces": [],
+      "default_model": "haiku",
+      "triggers": [
+        "rdc status",
+        "what is open",
+        "session snapshot",
+        "kanban"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "terminal-config": {
+      "name": "terminal-config",
+      "slash": "rdc:terminal-config",
+      "category": "infra",
+      "usage": "rdc:terminal-config <task>",
+      "args": {
+        "positional": [
+          {
+            "name": "task",
+            "required": true,
+            "description": "Free-text terminal-config task",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "git"
+      ],
+      "produces": [
+        "git_commits"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "windows terminal config",
+        "shell profile",
+        "agent startup order"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "watch": {
+      "name": "watch",
+      "slash": "rdc:watch",
+      "category": "reporting",
+      "usage": "rdc:watch",
+      "args": {
+        "positional": [],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "haiku",
+      "triggers": [
+        "watch session",
+        "live viewer",
+        "watch claude work"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "workitems": {
+      "name": "workitems",
+      "slash": "rdc:workitems",
+      "category": "tooling",
+      "usage": "rdc:workitems [add|done|status|list|query]",
+      "args": {
+        "positional": [
+          {
+            "name": "subcommand",
+            "required": false,
+            "description": "CRUD verb",
+            "accepts": "add | done | status | list | query"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "work-items-rpc"
+      ],
+      "produces": [
+        "work_items",
+        "supabase_writes"
+      ],
+      "default_model": "haiku",
+      "triggers": [
+        "add work item",
+        "close work item",
+        "list epics",
+        "query by label"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    }
+  }
 }
