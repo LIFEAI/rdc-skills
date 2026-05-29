@@ -194,11 +194,28 @@ Read the task title and description, then:
    ### ⛔ Agent Dispatch Non-Negotiable Defaults
    Every `Agent()` call MUST include these parameters — no exceptions:
    ```
-   model: "sonnet"
+   model: <chosen per the routing table below>
    max_turns: 70
    isolation: "worktree"
    ```
-   Agents run Sonnet 4.6 — capable for implementation work, budget-safe for parallel dispatch. The supervisor session model does NOT cascade to agents; you must set it explicitly.
+
+   **Agent model routing — pick per task, not per wave.** The supervisor session model does NOT cascade to agents; you must set `model` explicitly on every dispatch.
+
+   | Task character | Model | When to pick it |
+   |---|---|---|
+   | Updates, edits, mechanical refactors, small fixes, content tweaks, config patches, doc/copy edits, straightforward API wiring | `claude-sonnet-4-6` | Default for `frontend.md`/`content.md`/`infrastructure.md` work whose checklist is mostly "change X to Y" or "wire up endpoint Z". Budget-safe for parallel dispatch. |
+   | Harder coding tasks — non-trivial algorithm, migration with backfill, schema reshape, multi-file refactor with subtle invariants, performance-sensitive code, anything where correctness is the bar | `claude-opus-4-6` | Default for `backend.md`/`data.md` work and any `frontend.md` task that involves state machines, race conditions, or cross-package contracts. |
+   | Design or innovative thought — new component design, brand/UX work, CS 2.0 paradigm work (HAIL/Quad Pixel/AEMG/Virtue), grammar evolution, architecture-first design, anything where the *shape* of the solution is the deliverable rather than the implementation | `claude-opus-4-8` | Default for `design.md`/`cs2.md` work. Also use for `backend.md`/`data.md` tasks tagged with `architecture` or `design-decision` in work item labels. |
+
+   **How to choose when the task straddles categories:**
+   - If the task's checklist contains the word "design", "decide", "propose", "evaluate alternatives", "novel", or any CS 2.0 primitive → **Opus 4.8**.
+   - If the task touches `packages/cs2*`, `packages/hail`, `packages/quad-pixel`, `packages/virtue-engine`, `packages/aemg`, `packages/planetary-ontology`, or `packages/being-state-processor` → **Opus 4.8** (CS 2.0 paradigm requires innovative thought, not transcription).
+   - If the task is a Supabase migration that drops/renames/reshapes anything, or a refactor across ≥5 files → **Opus 4.6**.
+   - Otherwise → **Sonnet 4.6**.
+
+   **State the choice in the wave plan.** Before dispatching a wave, the supervisor must log one line per agent in the form `[wave-N agent-K] role=<role> task=<id> model=<chosen> reason=<one phrase>`. This keeps routing decisions reviewable in the transcript and lets `rdc:report` summarize the fleet mix.
+
+   **Cost guardrail.** If a single wave would dispatch more than 3 Opus 4.8 agents in parallel, downshift the lowest-priority Opus-4.8 tasks to Opus 4.6 unless their work items are tagged `priority=urgent`. Opus 4.8 fast-mode is cheap individually but still ~5× a Sonnet agent at scale.
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
@@ -382,5 +399,5 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: "sonnet"` + `max_turns: 70` + `isolation: "worktree"` — non-negotiable (Sonnet agents, Opus supervisor). Exception: validator agent in Step 10 omits isolation.
+- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` + `isolation: "worktree"` — non-negotiable. Model is chosen per task per the routing table in Step 7: Sonnet 4.6 for updates/edits, Opus 4.6 for harder coding, Opus 4.8 for design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 omits isolation; validator model stays `claude-sonnet-4-6` (verification, not generation).
 - Finding an existing file is NOT task completion — verify it satisfies the spec
