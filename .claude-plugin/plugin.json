@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.11.0",
+  "version": "0.13.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -9,9 +9,11 @@
   "homepage": "https://github.com/LIFEAI/rdc-skills",
   "repository": "https://github.com/LIFEAI/rdc-skills",
   "skills": [
+    "brochure",
     "build",
     "co-develop",
     "collab",
+    "convert",
     "deploy",
     "design",
     "fixit",
@@ -53,6 +55,41 @@
     "codeflow_required": "bool — true if the skill MUST consult CodeFlow before acting on the codebase"
   },
   "skills_meta": {
+    "brochure": {
+      "name": "brochure",
+      "slash": "rdc:brochure",
+      "category": "tooling",
+      "usage": "rdc:brochure <input> [--out path] [--template name] [--format Letter|A4]",
+      "args": {
+        "positional": [
+          { "name": "input", "required": true, "description": "Path to .zip, folder, .html, .md, or http(s)://... URL", "accepts": "path|url" }
+        ],
+        "flags": [
+          { "name": "--out", "type": "path", "default": null, "description": "Output PDF path. Defaults to <input-basename>.pdf next to the input." },
+          { "name": "--template", "type": "string", "default": "studio-default", "description": "Compose-mode template (scaffold/templates/brochure-<name>.html)." },
+          { "name": "--format", "type": "string", "default": "Letter", "description": "Page size: Letter or A4." },
+          { "name": "--margin", "type": "string", "default": null, "description": "Override CSS @page margin (e.g. \"0.5in\")." },
+          { "name": "--no-print-emulate", "type": "bool", "default": false, "description": "Render with screen media instead of print." },
+          { "name": "--keep-workdir", "type": "bool", "default": false, "description": "Keep the staged working directory for inspection." }
+        ]
+      },
+      "requires": [],
+      "produces": ["pdf_artifact"],
+      "default_model": "sonnet",
+      "triggers": [
+        "make a brochure",
+        "render this html to pdf",
+        "convert this zip to pdf",
+        "puppeteer pdf",
+        "print this to pdf"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
     "build": {
       "name": "build",
       "slash": "rdc:build",
@@ -188,6 +225,98 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true
+    },
+    "convert": {
+      "name": "convert",
+      "slash": "rdc:convert",
+      "category": "tooling",
+      "usage": "rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]",
+      "args": {
+        "positional": [
+          {
+            "name": "input",
+            "required": true,
+            "description": "One or more .docx, .pptx, .ppt, or .md files or directories",
+            "accepts": "path"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--out",
+            "type": "path",
+            "default": null,
+            "description": "Output directory for the converted tree."
+          },
+          {
+            "name": "--out-same-dir",
+            "type": "bool",
+            "default": false,
+            "description": "Write .md, .assets, and reports beside each source file."
+          },
+          {
+            "name": "--to",
+            "type": "string",
+            "default": "auto",
+            "description": "Output target: auto | markdown | word."
+          },
+          {
+            "name": "--images",
+            "type": "string",
+            "default": "assets",
+            "description": "Image handling: assets | base64 | s3."
+          },
+          {
+            "name": "--equations",
+            "type": "string",
+            "default": "tex",
+            "description": "OMML equations: tex (KaTeX) | image (debug)."
+          },
+          {
+            "name": "--inline-images",
+            "type": "bool",
+            "default": false,
+            "description": "Emit <name>.inline.md with images as data URIs."
+          },
+          {
+            "name": "--word-template",
+            "type": "path",
+            "default": null,
+            "description": ".docx/.dotx template for Markdown -> Word."
+          },
+          {
+            "name": "--move-sources",
+            "type": "bool",
+            "default": false,
+            "description": "Move processed sources into a sources/ folder."
+          },
+          {
+            "name": "--config",
+            "type": "path",
+            "default": null,
+            "description": "JSON config with conversion/output/S3 defaults."
+          }
+        ]
+      },
+      "requires": [],
+      "produces": [
+        "markdown_artifact",
+        "word_artifact"
+      ],
+      "default_model": "inherit",
+      "triggers": [
+        "convert this docx to markdown",
+        "convert to word",
+        "docx to markdown",
+        "pptx to markdown",
+        "build a markdown corpus",
+        "open the report in regen-mde"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": null,
+      "enabled_default": true,
+      "codeflow_required": false
     },
     "deploy": {
       "name": "deploy",
