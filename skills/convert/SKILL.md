@@ -73,9 +73,15 @@ Prefer keeping S3 secrets in `--config`, not on the command line.
 - `base64` — embed images directly as Markdown data URIs.
 - `s3` — upload to S3-compatible storage (Cloudflare R2 / AWS S3); needs the S3 flags or `--config`.
 
-### Equation modes (`--equations`)
-- `tex` — convert Word OMML equations to KaTeX-readable TeX (default).
-- `image` — render equations as images (visual debugging only).
+### Equations (both directions are real)
+- **docx → markdown** (`--equations`): `tex` converts Word OMML equations to
+  KaTeX-readable TeX (default); `image` renders them as images (debug only).
+- **markdown → word** (`--to word`): inline `$...$` and display `$$...$$` LaTeX
+  are converted to **native Office Math (OMML)** that Word renders as real
+  equations (`\sum`, `\int`, `\frac`, `\Delta`, `\rightarrow`, `\leq`, …) — not
+  raw text in a math font. Unparseable fragments fall back to Cambria Math text
+  and are flagged in the export report. Requires build-corpus ≥ 0.4.0. Fence
+  display math with `$$` on their own lines, no blank lines inside the fence.
 
 ## Editor — `regen-mde` (Windows only)
 
