@@ -7,7 +7,7 @@ import { execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, copyFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, basename, extname, join, resolve, relative } from 'node:path';
+import { dirname, basename, extname, join, resolve, relative, sep } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -142,15 +142,48 @@ function loadAdmZip() {
   try { return createRequire(join(cacheDir, 'package.json'))('adm-zip'); } catch { return null; }
 }
 
+// Reject any archive member that resolves outside destDir (zip-slip / path
+// traversal). Returns the validated absolute destination path. Throws on escape.
+function safeJoinOrThrow(destDir, entryName) {
+  const root = resolve(destDir);
+  const dest = resolve(root, entryName);
+  if (dest !== root && !dest.startsWith(root + sep)) {
+    throw new Error(`zip-slip: entry "${entryName}" escapes destination directory`);
+  }
+  return dest;
+}
+
 function extractZip(zipPath, destDir) {
   mkdirSync(destDir, { recursive: true });
+  const root = resolve(destDir);
   const AdmZip = loadAdmZip();
   if (AdmZip) {
-    new AdmZip(zipPath).extractAllTo(destDir, /* overwrite */ true);
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    // First pass: validate every entry resolves inside destDir. A brochure
+    // source zip must never contain `..` or absolute members — reject the whole
+    // archive rather than silently skipping (fail-closed).
+    for (const entry of entries) {
+      safeJoinOrThrow(root, entry.entryName);
+    }
+    // Second pass: extract validated entries individually. Do NOT use the
+    // blanket extractAllTo — adm-zip does not sanitize entry paths.
+    for (const entry of entries) {
+      if (entry.isDirectory) {
+        mkdirSync(safeJoinOrThrow(root, entry.entryName), { recursive: true });
+        continue;
+      }
+      const dest = safeJoinOrThrow(root, entry.entryName);
+      mkdirSync(dirname(dest), { recursive: true });
+      zip.extractEntryTo(entry, root, /* maintainEntryPath */ true, /* overwrite */ true);
+    }
     return;
   }
-  // Fallback: platform-native extractor.
+  // Fallback: platform-native extractor. Validate members via a listing pass
+  // BEFORE extracting, since the bulk extract commands cannot apply per-entry
+  // guards. Reject any `..` segment or absolute/leading-slash member.
   log('adm-zip unavailable — falling back to platform unzip');
+  assertNativeZipSafe(zipPath);
   let r;
   if (process.platform === 'win32') {
     r = spawnSync('powershell', ['-NoProfile', '-Command',
@@ -159,6 +192,37 @@ function extractZip(zipPath, destDir) {
     r = spawnSync('unzip', ['-o', '-q', zipPath, '-d', destDir], { stdio: 'inherit' });
   }
   if (!r || r.status !== 0) throw new Error('unzip failed (no pure-Node lib and platform extractor failed)');
+}
+
+// List archive members with a native tool and reject any traversal/absolute
+// entry. Throws if a member is unsafe or the listing cannot be produced.
+function assertNativeZipSafe(zipPath) {
+  let names = [];
+  if (process.platform === 'win32') {
+    const ps = spawnSync('powershell', ['-NoProfile', '-Command',
+      `Add-Type -AssemblyName System.IO.Compression.FileSystem; ` +
+      `[System.IO.Compression.ZipFile]::OpenRead('${zipPath}').Entries | ForEach-Object { $_.FullName }`],
+      { encoding: 'utf8' });
+    if (ps.status !== 0) throw new Error('cannot list zip members for traversal check (PowerShell)');
+    names = String(ps.stdout || '').split(/\r?\n/);
+  } else {
+    const zi = spawnSync('zipinfo', ['-1', zipPath], { encoding: 'utf8' });
+    if (zi.status === 0) {
+      names = String(zi.stdout || '').split(/\r?\n/);
+    } else {
+      const ul = spawnSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
+      if (ul.status !== 0) throw new Error('cannot list zip members for traversal check (unzip -Z1)');
+      names = String(ul.stdout || '').split(/\r?\n/);
+    }
+  }
+  for (const raw of names) {
+    const name = raw.trim();
+    if (!name) continue;
+    const norm = name.replace(/\\/g, '/');
+    if (norm.startsWith('/') || /^[A-Za-z]:/.test(norm) || norm.split('/').some((seg) => seg === '..')) {
+      throw new Error(`zip-slip: entry "${name}" escapes destination directory`);
+    }
+  }
 }
 
 // --- stage input -----------------------------------------------------------
