@@ -31,17 +31,25 @@ fetch and run the tool in its own session (this is how claude.ai uses it).
 The command is always `build-corpus <input> [flags]`. Resolve the binary like this:
 
 1. **Already on PATH?** Use it directly: `build-corpus --help`.
-2. **Python runtime (recommended on Linux/macOS/claude.ai):**
-   - one-off, no install:  `pipx run build-corpus <input> [flags]`
-   - or install:           `pipx install build-corpus`  (PEP 668-safe)
-   - in a disposable sandbox: `python3 -m pip install build-corpus && build-corpus <input> [flags]`
-   - S3/R2 image upload needs the extra: `pip install "build-corpus[s3]"`
-3. **Node runtime:**         `npx -y -p regen-mde build-corpus <input> [flags]`
+2. **Install straight from GitHub — REQUIRED for current behavior** (native LaTeX→OMML
+   equations, the fidelity report, and the escaped-currency fix; the PyPI/npm packages
+   below currently LAG GitHub):
+   ```bash
+   pip install "git+https://github.com/LIFEAI/build-corpus.git@feat/dual-package-ubuntu"
+   # once merged to main, drop the @branch:
+   #   pip install "git+https://github.com/LIFEAI/build-corpus.git"
+   ```
+   This installs the `build-corpus` CLI and its deps (latex2mathml, mathml2omml,
+   python-docx, Pillow, omml2latex). On Debian/Ubuntu externally-managed Python, add
+   `--break-system-packages`, use a venv, or `pipx install "git+https://github.com/LIFEAI/build-corpus.git@feat/dual-package-ubuntu"`.
+3. **PyPI / npm (only if you do NOT need the latest fixes — these lag GitHub):**
+   `pipx install build-corpus` · `npx -y -p regen-mde build-corpus <input> [flags]`
 4. **Legacy `.ppt` input** additionally needs LibreOffice (`soffice`) on PATH
    (`sudo apt install libreoffice`). `.docx`/`.pptx` need nothing extra.
+5. **S3/R2 image upload** needs the extra: append `[s3]` to the package spec.
 
-claude.ai note: pull from PyPI (`build-corpus`) or npm (`regen-mde`) and run in the
-analysis/session sandbox. No local repo checkout is required.
+claude.ai note: install from GitHub (step 2) into the analysis/session sandbox and run
+`build-corpus` there. GitHub is the source of truth until PyPI/npm are republished.
 
 ## Command Reference
 
