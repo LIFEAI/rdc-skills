@@ -1,6 +1,6 @@
 ---
 name: rdc:deploy
-description: "Usage `rdc:deploy <slug> [new|diagnose|audit] [--fix]` — Deploy an app to Coolify (production) or PM2 (staging), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, health checks, and post-deploy verification."
+description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote] [--fix|--hotfix <sha>]` — Deploy an app to Coolify (production) or PM2 (staging), promote a verified dev change to production (one-command cherry-pick → PR → admin-merge → explicit Coolify trigger → verify), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, branch protection, health checks, and post-deploy verification."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -15,10 +15,11 @@ No raw MCP dumps. No UUIDs unless asked.
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 >
-> *Under `$RDC_TEST=1`:* Modes 1 (deploy) and 2 (new) are **entirely skipped** — echo `[RDC_TEST] skipping Coolify deploy/create` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
+> *Under `$RDC_TEST=1`:* Modes 1 (deploy), 2 (new), and 5 (promote) are **entirely skipped** — echo `[RDC_TEST] skipping Coolify deploy/create/promote` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, **PR/admin-merge to main**, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
 
 ## When to Use
 - Project lead says "deploy", "ship it", "push to production", "update the server"
+- Project lead says "promote", "patch prod", "hotfix production", "push this fix live" — use `rdc:deploy <slug> promote`
 - A new app needs to be registered and deployed for the first time (`rdc:deploy new`)
 - A deployed app is behaving unexpectedly and needs diagnosis (`rdc:deploy diagnose`)
 - Running a compliance/health audit of all deployed apps (`rdc:deploy audit`)
@@ -27,6 +28,8 @@ No raw MCP dumps. No UUIDs unless asked.
 
 - `rdc:deploy <slug>` — deploy existing app (latest commit on its watched branch)
 - `rdc:deploy <slug> <build-id>` — deploy specific commit/tag
+- `rdc:deploy <slug> promote` — promote the verified `develop` change for this app to production (Mode 5)
+- `rdc:deploy <slug> promote --hotfix <sha>` — promote a specific commit (cherry-pick just that sha to `main`)
 - `rdc:deploy new <slug>` — create a new Coolify app from registry
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
@@ -138,6 +141,48 @@ Severity rules:
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
 
+### Mode 5 — promote <slug> [--hotfix <sha>]
+
+Promote a **verified `develop` change** for one app to production. This is the sanctioned production-patch fast path — one command instead of fighting branch protection, the main-push hook, and a flaky Coolify webhook by hand.
+
+**Authorization:** production promote requires explicit user go-ahead ("promote", "patch prod", "push live", "go"). A dev deploy does NOT. If the user has not given it for THIS promote, stop and ask first.
+
+```
+rdc:deploy promote: <slug> → <prod-domain>
+[ ] Registry lookup: PROD row (uuid, prod branch=main, watch_paths, url)
+[ ] PUBLISH.md status gate: status=active AND prod in environments (block if not)
+[ ] Scope resolved: --hotfix <sha> → that commit; else the app-path commits on develop not on main
+[ ] Scope guard: promote ONLY this app's paths. NEVER merge develop→main wholesale (drags unrelated WIP to prod)
+[ ] Clean worktree off origin/main (never switch the dirty working tree)
+[ ] Apply change: cherry-pick <sha> (or `git checkout <develop-sha> -- <app-paths>`); confirm diff = expected files only
+[ ] Mandatory pre-promote code-review (pr-review-toolkit:code-reviewer on the promote diff). Block on critical/high.
+[ ] Commit on promote branch; push branch (NOT main directly — the main-push hook blocks raw main pushes)
+[ ] Open PR base=main; merge with admin override (`gh pr merge --squash --admin --delete-branch`) — branch protection needs --admin
+[ ] EXPLICITLY trigger Coolify deploy — NEVER rely on the GitHub→Coolify webhook (it silently no-ops on some merges even with auto-deploy ON)
+[ ] Deployment reached "finished" state (poll coolify_events / deployment status)
+[ ] Gate: HTTP 200 on prod domain
+[ ] Gate: content-level check — assert the actual changed string is live (200 alone is NOT proof; origin may serve stale)
+[ ] Gate: TLS valid
+[ ] Cloudflare cache purged (if proxied)
+[ ] deployment_registry updated (last_deploy_at, last_deploy_commit, status)
+✅ rdc:deploy promote: <slug> live in prod — <changed-string> verified
+```
+
+**The explicit Coolify trigger (the whole point — do not skip):**
+```bash
+_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
+# Correct endpoint is GET /api/v1/deploy?uuid= — NOT POST /applications/<uuid>/deploy (that 404s)
+curl -s -H "Authorization: Bearer $_COOLIFY" \
+  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<PROD_UUID>&force=true"
+# → {"deployments":[{"deployment_uuid":"...","message":"...deployment queued."}]}
+```
+
+**Why each guard exists (lessons from 2026-06-05 EF Hooper promote):**
+- `main` branch protection rejects PR merge without `--admin`; a raw `git push …:main` is blocked by the main-push hook → must go branch → PR → admin-merge.
+- Coolify auto-deploy was **ON** for the app yet the merge did **not** auto-deploy — a webhook-delivery flake. A promote must ALWAYS trigger the deploy explicitly and verify; never hope the webhook fired.
+- `develop` was 87 commits ahead of `main` (unrelated apps' WIP). Promoting must be surgical (this app's paths / one sha), never a develop→main merge.
+- HTTP 200 was returned by the stale origin the whole time — only a content-level assertion (`curl … | grep '<new string>'`) proves the promote landed.
+
 ## PUBLISH.md Integration
 
 Every deploy reads `PUBLISH.md` from the app's source root to derive `watch_paths` and to register surfaces in Studio `artifact_registry`.
@@ -225,9 +270,10 @@ curl -s -H "Authorization: Bearer $_COOLIFY" \
 curl -s -H "Authorization: Bearer $_COOLIFY" \
   "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
 
-# Deploy (trigger)
-curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/applications/<uuid>/deploy"
+# Deploy (trigger) — correct endpoint is GET /api/v1/deploy?uuid=
+# (POST /applications/<uuid>/deploy returns {"message":"Not found."})
+curl -s -H "Authorization: Bearer $_COOLIFY" \
+  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<uuid>&force=true"
 
 # Get deployment logs
 curl -s -H "Authorization: Bearer $_COOLIFY" \

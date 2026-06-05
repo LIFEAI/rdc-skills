@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.13.5",
+  "version": "0.13.6",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -297,7 +297,7 @@
       "name": "deploy",
       "slash": "rdc:deploy",
       "category": "deploy",
-      "usage": "rdc:deploy <slug> [new|diagnose|audit] [--fix]",
+      "usage": "rdc:deploy <slug> [new|diagnose|audit|promote] [--fix|--hotfix <sha>]",
       "args": {
         "positional": [
           {
@@ -310,7 +310,7 @@
             "name": "action",
             "required": false,
             "description": "Operation kind",
-            "accepts": "new | diagnose | audit | (omit for default deploy)"
+            "accepts": "new | diagnose | audit | promote | (omit for default deploy)"
           }
         ],
         "flags": [
@@ -319,6 +319,12 @@
             "type": "bool",
             "default": false,
             "description": "Apply remediation during diagnose/audit"
+          },
+          {
+            "name": "--hotfix",
+            "type": "string",
+            "default": null,
+            "description": "With promote: cherry-pick this specific commit sha to main instead of the app-path develop delta"
           }
         ]
       },
