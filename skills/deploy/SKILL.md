@@ -56,6 +56,7 @@ rdc:deploy: <slug> → <domain>
 [ ] Gate: TLS valid (no SSL cipher mismatch)
 [ ] Gate: cache headers correct on HTML
 [ ] Gate: container running on declared port
+[ ] Gate: metadata audit (see § Metadata Audit below) — warn on gaps, do not block deploy
 [ ] Cloudflare cache purged (if proxied)
 [ ] artifact_registry INSERT per PUBLISH.md surface (if PUBLISH.md present)
 [ ] deployment_registry updated (last_deploy_at, status)
@@ -163,6 +164,7 @@ rdc:deploy promote: <slug> → <prod-domain>
 [ ] Gate: HTTP 200 on prod domain
 [ ] Gate: content-level check — assert the actual changed string is live (200 alone is NOT proof; origin may serve stale)
 [ ] Gate: TLS valid
+[ ] Gate: metadata audit (see § Metadata Audit below) — BLOCK promote on any missing required item
 [ ] Cloudflare cache purged (if proxied)
 [ ] deployment_registry updated (last_deploy_at, last_deploy_commit, status)
 ✅ rdc:deploy promote: <slug> live in prod — <changed-string> verified
@@ -182,6 +184,53 @@ curl -s -H "Authorization: Bearer $_COOLIFY" \
 - Coolify auto-deploy was **ON** for the app yet the merge did **not** auto-deploy — a webhook-delivery flake. A promote must ALWAYS trigger the deploy explicitly and verify; never hope the webhook fired.
 - `develop` was 87 commits ahead of `main` (unrelated apps' WIP). Promoting must be surgical (this app's paths / one sha), never a develop→main merge.
 - HTTP 200 was returned by the stale origin the whole time — only a content-level assertion (`curl … | grep '<new string>'`) proves the promote landed.
+
+## Metadata Audit
+
+After a successful deploy or promote, audit the live site's `<head>` metadata. Run this against the deployed URL (not a local file).
+
+**Check list** (curl the deployed URL, parse the HTML `<head>`):
+
+| # | Item | How to check | Required | Severity |
+|---|------|-------------|----------|----------|
+| 1 | `<title>` | grep `<title>` — non-empty, not default/placeholder | yes | block |
+| 2 | `<meta name="description">` | content attr ≥ 50 chars, ≤ 160 chars | yes | block on promote; warn on deploy |
+| 3 | `<link rel="canonical">` | href present, starts with `https://`, matches the deployed domain | yes | block on promote; warn on deploy |
+| 4 | `og:title` | `<meta property="og:title">` present | yes | block on promote; warn on deploy |
+| 5 | `og:description` | `<meta property="og:description">` present, ≥ 50 chars | yes | block on promote; warn on deploy |
+| 6 | `og:image` | `<meta property="og:image">` present, URL returns HTTP 200 | yes | block on promote; warn on deploy |
+| 7 | `og:url` | present, matches canonical | recommended | warn |
+| 8 | `twitter:card` | `summary_large_image` or `summary` | recommended | warn |
+| 9 | `twitter:image` | present, URL returns HTTP 200 | recommended | warn |
+| 10 | Favicon | `<link rel="icon">` present, href returns HTTP 200 | yes | block on promote; warn on deploy |
+| 11 | `sitemap.xml` | `<domain>/sitemap.xml` returns HTTP 200 | recommended | warn |
+| 12 | `robots.txt` | `<domain>/robots.txt` returns HTTP 200 | recommended | warn |
+| 13 | Version | `<meta name="version">` or visible version string in page | yes (project rule) | warn |
+
+**Behavior by mode:**
+- **Mode 1 (deploy):** run the audit after HTTP/TLS gates. Print a table of results. **Warn** on gaps but do NOT block the deploy — dev deploys are iterative.
+- **Mode 5 (promote):** run the audit after content-level check. **Block the promote** if any item marked "block on promote" is missing. Print the table and require the metadata to be fixed before re-attempting.
+- **Mode 4 (audit):** include the metadata sweep in the fleet scan (one row per app per missing item in the findings table).
+
+**Implementation — one-liner per check:**
+```bash
+URL="https://<domain>"
+HEAD=$(curl -s "$URL" | sed -n '/<head/,/<\/head>/p')
+echo "$HEAD" | grep -ioE '<title>[^<]+</title>'
+echo "$HEAD" | grep -ioE 'name="description"[^>]*content="[^"]*"'
+echo "$HEAD" | grep -ioE 'rel="canonical"[^>]*href="[^"]*"'
+echo "$HEAD" | grep -ioE 'property="og:title"[^>]*content="[^"]*"'
+echo "$HEAD" | grep -ioE 'property="og:image"[^>]*content="[^"]*"'
+echo "$HEAD" | grep -ioE 'name="twitter:card"[^>]*content="[^"]*"'
+echo "$HEAD" | grep -ioE 'rel="icon"[^>]*href="[^"]*"'
+echo "$HEAD" | grep -ioE 'name="version"[^>]*content="[^"]*"'
+curl -s -o /dev/null -w "%{http_code}" "$URL/sitemap.xml"
+curl -s -o /dev/null -w "%{http_code}" "$URL/robots.txt"
+OG_IMG=$(echo "$HEAD" | grep -ioE 'property="og:image"[^>]*content="([^"]*)"' | grep -ioE 'https://[^"]*')
+[ -n "$OG_IMG" ] && curl -s -o /dev/null -w "%{http_code}" "$OG_IMG"
+```
+
+**Why this exists (2026-06-05):** life.ai deployed to production with zero social/SEO metadata — no description, no OG, no favicon, no sitemap. HTTP 200 + TLS + content passed; metadata was invisible to the existing gates. This audit catches that class of defect.
 
 ## PUBLISH.md Integration
 
