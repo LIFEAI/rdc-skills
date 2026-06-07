@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.13.6",
+  "version": "0.14.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -37,19 +37,56 @@
       "usage": "rdc:brochure <input> [--out path] [--template name] [--format Letter|A4]",
       "args": {
         "positional": [
-          { "name": "input", "required": true, "description": "Path to .zip, folder, .html, .md, or http(s)://... URL", "accepts": "path|url" }
+          {
+            "name": "input",
+            "required": true,
+            "description": "Path to .zip, folder, .html, .md, or http(s)://... URL",
+            "accepts": "path|url"
+          }
         ],
         "flags": [
-          { "name": "--out", "type": "path", "default": null, "description": "Output PDF path. Defaults to <input-basename>.pdf next to the input." },
-          { "name": "--template", "type": "string", "default": "studio-default", "description": "Compose-mode template (scaffold/templates/brochure-<name>.html)." },
-          { "name": "--format", "type": "string", "default": "Letter", "description": "Page size: Letter or A4." },
-          { "name": "--margin", "type": "string", "default": null, "description": "Override CSS @page margin (e.g. \"0.5in\")." },
-          { "name": "--no-print-emulate", "type": "bool", "default": false, "description": "Render with screen media instead of print." },
-          { "name": "--keep-workdir", "type": "bool", "default": false, "description": "Keep the staged working directory for inspection." }
+          {
+            "name": "--out",
+            "type": "path",
+            "default": null,
+            "description": "Output PDF path. Defaults to <input-basename>.pdf next to the input."
+          },
+          {
+            "name": "--template",
+            "type": "string",
+            "default": "studio-default",
+            "description": "Compose-mode template (scaffold/templates/brochure-<name>.html)."
+          },
+          {
+            "name": "--format",
+            "type": "string",
+            "default": "Letter",
+            "description": "Page size: Letter or A4."
+          },
+          {
+            "name": "--margin",
+            "type": "string",
+            "default": null,
+            "description": "Override CSS @page margin (e.g. \"0.5in\")."
+          },
+          {
+            "name": "--no-print-emulate",
+            "type": "bool",
+            "default": false,
+            "description": "Render with screen media instead of print."
+          },
+          {
+            "name": "--keep-workdir",
+            "type": "bool",
+            "default": false,
+            "description": "Keep the staged working directory for inspection."
+          }
         ]
       },
       "requires": [],
-      "produces": ["pdf_artifact"],
+      "produces": [
+        "pdf_artifact"
+      ],
       "default_model": "sonnet",
       "triggers": [
         "make a brochure",

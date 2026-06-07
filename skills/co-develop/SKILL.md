@@ -158,6 +158,19 @@ Invoke co-development when:
 Do not invoke by default for simple read-only explanations, one-line command
 output, one-file typo fixes, or already decomposed low-risk work.
 
+## In-Session Escalation — Truth-Gain Protocol
+
+Once a co-development session is running, bound the debate with the shared
+escalation protocol: `guides/escalation-protocol.md`.
+
+In short: after each peer round, both agents rate marginal truth-gain (Δ). When
+two consecutive rounds are sub-5% for both agents, stop debating and decide —
+build a scored rubric (options × weighted criteria, both scoresheets recorded).
+Non-critical decisions adopt the rubric winner; critical decisions escalate HITL
+to the human decision table (interim: surface to Dave + record as work-item
+note / CodeFlow memory until `human_items` ships). See the guide for the full
+criticality list and acceptance criteria.
+
 ## Workflow
 
 1. Start or resume a session with `codevelop_start` / `codevelop_join`.
