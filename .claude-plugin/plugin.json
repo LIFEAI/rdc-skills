@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -950,6 +950,49 @@
       "follows": [],
       "leads_to": [],
       "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "housekeeping": {
+      "name": "housekeeping",
+      "slash": "rdc:housekeeping",
+      "category": "reporting",
+      "usage": "rdc:housekeeping [--fix]",
+      "args": {
+        "positional": [],
+        "flags": [
+          {
+            "name": "--fix",
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-remediate safe issues (scaffold CLAUDE.md, fix PUBLISH.md URLs, create missing dirs)"
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "coolify",
+        "git"
+      ],
+      "produces": [
+        ".rdc/reports/"
+      ],
+      "default_model": "sonnet",
+      "triggers": [
+        "weekly maintenance",
+        "housekeeping",
+        "directory structure audit",
+        "verify all apps",
+        "check repo health",
+        "maintenance audit"
+      ],
+      "follows": [],
+      "leads_to": [
+        "review"
+      ],
+      "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
