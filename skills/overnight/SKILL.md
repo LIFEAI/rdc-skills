@@ -224,3 +224,7 @@ Provide the advisor with:
 - Max 2 hours per epic — if exceeded, skip and log `TIMEOUT`
 - If credential daemon goes down mid-session: write current state to overnight doc, push, exit gracefully
 - If git push fails: log the failure, attempt rebase, retry once — do not force push
+
+## Capture lessons (exit step)
+
+Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — write one `.rdc/lessons/<YYYY-MM-DD>-overnight-<short-slug>.md` per lesson using the schema in that spec. Set `scope` (`simple` | `architectural`) and `status` (`open`, or `applied` if you shipped the fix in this same run, with the commit linked). Commit the lesson file(s) on `develop` alongside the run's other commits, and note "N lessons captured" in your verdict/summary. A run that taught nothing writes nothing — absence is the default.

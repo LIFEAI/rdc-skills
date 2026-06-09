@@ -84,3 +84,7 @@ direction if given. If advisor cannot resolve, log and skip to next step.
 - Web search is mandatory — don't just analyze the codebase
 - Keep the doc under 200 lines — concise, not exhaustive
 - Unattended: NEVER pause for input; infer and proceed
+
+## Capture lessons (exit step)
+
+Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — write one `.rdc/lessons/<YYYY-MM-DD>-preplan-<short-slug>.md` per lesson using the schema in that spec. Set `scope` (`simple` | `architectural`) and `status` (`open`, or `applied` if you shipped the fix in this same run, with the commit linked). Commit the lesson file(s) on `develop` alongside the run's other commits, and note "N lessons captured" in your verdict/summary. A run that taught nothing writes nothing — absence is the default.

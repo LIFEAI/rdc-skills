@@ -159,3 +159,7 @@ Report: what was fixed, file(s) changed, commit hash. One sentence.
 - Never run `pnpm build` — not needed for a fixit
 - If scope expands mid-fix: stop, escalate to rdc:build, don't finish under fixit
 - Marker file must be cleaned up whether fix succeeds or escalates
+
+## Capture lessons (exit step)
+
+Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — write one `.rdc/lessons/<YYYY-MM-DD>-fixit-<short-slug>.md` per lesson using the schema in that spec. Set `scope` (`simple` | `architectural`) and `status` (`open`, or `applied` if you shipped the fix in this same run, with the commit linked). Commit the lesson file(s) on `develop` alongside the run's other commits, and note "N lessons captured" in your verdict/summary. A run that taught nothing writes nothing — absence is the default.

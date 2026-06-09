@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..900;1,8..60,300..900&family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&display=swap"/>
+<style>
+/* TOKENS_INJECT */
+@page { size: letter; margin: 0.6in 0.7in; }
+:root {
+  --loam-800:#2b2218; --loam-700:#3d2f1f; --loam-600:#5c4628;
+  --loam-300:#bda079; --loam-200:#d9c4a4; --loam-100:#ece0c8;
+  --moss-700:#4f5a37; --ochre-700:#97772c; --ochre-100:#f4e9d4;
+  --linen-50:#faf8f5; --linen-100:#f4edde;
+  --char-700:#2b2e26; --char-500:#4d5145; --char-400:#6d7164;
+  --ff-display:'Source Serif 4', Georgia, serif;
+  --ff-sans:'Hanken Grotesk', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: white; }
+body {
+  margin: 0; font-family: var(--ff-sans); font-size: 10.5pt; line-height: 1.55;
+  color: var(--char-700);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+h1, h2, h3, h4 { font-family: var(--ff-display); color: var(--loam-800); font-weight: 600; letter-spacing: -0.005em; }
+h1 { font-size: 28pt; line-height: 1.15; margin: 0 0 0.4em; }
+h2 { font-size: 18pt; line-height: 1.2; margin: 1.8em 0 0.4em; padding-bottom: 0.25em; border-bottom: 1px solid var(--loam-200); }
+h3 { font-size: 13pt; margin: 1.4em 0 0.3em; color: var(--loam-700); }
+p  { margin: 0 0 0.7em; }
+ul, ol { margin: 0 0 0.8em 1.1em; padding: 0; }
+li { margin: 0.15em 0; }
+code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 9pt; background: var(--linen-100); padding: 0.05em 0.3em; border-radius: 2px; }
+pre { background: var(--linen-100); padding: 0.7em 0.9em; border-radius: 4px; overflow-wrap: anywhere; font-size: 8.5pt; }
+img { max-width: 100%; height: auto; display: block; margin: 0.8em auto; }
+strong { color: var(--loam-800); }
+em { color: var(--char-500); }
+
+.cover { page-break-after: always; min-height: 9in; display: flex; flex-direction: column; justify-content: space-between; padding: 0.3in 0; }
+.cover-eyebrow { font-family: var(--ff-sans); font-size: 9pt; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ochre-700); }
+.cover-title { font-family: var(--ff-display); font-size: 44pt; line-height: 1.05; color: var(--loam-800); margin: 0.2em 0 0.4em; }
+.cover-sub { font-family: var(--ff-display); font-style: italic; font-size: 14pt; color: var(--loam-600); max-width: 5.5in; }
+.cover-foot { font-size: 8.5pt; color: var(--char-400); border-top: 1px solid var(--loam-200); padding-top: 0.4em; display: flex; justify-content: space-between; }
+
+.brochure-section { page-break-before: always; }
+.brochure-section:first-of-type { page-break-before: auto; }
+
+@media screen {
+  body { max-width: 7.1in; margin: 0.6in auto; padding: 0 0.7in; }
+}
+</style>
+</head>
+<body>
+  <header class="cover">
+    <div>
+      <div class="cover-eyebrow">Brochure</div>
+      <h1 class="cover-title">{{TITLE}}</h1>
+      <div class="cover-sub">Composed by rdc:brochure</div>
+    </div>
+    <div class="cover-foot">
+      <span>RDC</span>
+      <span>{{TITLE}}</span>
+    </div>
+  </header>
+
+  {{SECTIONS}}
+</body>
+</html>

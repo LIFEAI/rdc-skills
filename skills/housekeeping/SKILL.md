@@ -158,6 +158,16 @@ Write to `.rdc/reports/YYYY-MM-DD-housekeeping.md`:
 ## Verdict: CLEAN / HAS_ISSUES
 ```
 
+## Lessons triage (weekly)
+
+Read all `.rdc/lessons/*.md` with `status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). Cluster by `area` + root-cause similarity (dedupe repeats into one fix). For each cluster:
+
+- `scope: simple` → apply the fix directly (rule line, skill-doc edit, config, guard), commit it, set the lesson(s) `status: applied` with the commit linked.
+- `scope: architectural` → do NOT edit. Present the issue + options via `AskUserQuestion` (per `.claude/rules/architectural-change-approval.md`). On approval, apply via the correct lifecycle (rdc-skills tag/push for skills; cited commit for rules) and set `status: applied`. If deferred, set `status: triaged` and spawn a `work_item`.
+- Not worth fixing → `status: wont-fix` with a one-line reason.
+
+Never delete lesson files — `applied` and `wont-fix` stay as the audit trail. Report captured / applied / escalated / deferred counts in the housekeeping report.
+
 ## Rules
 - Never run `pnpm build` — not needed for this audit
 - Never modify app_deployments — the DB is the source of truth; PUBLISH.md conforms to it
