@@ -675,6 +675,66 @@ function buildHooksConfig(hooksDir, profile = 'core') {
   return config;
 }
 
+// ── MCP server registration (non-fatal) ───────────────────────────────────────
+// Ensures the rdc-skills MCP deps are installed, registers/starts the local MCP
+// under PM2 as `rdc-skills-mcp` on PORT=3110, and prints the claude.ai connector
+// line. Every failure here WARNs — it must never abort the installer.
+function registerMcpServer() {
+  const MCP_NAME = 'rdc-skills-mcp';
+  const MCP_PORT = '3110';
+  const binPath = path.join(repoRoot, 'bin', 'rdc-skills-mcp.mjs');
+  const connector = 'https://rdc-skills.regendevcorp.com/mcp';
+
+  try {
+    // (a) ensure MCP runtime deps are present (express, @modelcontextprotocol/sdk, yaml, zod)
+    const needDeps = ['express', '@modelcontextprotocol/sdk', 'yaml', 'zod'].some((d) => {
+      try { require.resolve(d, { paths: [repoRoot] }); return false; } catch { return true; }
+    });
+    if (needDeps) {
+      try {
+        execSync('npm install --no-audit --no-fund', { cwd: repoRoot, stdio: 'pipe' });
+        ok('[7/7] MCP deps   — installed');
+      } catch (e) {
+        warn(`[7/7] MCP deps   — npm install failed (${e.message.split('\n')[0]}); install manually with \`npm install\``);
+      }
+    } else {
+      ok('[7/7] MCP deps   — already present');
+    }
+
+    // (b) register/start under PM2 (tolerate pm2 missing)
+    let pm2Ok = false;
+    try { execSync('pm2 -v', { stdio: 'pipe' }); pm2Ok = true; } catch { pm2Ok = false; }
+
+    if (!pm2Ok) {
+      warn('[7/7] MCP server — pm2 not found; start manually:');
+      info(`       PORT=${MCP_PORT} pm2 start ${binPath} --name ${MCP_NAME}`);
+    } else {
+      let registered = false;
+      try {
+        const jlist = JSON.parse(execSync('pm2 jlist', { encoding: 'utf8', stdio: 'pipe' }));
+        registered = Array.isArray(jlist) && jlist.some((p) => p.name === MCP_NAME);
+      } catch {}
+      try {
+        if (registered) {
+          execSync(`pm2 restart ${MCP_NAME} --update-env`, { cwd: repoRoot, stdio: 'pipe', env: { ...process.env, PORT: MCP_PORT } });
+          ok(`[7/7] MCP server — pm2 restarted ${MCP_NAME} (PORT=${MCP_PORT})`);
+        } else {
+          execSync(`pm2 start "${binPath}" --name ${MCP_NAME}`, { cwd: repoRoot, stdio: 'pipe', env: { ...process.env, PORT: MCP_PORT } });
+          ok(`[7/7] MCP server — pm2 started ${MCP_NAME} (PORT=${MCP_PORT})`);
+        }
+      } catch (e) {
+        warn(`[7/7] MCP server — pm2 start/restart failed (${e.message.split('\n')[0]})`);
+        info(`       PORT=${MCP_PORT} pm2 start ${binPath} --name ${MCP_NAME}`);
+      }
+    }
+
+    // (c) print the claude.ai connector line
+    info(`       claude.ai connector: ${connector}  (Auth: none — URL is the shared secret)`);
+  } catch (e) {
+    warn(`[7/7] MCP server — skipped (${e.message.split('\n')[0]})`);
+  }
+}
+
 // ── Preflight ─────────────────────────────────────────────────────────────────
 function runPreflight() {
   const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
@@ -981,6 +1041,11 @@ async function main() {
     fail('Post-install verification FAILED — duplicates or orphans remain. Investigate.');
     process.exit(2);
   }
+
+  // 7. MCP server registration (non-fatal — WARNs only, never aborts)
+  console.log('');
+  console.log('  \x1b[36mMCP server:\x1b[0m');
+  try { registerMcpServer(); } catch (e) { warn(`[7/7] MCP server — unexpected error (${e.message})`); }
 
   // Done
   console.log('');

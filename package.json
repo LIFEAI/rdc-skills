@@ -1,6 +1,6 @@
 {
   "name": "@lifeaitools/rdc-skills",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code - plan, build, review, overnight builds",
   "keywords": [
     "claude-code",
@@ -24,7 +24,8 @@
   },
   "bin": {
     "rdc-skills-install": "scripts/install-rdc-skills.js",
-    "rdc-skills-self-test": "scripts/self-test.mjs"
+    "rdc-skills-self-test": "scripts/self-test.mjs",
+    "rdc-skills-mcp": "bin/rdc-skills-mcp.mjs"
   },
   "scripts": {
     "install-rdc-skills": "node scripts/install-rdc-skills.js",
@@ -33,9 +34,14 @@
     "validate": "node tests/validate-skills.js",
     "rdc-design": "node scripts/rdc-design-cli.mjs",
     "test:hooks": "node scripts/test-rdc-hooks.mjs",
+    "mcp": "node bin/rdc-skills-mcp.mjs",
+    "rebuild-mcp": "node scripts/rebuild-mcp.mjs",
     "prepack": "node scripts/validate-publish-manifests.js --mode warn || true && node scripts/validate-place-histories.js --mode warn || true"
   },
-  "devDependencies": {
-    "yaml": "^2.9.0"
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.0.0",
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
   }
 }
