@@ -52,9 +52,19 @@ const codexIdx   = args.indexOf('--codex-root');
 const codexRoot  = codexIdx >= 0
   ? path.resolve(args[codexIdx + 1])
   : (() => {
-      if (projectRootArg) return null;
-      const sibling = path.resolve(repoRoot, '..', 'regen-root');
-      return fs.existsSync(path.join(sibling, '.agents')) ? sibling : null;
+      // Auto-detect the consuming project's .agents tree so a plain `install`
+      // refreshes Codex without needing --codex-root. Check, in order: an
+      // explicit --project-root, the current working directory, then the
+      // regen-root sibling of this repo. First one with a `.agents` wins.
+      const candidates = [
+        projectRootArg ? path.resolve(projectRootArg) : null,
+        process.cwd(),
+        path.resolve(repoRoot, '..', 'regen-root'),
+      ].filter(Boolean);
+      for (const c of candidates) {
+        if (fs.existsSync(path.join(c, '.agents'))) return c;
+      }
+      return null;
     })();
 const codexSkillDirIdx = args.indexOf('--codex-skill-dir');
 const explicitCodexSkillDir = codexSkillDirIdx >= 0
@@ -117,7 +127,13 @@ function copyDirRecursive(src, dst) {
     const s = path.join(src, entry.name);
     const d = path.join(dst, entry.name);
     if (entry.isDirectory()) copyDirRecursive(s, d);
-    else fs.copyFileSync(s, d);
+    else {
+      // Atomic write (temp + rename) so a live Claude Code / Codex session never
+      // reads a half-written skill file when the installer runs over a live box.
+      const tmp = `${d}.tmp-${process.pid}`;
+      fs.copyFileSync(s, tmp);
+      fs.renameSync(tmp, d);
+    }
   }
 }
 
@@ -505,6 +521,46 @@ function addCodexTarget(targets, label, targetDir) {
   const resolved = path.resolve(targetDir);
   if (targets.some(t => t.targetDir.toLowerCase() === resolved.toLowerCase())) return;
   targets.push({ label, targetDir: resolved });
+}
+
+// Register the rdc-skills MCP endpoint at the USER/GLOBAL level for every client
+// so all Claude Code projects and all Codex sessions can reach the skills via MCP
+// (not just where a project .mcp.json exists). Idempotent + non-fatal. Mirrors the
+// existing clauth/codeflow entries exactly. claude.ai web still needs the one-time
+// connector add in its UI (no programmatic API).
+function registerMcpEndpoints() {
+  const MCP_URL = 'https://rdc-skills.regendevcorp.com/mcp';
+  const out = [];
+
+  // Claude Code — user-level ~/.claude.json mcpServers (covers EVERY project).
+  try {
+    const claudeJson = path.join(os.homedir(), '.claude.json');
+    if (fs.existsSync(claudeJson)) {
+      const data = readJson(claudeJson);
+      if (!data.mcpServers || typeof data.mcpServers !== 'object') data.mcpServers = {};
+      const cur = data.mcpServers['rdc-skills'];
+      if (!cur || cur.url !== MCP_URL) {
+        data.mcpServers['rdc-skills'] = { type: 'http', url: MCP_URL };
+        writeJson(claudeJson, data, 2);
+        out.push('claude(~/.claude.json)');
+      }
+    }
+  } catch (e) { out.push(`claude WARN:${e.message}`); }
+
+  // Codex — append [mcp_servers.rdc-skills] to ~/.codex/config.toml if absent.
+  try {
+    const codexToml = path.join(os.homedir(), '.codex', 'config.toml');
+    if (fs.existsSync(codexToml)) {
+      const toml = fs.readFileSync(codexToml, 'utf8');
+      if (!/\[mcp_servers\.rdc-skills\]/.test(toml)) {
+        const block = `\n[mcp_servers.rdc-skills]\nurl = '${MCP_URL}'\n`;
+        fs.writeFileSync(codexToml, toml.replace(/\s*$/, '\n') + block);
+        out.push('codex(~/.codex/config.toml)');
+      }
+    }
+  } catch (e) { out.push(`codex WARN:${e.message}`); }
+
+  return out;
 }
 
 function findCodexTargets() {
@@ -916,6 +972,15 @@ async function main() {
     ok(`[2.5] Codex      — ${copiedTotal} skill install(s), ${removedTotal} stale removed across ${codexTargets.length} target(s)`);
   } else {
     info('[2.5] Codex      — skipped (no Codex skill dirs found; use --codex-root or --codex-skill-dir)');
+  }
+
+  // 2.6. Register the rdc-skills MCP endpoint globally (Claude Code + Codex) so
+  // EVERY agent can reach the skills via MCP, not only where a project .mcp.json exists.
+  const mcpReg = registerMcpEndpoints();
+  if (mcpReg.length > 0) {
+    ok(`[2.6] MCP        — registered rdc-skills endpoint: ${mcpReg.join(', ')}`);
+  } else {
+    info('[2.6] MCP        — rdc-skills endpoint already registered (claude + codex)');
   }
 
   // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)
