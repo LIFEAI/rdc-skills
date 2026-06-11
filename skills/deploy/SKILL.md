@@ -1,6 +1,6 @@
 ---
 name: rdc:deploy
-description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote] [--fix|--hotfix <sha>]` — Deploy an app to Coolify (production) or PM2 (staging), promote a verified dev change to production (one-command cherry-pick → PR → admin-merge → explicit Coolify trigger → verify), add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, branch protection, health checks, and post-deploy verification."
+description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--fix|--hotfix <sha>]` — Deploy an app to Coolify (production) or PM2 (staging), promote a verified dev change to production (one-command cherry-pick → PR → admin-merge → explicit Coolify trigger → verify), convert a prod app's runtime in place static→Next, add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, branch protection, health checks, and post-deploy verification."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -20,6 +20,7 @@ No raw MCP dumps. No UUIDs unless asked.
 ## When to Use
 - Project lead says "deploy", "ship it", "push to production", "update the server"
 - Project lead says "promote", "patch prod", "hotfix production", "push this fix live" — use `rdc:deploy <slug> promote`
+- Dev is a Next.js app but prod is still a static site for the same slug ("dev is XJS, prod is static", "make prod Next") — use `rdc:deploy <slug> convert` (Mode 6)
 - A new app needs to be registered and deployed for the first time (`rdc:deploy new`)
 - A deployed app is behaving unexpectedly and needs diagnosis (`rdc:deploy diagnose`)
 - Running a compliance/health audit of all deployed apps (`rdc:deploy audit`)
@@ -30,6 +31,7 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy <slug> <build-id>` — deploy specific commit/tag
 - `rdc:deploy <slug> promote` — promote the verified `develop` change for this app to production (Mode 5)
 - `rdc:deploy <slug> promote --hotfix <sha>` — promote a specific commit (cherry-pick just that sha to `main`)
+- `rdc:deploy <slug> convert` — convert a prod app's runtime in place from static→Next (Mode 6); use when dev is Next but prod is still a static Coolify build
 - `rdc:deploy new <slug>` — create a new Coolify app from registry
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
@@ -186,6 +188,54 @@ curl -s -H "Authorization: Bearer $_COOLIFY" \
 - Coolify auto-deploy was **ON** for the app yet the merge did **not** auto-deploy — a webhook-delivery flake. A promote must ALWAYS trigger the deploy explicitly and verify; never hope the webhook fired.
 - `develop` was 87 commits ahead of `main` (unrelated apps' WIP). Promoting must be surgical (this app's paths / one sha), never a develop→main merge.
 - HTTP 200 was returned by the stale origin the whole time — only a content-level assertion (`curl … | grep '<new string>'`) proves the promote landed.
+
+### Mode 6 — convert <slug> (prod runtime static→Next, in place)
+
+One-time conversion of an existing **production** Coolify app from a static/nixpacks build to the Next.js (dockerfile) runtime, **in place** — same UUID, same fqdn, same DNS. After this, the slug is a normal Next app and every future ship is just `rdc:deploy <slug> promote`. This is the mode for "dev is Next, prod is still static" (the `vlas.earth` / `life.ai` class). `promote` alone CANNOT do this — it re-triggers the prod app's existing (static) build; only `convert` changes the build config.
+
+**Authorization:** this changes a production app's runtime — **architectural** per `.claude/rules/production-stack-nextjs.md` + `.claude/rules/architectural-change-approval.md`. Requires explicit user go-ahead for THIS slug. Stop and ask if not given.
+
+**Why in-place PATCH, not recreate:** keeps the application UUID, fqdn (apex + `www`), DNS binding, and project — zero DNS cutover, zero window where the domain is unbound. PATCH switches the build pack; the next deploy builds the Next app on the same application object.
+
+```
+rdc:deploy convert: <slug> → <prod-domain>  (static→Next, in place)
+[ ] Go-ahead confirmed for THIS slug (production runtime change — architectural)
+[ ] Registry lookup: PROD coolify_uuid, fqdn, project/env, current build_pack
+[ ] Confirm it IS a convert: dev runtime=next AND prod build_pack ∈ {static, nixpacks}. If prod build_pack already `dockerfile` → already converted, fall through to Mode 5 promote.
+[ ] Source Next-prod-readiness preflight (BLOCK on any miss):
+      - apps/<name>/Dockerfile present (prod build) — BLOCK "source not Next-prod-ready: add Dockerfile" if missing
+      - start/listen port reconciled with intended ports_exposes (no dev-only port like :3214 leaking to prod)
+      - PUBLISH.md present, build_type=nextjs, status=active, prod in environments
+[ ] Mandatory pre-convert code-review (pr-review-toolkit:code-reviewer on the apps/<name> diff being promoted). Block on critical/high.
+[ ] Promote app code to main (Mode 5 path): clean worktree off origin/main → checkout apps/<name> paths (or cherry-pick) → confirm diff = expected files only → branch → PR base=main → `gh pr merge --squash --admin --delete-branch`
+[ ] In-place PATCH prod Coolify app <uuid> to nextjs-app template fields:
+      build_pack=dockerfile · dockerfile_location=/apps/<name>/Dockerfile · base_directory=/ ·
+      build_command="pnpm turbo run build --filter=<pkg>" · start_command="pnpm --filter=<pkg> start" ·
+      install_command="pnpm install --frozen-lockfile" · ports_exposes=<port> ·
+      watch_paths="apps/<name>/**\npackages/**"
+      (clear publish_directory; static-only field)
+[ ] Env vars present in Coolify (compare registry.env_vars_needed); set any missing
+[ ] EXPLICITLY trigger deploy: GET /api/v1/deploy?uuid=<PROD_UUID>&force=true — never rely on the webhook
+[ ] Deployment reached "finished" state (poll coolify_events)
+[ ] Gate: SSR proof — prod HTML now contains `/_next/static` (it is the Next app, not the old static build)
+[ ] Gate: HTTP 200 + content-level assertion of a known string from the Next render
+[ ] Gate: TLS valid; cache headers correct on HTML
+[ ] Gate: metadata audit (see § Metadata Audit) — BLOCK on any required gap
+[ ] Cloudflare cache purged (apex + www)
+[ ] app_deployments updated: runtime intent → next, notes (converted static→Next <date>), last_deploy_at, last_deploy_commit, status=active
+[ ] `apps` row runtime=next confirmed
+✅ rdc:deploy convert: <slug> now Next.js in prod — SSR verified at <prod-domain>
+```
+
+**Rollback:** PATCH the app back to static (`build_pack=static`, `base_directory=/sites/<name>`, `publish_directory=/sites/<name>`, `ports_exposes=80`, `watch_paths=sites/<name>/**`) and redeploy. `sites/<name>` stays in the repo precisely so this rollback is always available.
+
+**PATCH command (in-place build-pack switch):**
+```bash
+_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
+curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" -H "Content-Type: application/json" \
+  -d '{"build_pack":"dockerfile","dockerfile_location":"/apps/<name>/Dockerfile","base_directory":"/","build_command":"pnpm turbo run build --filter=<pkg>","start_command":"pnpm --filter=<pkg> start","install_command":"pnpm install --frozen-lockfile","ports_exposes":"<port>","watch_paths":"apps/<name>/**\npackages/**"}' \
+  "$DEPLOY_API_BASE/api/v1/applications/<PROD_UUID>"
+```
 
 ## Metadata Audit
 
