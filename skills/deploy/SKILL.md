@@ -208,12 +208,14 @@ rdc:deploy convert: <slug> → <prod-domain>  (static→Next, in place)
       - PUBLISH.md present, build_type=nextjs, status=active, prod in environments
 [ ] Mandatory pre-convert code-review (pr-review-toolkit:code-reviewer on the apps/<name> diff being promoted). Block on critical/high.
 [ ] Promote app code to main (Mode 5 path): clean worktree off origin/main → checkout apps/<name> paths (or cherry-pick) → confirm diff = expected files only → branch → PR base=main → `gh pr merge --squash --admin --delete-branch`
+[ ] LOCKFILE IMPORTER (mandatory for an app NEW to main): if `git show origin/main:pnpm-lock.yaml | grep -c "apps/<name>:"` is 0, the Docker `pnpm install --frozen-lockfile` WILL fail. In the clean main worktree run `pnpm install --lockfile-only` (adds only the apps/<name> importer; verify the diff is minimal — do NOT promote develop's whole lockfile, it carries unrelated drift) and include `pnpm-lock.yaml` in the SAME promote PR.
 [ ] In-place PATCH prod Coolify app <uuid> to nextjs-app template fields:
       build_pack=dockerfile · dockerfile_location=/apps/<name>/Dockerfile · base_directory=/ ·
       build_command="pnpm turbo run build --filter=<pkg>" · start_command="pnpm --filter=<pkg> start" ·
       install_command="pnpm install --frozen-lockfile" · ports_exposes=<port> ·
       watch_paths="apps/<name>/**\npackages/**"
       (clear publish_directory; static-only field)
+[ ] PROXY LABELS (mandatory — the static-app `custom_labels` are read-only and do NOT auto-update on a build_pack PATCH): fetch `custom_labels`, base64-decode, rewrite `loadbalancer.server.port=80`→`=<port>` (all routers) AND `upstreams 80}}`→`upstreams <port>}}`, and STRIP the static `caddy_*.try_files=…/index.html /index.php` lines (wrong for a Next app), re-base64, PATCH `custom_labels`. Skipping this = container serves on :<port> but the proxy still routes :80 → **502** even though the build "finished" and the app logs "Ready". (Note: the API rejects `is_container_label_readonly_enabled` and a non-base64 `custom_labels` — you must hand-rewrite the base64.)
 [ ] Env vars present in Coolify (compare registry.env_vars_needed); set any missing
 [ ] EXPLICITLY trigger deploy: GET /api/v1/deploy?uuid=<PROD_UUID>&force=true — never rely on the webhook
 [ ] Deployment reached "finished" state (poll coolify_events)
