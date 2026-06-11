@@ -43,6 +43,7 @@ No raw MCP dumps. No UUIDs unless asked.
 ```
 rdc:deploy: <slug> → <domain>
 [ ] Registry lookup (slug, uuid, branch, type, env_vars_needed)
+[ ] Runtime-source guard: if the source being deployed is static (`sites/<name>`, nixpacks/static) but the registry `runtime` for <slug> is `next`, BLOCK — never deploy a flat/static source over a Next app. A static prototype deploys only under its OWN slug (never an existing Next app's slug), dev only. Changing a slug's runtime is architectural. (`.claude/rules/production-stack-nextjs.md`)
 [ ] Git state verified (branch matches Coolify, commit pushed)
 [ ] Build-id resolved (default: HEAD of watched branch)
 [ ] Env vars present in Coolify (compare to registry)
@@ -152,6 +153,7 @@ Promote a **verified `develop` change** for one app to production. This is the s
 rdc:deploy promote: <slug> → <prod-domain>
 [ ] Registry lookup: PROD row (uuid, prod branch=main, watch_paths, url)
 [ ] PUBLISH.md status gate: status=active AND prod in environments (block if not)
+[ ] Runtime-source guard: BLOCK promoting a static source to a prod row whose intended `runtime` is `next` — production apps are Next.js (DB-backed). (`.claude/rules/production-stack-nextjs.md`)
 [ ] Scope resolved: --hotfix <sha> → that commit; else the app-path commits on develop not on main
 [ ] Scope guard: promote ONLY this app's paths. NEVER merge develop→main wholesale (drags unrelated WIP to prod)
 [ ] Clean worktree off origin/main (never switch the dirty working tree)
