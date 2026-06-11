@@ -94,6 +94,17 @@ function unitTests() {
   check('unit: search ranks exact name first', searchSkills('deploy')[0]?.name === 'deploy');
   check('unit: empty search returns []', searchSkills('').length === 0);
 
+  // Searchability gate — the dimension the first "100% coverage" missed. Every
+  // catalog entry MUST carry triggers + usage (frontmatter or skills_meta) so
+  // rdc_skill_search can route to it. Caught by an audit: brochurify-suite skills
+  // had frontmatter triggers the loader ignored → invisible to search.
+  check('unit: every skill has non-empty triggers (searchable)',
+    cat.every((s) => Array.isArray(s.when_to_use) && s.when_to_use.length > 0),
+    cat.filter((s) => !s.when_to_use?.length).map((s) => s.name).join(',') || 'all good');
+  check('unit: every skill has a non-empty usage string',
+    cat.every((s) => s.usage && s.usage.length > 0),
+    cat.filter((s) => !s.usage).map((s) => s.name).join(',') || 'all good');
+
   // cloud-rewrite contract
   const sample = '```bash\n_T=$(curl -s http://127.0.0.1:52437/v/coolify-api)\npm2 restart app\n```';
   const rw = toCloudBody(sample);
