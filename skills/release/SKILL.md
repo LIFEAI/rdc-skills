@@ -99,6 +99,31 @@ npm view <package-name> version
 
 Never use `--force` or bypass hooks. If a hook fails, fix the cause.
 
+## ⛔ Standalone-repo staging guard (no `git add -A`)
+
+Standalone repos (`rdc-skills`, `clauth`, `build-corpus`) have NO pre-commit
+doc-sync/scope guard to catch contamination. In them:
+
+- **REFUSE `git add -A` / `git add .`.** Stage explicit declared paths only
+  (`git add skills/<name>/SKILL.md package.json ...`).
+- Run `git status --porcelain` FIRST. If untracked files exist that are not part
+  of the declared change, STOP — list or stash them; do not sweep them in.
+- **Pre-tag guard: refuse to tag if `git diff --cached --name-only` includes any
+  path outside the declared change set.** A broad add swept 4 pre-existing
+  untracked skill files into a tagged release that CI published before anyone
+  noticed (lesson 2026-06-08-release-git-add-all-swept-untracked-wip). Same
+  dirty-tree contamination class as a lockfile generated against a dirty tree.
+
+## ⛔ Cross-platform prepack + verify the PUBLISHED tarball
+
+- **Prepack must be OS-agnostic.** A bash-style `prepack` chain (`node A || true && node B || true && node stamp`) short-circuits under Windows **cmd.exe** (npm runs lifecycle scripts via cmd, not bash; `true` is not a cmd builtin and `||`/`&&` evaluate differently), so an appended step silently never runs (lesson 2026-06-13-release-windows-cmd-prepack-shortcircuit). When a prepack step must run cross-platform, use a node wrapper / `shx` / `cross-env` — never rely on `|| true` shell semantics that differ between cmd and bash.
+- **Validate the PUBLISHED artifact, not a local Windows `npm pack`.** A local Windows `npm pack` is NOT a faithful rehearsal of the CI (ubuntu/bash) publish. After publish, verify the real tarball:
+  ```bash
+  npm pack <pkg>@<version>            # downloads the PUBLISHED tarball
+  tar -xzOf <pkg>-<version>.tgz package/<file>   # inspect the shipped file
+  ```
+  Confirm the published artifact carries what CI's prepack was supposed to stamp (e.g. `git_sha == tag commit`).
+
 ## RDC Skills Package
 
 For this package, prefer the npm installer binary after publish:

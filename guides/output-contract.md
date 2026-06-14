@@ -37,6 +37,16 @@ thing they need: **is this working or not, and what step are we on?**
    - `⚠️ <skill>: <N findings> — <next action>`
    - `❌ <skill>: <one-sentence reason>`
 
+   ⛔ **The verdict emoji (✅ / ⚠️ / ❌) MUST be the FIRST character of the final
+   line — never prefix it with `**Verdict:**` or any other text.** The enforcing
+   Stop-hook checks that a line *begins* with the emoji; `**Verdict:** ✅ PASS …`
+   reads as a verdict to a human but FAILS the machine check because the line
+   starts with `**Verdict:`, not `✅` (lesson 2026-06-08-collab-verdict-line-must-start-with-emoji).
+
+   > This guide is the source under `guides/output-contract.md`; it is mirrored to
+   > `regen-root/.rdc/guides/output-contract.md` by the installer. Edit only the
+   > rdc-skills source here — never the mirror.
+
 7. **Interactive checklists only when human input is required.** If the skill
    needs a decision (pick an epic, confirm a destructive op), ask ONE question,
    then resume.

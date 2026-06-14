@@ -66,6 +66,28 @@ rdc:deploy: <slug> → <domain>
 ✅ rdc:deploy: <slug> deployed in Nm Ns
 ```
 
+#### Static PM2 dev sites — do NOT trust the push webhook (SSH-reset + served-hash gate)
+
+For a **static** PM2 dev site, `git push` succeeding does NOT mean the live site
+updated: the push webhook skips/instruments static apps unreliably, so the host
+working tree (and the committed `dist/` it serves) can stay STUCK across several
+pushes while HTTP stays 200 and `origin/develop` looks shipped (lesson
+2026-06-11-deploy-static-host-stuck: issho served the v1.10.0 bundle across three
+pushes because `/srv/regen/regen-root` never pulled). The only signal is the
+SERVED bundle hash vs the local `dist/` hash.
+
+After pushing committed `dist/`, SSH-reset the host explicitly, then verify the
+served hash:
+```bash
+_K=$(mktemp); curl -s http://127.0.0.1:52437/v/vultr-dev-ssh > "$_K"; printf '\n' >> "$_K"; chmod 600 "$_K"
+ssh -i "$_K" root@64.237.54.189 'cd /srv/regen/regen-root && git fetch -q origin develop && git reset -q --hard origin/develop && pm2 restart <app> --update-env'
+rm -f "$_K"
+# Then verify SERVED hash == local build hash (HTTP 200 is NOT proof):
+curl -s https://<app>.dev.place.fund/ | grep -oE 'index-[A-Za-z0-9_-]+\.js'   # served
+grep -oE 'index-[A-Za-z0-9_-]+\.js' sites/<app>/dist/index.html                # local
+```
+Only when the two hashes match do the content/screenshot gates mean anything.
+
 ### Mode 2 — new <slug>
 
 **MANDATORY:** All new apps are created from `docs/runbooks/coolify-app-templates.json`. Read that file first — pick the right template, substitute the required vars, POST the exact payload. No manual field configuration. No improvisation. The template encodes all learned lessons (base_directory, build_pack, watch_paths, health_check, ports). Deviating from it breaks things.
@@ -111,6 +133,40 @@ rdc:deploy diagnose: <slug>
 [ ] Branch mismatch check (Coolify git_branch vs expected)
 ⚠️ rdc:deploy diagnose: <root cause in one sentence> — fix: <one command>
 ```
+
+#### `next start` crash-loop — check `.next/BUILD_ID` FIRST
+
+When a PM2 `next start` app is crash-looping (`pm2 jlist` shows high `restart_time`
+/ "waiting restart"), check **`.next/BUILD_ID`** before chasing env/port theories —
+it is the single gate `next start` enforces (`Could not find a production build in
+the '.next' directory` repeats for every restart when it is missing). A `.next`
+tree can exist as a PARTIAL build (manifests + server artifacts but no `BUILD_ID`)
+— the signature of a `next build` that started but was interrupted/OOM-killed; the
+crash loop then churns CPU and can re-trigger the OOM (lesson
+2026-06-13-deploy-nextstart-missing-buildid: ~7300 restarts, all `BUILD_ID`-missing,
+while the documented prior lead was the NEXT_PUBLIC env issue — which was NOT the
+cause here). Fix sequence:
+```bash
+pm2 stop <app>                              # halt the loop so it stops competing for resources
+rm -rf apps/<name>/.next                    # clear the partial tree
+pnpm --filter @regen/<name> build           # ONE clean scoped build (LOCAL BUILD SAFETY)
+pm2 restart <app> --update-env
+```
+Guard: assert `apps/<name>/.next/BUILD_ID` exists before (re)starting any
+`next start` process.
+
+#### ⛔ On the 2nd IDENTICAL failed probe, STOP polling and diagnose full-state
+
+A repeated identical failure (same 404, same 502, same non-200) is a STRUCTURAL
+signal, not eventual-consistency — polling it will never clear it and reads to the
+user as stalling/throttling (lesson 2026-06-10-deploy-stop-polling-diagnose: a
+12×-404 poll loop on a remote-managed tunnel that was structurally ignoring the
+local config — it could never clear). On the **2nd identical failed check**, stop
+polling and pull GROUND TRUTH instead: list ALL processes / the whole effective
+remote config / the full event log (`debugging-protocol.md` Rule 6 — full-state, not
+a narrow filter). Poll ONLY when something is genuinely in-progress with a known
+finish (a deploy build, a DNS first-create) — never to hope a structural error
+resolves itself.
 
 ### Mode 4 — audit
 
@@ -159,6 +215,10 @@ rdc:deploy promote: <slug> → <prod-domain>
 [ ] Scope resolved: --hotfix <sha> → that commit; else the app-path commits on develop not on main
 [ ] Scope guard: promote ONLY this app's paths. NEVER merge develop→main wholesale (drags unrelated WIP to prod)
 [ ] Clean worktree off origin/main (never switch the dirty working tree)
+[ ] Export Supabase creds in the worktree BEFORE commit (the pre-commit `sync:docs` hook needs them, and a fresh worktree does NOT inherit the main checkout's `.env*`/shell env — without the key sync:docs silently regenerates a GUTTED `app-deployments.md` ("Registry: unavailable") and `git add`s it into the surgical promote; `--no-verify` is forbidden):
+      `export NEXT_PUBLIC_SUPABASE_URL=https://uvojezuorjgqzmhhgluu.supabase.co`
+      `export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(curl -s http://127.0.0.1:52437/v/supabase-anon)`
+      Then ALWAYS `git show --stat HEAD` before pushing and confirm the file set is scoped — never ship the no-key gutted app-deployments.md. (lesson 2026-06-13-deploy-worktree-syncdocs-guts-app-deployments)
 [ ] Apply change: cherry-pick <sha> (or `git checkout <develop-sha> -- <app-paths>`); confirm diff = expected files only
 [ ] Mandatory pre-promote code-review (pr-review-toolkit:code-reviewer on the promote diff). Block on critical/high.
 [ ] Commit on promote branch; push branch (NOT main directly — the main-push hook blocks raw main pushes)
@@ -393,7 +453,22 @@ curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
   -H "Content-Type: application/json" \
   -d '{"watch_paths":"apps/<name>/**\npackages/**"}' \
   "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
+
+# Change the app's domain — the writable field is "domains", NOT "fqdn"
+# (Coolify v4 PATCH rejects {"fqdn":...} with "This field is not allowed"; fqdn is read-only/derived)
+curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
+  -H "Content-Type: application/json" \
+  -d '{"domains":"https://<host>"}' \
+  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
 ```
+
+**Domain change / namespace migration** (lesson 2026-06-13-deploy-media-manager-namespace-migration):
+PATCH `applications/<uuid>` with `{"domains":"https://<host>"}` — never `fqdn`.
+For an app NEW to main (first prod deploy) also bring the app + a lockfile importer
+to main (clean worktree off origin/main, `pnpm install --lockfile-only`, verify the
+diff = additions for `apps/<name>:` only); resolve the lockfile-guard vs scope-guard
+collision by committing the app+lockfile as a SINGLE `chore(infra):`-subject commit
+(the scope-guard's documented escape hatch) so both pre-commit guards pass.
 
 **Never print `$_COOLIFY` to stdout.** Inline from clauth only — do not assign raw strings.
 

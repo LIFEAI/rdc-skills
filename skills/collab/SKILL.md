@@ -98,8 +98,17 @@ Print `[rdc:collab] Still listening...` and retry SSE immediately. After 10
 consecutive 30s timeouts (5 min idle), print a longer heartbeat but keep
 looping.
 
-**If curl fails (daemon restart, connection refused, non-200):** fall back to
-polling path below.
+**⛔ curl exit 28 (`--max-time`) is SUCCESS, not failure, on an SSE read.**
+`curl --max-time 30` ALWAYS exits 28 at the timeout boundary — that is normal for
+a long-lived SSE stream and says nothing about delivery. If a `data:` event was
+received in the output, process it and proceed to Step 4 — do NOT treat exit 28 as
+a curl failure (lesson 2026-06-08-collab-sse-exit-28-is-success: exit 28 arrived
+together with a full `event: message` / `data: {...}` payload, and reading it as a
+failure misclassified a zero-latency delivery). Only **connection-refused or a
+non-200** is a real curl failure that triggers the polling fallback.
+
+**If curl fails (daemon restart, connection refused, non-200 — NOT a bare exit 28
+with a delivered `data:` event):** fall back to polling path below.
 
 ### Fallback path — polling (2s interval)
 
@@ -215,6 +224,15 @@ If Dave types in this terminal during a turn:
 - Treat it as an override injected into the current task
 - Acknowledge it in your `chitchat_reply` response
 - If it changes direction mid-task, note what you stopped and why
+- ⛔ **When an interjection appears to CONTRADICT the task premise, restate your
+  understanding in ONE sentence and confirm before branching into a wide
+  `AskUserQuestion` menu.** A tight "I read this as X — correct?" reconciles faster
+  than a multiple-choice and avoids acting on a misread premise (lesson
+  2026-06-08-collab-premise-contradicting-interjection: "there is no pm2 this
+  replaces it" was read as "PM2 is abolished as the transport" and triggered a
+  3-option transport menu, when it meant "there was no dev *site* yet — push to
+  the unchanged PM2 path"; the wide menu over-committed to one interpretation and
+  cost a round).
 
 ## Capture lessons (exit step)
 

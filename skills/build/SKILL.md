@@ -199,6 +199,18 @@ Read the task title and description, then:
    isolation: "worktree"
    ```
 
+   ### ⛔ Concurrent committers ⇒ worktree isolation, no exceptions (docs included)
+   For ANY parallel agent dispatch where the agents COMMIT — **including a pure
+   docs wave** — force `isolation: "worktree"` so each agent commits in its own
+   tree and the orchestrator merges. NEVER fan out concurrent committers onto one
+   shared working tree (lesson 2026-06-13-build-concurrent-agents-same-branch-git-race:
+   three parallel doc agents on one `develop` tree raced on the git index/stash —
+   one commit swept in another agent's staged-but-uncommitted files under the wrong
+   message, two agents reported the SAME SHA, and a pre-commit `sync:docs` ref-lock
+   race misattributed authorship). "It's just docs" is NOT an exemption. The only
+   alternative to worktree isolation is running the committing agents **sequentially**
+   on the shared tree (one commits and pushes before the next starts).
+
    **Agent model routing — pick per task, not per wave.** The supervisor session model does NOT cascade to agents; you must set `model` explicitly on every dispatch.
 
    | Task character | Model | When to pick it |
@@ -219,6 +231,31 @@ Read the task title and description, then:
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
+   ### ⛔ Worktree base must equal develop HEAD — assert BEFORE every isolated wave
+   The worktree-isolation harness has shipped worktrees pinned to a STALE base
+   commit (lessons 2026-06-10-build-worktree-stale-base, 2026-06-11-build-worktree-stale-base:
+   agents branched 464 commits / 4 days behind develop HEAD, on a tree where the
+   target app did not yet exist — their diffs would have silently reverted merged
+   work or operated on a deleted structure). **Before dispatching ANY
+   `isolation:"worktree"` wave**, assert each worktree's base equals current
+   develop HEAD:
+   ```bash
+   DEV_HEAD=$(git rev-parse develop)
+   # After worktrees are created, for each agent worktree:
+   git worktree list   # compare each agent worktree's SHA to $DEV_HEAD
+   # If a worktree base != $DEV_HEAD (it is behind), the wave is UNSAFE.
+   ```
+   - If any worktree base is behind `$DEV_HEAD`: **ABORT isolation for this wave.**
+     Do NOT merge stale worktree output. Pivot to **sequential, non-isolated
+     dispatch on a real `develop` checkout** (one disjoint WP at a time to avoid
+     `.git/index` races; the supervisor pushes) — the same reason the validator
+     runs non-isolated (it must see merged develop).
+   - Also at every merge: `git show <branch>:<key-file> | grep -c <symbol-a-prior-wave-introduced>`
+     — a 0 where there should be ≥1 means the branch is stale or deleted a shared
+     export; resolve to `--ours` and re-apply that wave's real delta on current HEAD.
+     esbuild/tsc PASS is necessary, not sufficient — pair it with a grep gate on
+     the symbols a refactor must preserve.
+
    ### Forked agents vs. standalone agents
 
    **When the supervisor has already read the plan** (via a prior `Read` tool call in the same session),
@@ -236,6 +273,21 @@ Read the task title and description, then:
 
    **When the supervisor has NOT read the plan** (e.g. dispatching from a fresh `rdc:build` call with
    only an epic ID), the agent has no plan context — write a full briefing prompt with all specs.
+
+   ### ⛔ Reuse contract — when a WP builds on an existing subsystem
+   When a work package extends an existing subsystem, "compose adapter + X"
+   under-specifies reuse and lets an agent legitimately re-author markup/logic the
+   subsystem already exposes (lesson 2026-06-11-build-reuse-existing-engine-prompt:
+   an agent set up to reinvent a grid when the card engine already shipped four
+   `CardLayout` display types + a full `parseCommand → CardSpec → adapter → CardModel[]`
+   calling sequence). The dispatch prompt MUST:
+   1. **Enumerate the existing public API the agent must reuse, BY FILE** — types/enums
+      (`packages/.../types.ts:NN`), calling-sequence functions, AND the existing
+      display/render components — not just the data adapter.
+   2. **Mark which seams are extend/delegate-only.** State explicitly: "thread a
+      pass-through prop (e.g. `layout`) to the existing components; do NOT
+      reimplement layout/render." Verify at WP review that the agent reused the
+      named parser/adapter/components and did not hand-roll a parallel implementation.
 
    ---
 
@@ -269,6 +321,25 @@ Read the task title and description, then:
        ```
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
+
+   ### ⛔ Agent Definition-of-Done additions (include in every prompt)
+   - **Declare every import in the package's OWN package.json.** Every import an
+     agent adds MUST be present in that package's own `package.json`
+     dependencies/devDependencies — never rely on monorepo-hoisted deps. A pnpm
+     worktree can import a root-hoisted dep (e.g. `vitest`,
+     `@supabase/supabase-js`) so `tsc`/`vitest` PASS in the worktree, then `tsc`
+     FAILS on a clean develop checkout after merge (lesson
+     2026-06-10-build-card-engine-agent-deps). Agent prompt line: *"Verify that
+     every import you add is declared in this package's own package.json — do not
+     rely on hoisted monorepo deps."*
+   - **A server/MCP/API task is NOT done without a committed automated test that
+     ships in the SAME commit and exercises EVERY surface.** Manual curl / a single
+     `/health` 200 is a proxy, not coverage (lesson 2026-06-10-build-weak-dod-no-tests).
+     For a collection (MCP skills, API routes, CLI commands): loop over ALL items
+     and assert `output == source` — never a single spot check. Wire an npm script
+     and run it green before the item leaves `review`. Agent prompt line: *"This
+     task is not done until a committed test in the same commit exercises every
+     surface; for collections, loop all items and assert output == source."*
 
 8. **Post-wave test gate (mandatory):**
    After all agents in a wave complete, before proceeding:
