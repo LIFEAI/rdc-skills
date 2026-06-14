@@ -39,6 +39,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 import {
   listSkills,
@@ -61,6 +62,29 @@ function pkgVersion() {
     return '0.0.0';
   }
 }
+
+// Commit the running process actually LOADED — resolved ONCE at startup, never
+// per-request, so /health reports a PROVABLE commit. Resolution order:
+//   1. git-sha.json — baked at pack/publish (scripts/stamp-git-sha.mjs). This is
+//      the PRODUCTION path: the process runs from the npm install (no .git), so
+//      runtime rev-parse can't work — the stamped file is the source of truth.
+//   2. runtime `git rev-parse` — the DEV path (running straight from the checkout).
+//   3. env override, then 'unknown'.
+const GIT_SHA = (() => {
+  try {
+    const stamped = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'git-sha.json'), 'utf8')).sha;
+    if (stamped && stamped !== 'unknown') return stamped;
+  } catch { /* not stamped — fall through to runtime/dev resolution */ }
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return process.env.RDC_SKILLS_GIT_SHA || 'unknown';
+  }
+})();
 
 // Soft process-wide default variant, updated whenever a client initializes.
 let lastDetectedVariant = 'cloud';
@@ -188,7 +212,7 @@ function startHttp() {
     } catch {
       skills = 0;
     }
-    res.json({ status: 'ok', service: 'rdc-skills-mcp', version: pkgVersion(), skills });
+    res.json({ status: 'ok', service: 'rdc-skills-mcp', version: pkgVersion(), git_sha: GIT_SHA, skills });
   });
 
   // Block OAuth discovery so connectors skip OAuth and connect direct — /mcp is open.
