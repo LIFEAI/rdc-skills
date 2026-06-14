@@ -331,6 +331,14 @@ function expectedSkillName(dirOrFile) {
   return "rdc:" + base;
 }
 
+function expectedFrontmatterName(dirOrFile, frontmatterName) {
+  const base = basename(dirOrFile, ".md");
+  if (frontmatterName && frontmatterName.startsWith("rdc:")) {
+    return expectedSkillName(dirOrFile);
+  }
+  return base;
+}
+
 function findReferencedFiles(body) {
   const refs = [];
   const guideRe = /(?:^|[\s(`'"/])(?:\.rdc\/)?guides\/([\w/-]+\.md)/g;
@@ -473,7 +481,7 @@ function auditSkill(filepath) {
     }
   }
 
-  const expected = expectedSkillName(skillDirOrFile);
+  const expected = expectedFrontmatterName(skillDirOrFile, fm.name);
   if (expected && fm.name !== expected) {
     addFinding(
       result,

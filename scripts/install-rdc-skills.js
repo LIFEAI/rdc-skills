@@ -707,6 +707,7 @@ function buildHooksConfig(hooksDir, profile = 'core') {
 
   if (profile === 'lifeai') {
     config.SessionStart = [{ hooks: [
+      cmd('check-rdc-environment.js', 'Checking RDC skills runtime...'),
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
     ]}];
