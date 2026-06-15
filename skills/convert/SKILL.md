@@ -1,6 +1,6 @@
 ---
 name: rdc:convert
-description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI (PyPI `build-corpus`, npm `regen-mde`). Portable: runs in any session that can reach npm or PyPI — Claude Code CLI and claude.ai both fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or 'open the report' in the regen-mde editor (Windows)."
+description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI (npm `regen.mde`, or pip from GitHub). Portable: runs in any session that can reach npm or PyPI — Claude Code CLI and claude.ai both fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or 'open the report' in the regen-mde editor (Windows)."
 ---
 
 # rdc:convert — Office ↔ Markdown conversion (build-corpus) + regen-mde editor
@@ -35,15 +35,15 @@ The command is always `build-corpus <input> [flags]`. Resolve the binary like th
    equations, the fidelity report, and the escaped-currency fix; the PyPI/npm packages
    below currently LAG GitHub):
    ```bash
-   pip install "git+https://github.com/LIFEAI/build-corpus.git@feat/dual-package-ubuntu"
-   # once merged to main, drop the @branch:
-   #   pip install "git+https://github.com/LIFEAI/build-corpus.git"
+   pip install "git+https://github.com/LIFEAI/build-corpus.git"
+   # (the feat/dual-package-ubuntu branch is kept in sync with main as an alias)
    ```
-   This installs the `build-corpus` CLI and its deps (latex2mathml, mathml2omml,
-   python-docx, Pillow, omml2latex). On Debian/Ubuntu externally-managed Python, add
-   `--break-system-packages`, use a venv, or `pipx install "git+https://github.com/LIFEAI/build-corpus.git@feat/dual-package-ubuntu"`.
-3. **PyPI / npm (only if you do NOT need the latest fixes — these lag GitHub):**
-   `pipx install build-corpus` · `npx -y -p regen-mde build-corpus <input> [flags]`
+   This installs the `build-corpus` CLI and its deps (latex2mathml, python-docx,
+   Pillow, omml2latex). The MathML→OMML step is an OWNED converter — there is NO
+   `mathml2omml` dependency. On Debian/Ubuntu externally-managed Python, add
+   `--break-system-packages`, use a venv, or `pipx install "git+https://github.com/LIFEAI/build-corpus.git"`.
+3. **npm (only if you do NOT need the latest fixes — lags GitHub; `build-corpus` is
+   NOT on PyPI):** `npx -y -p regen.mde build-corpus <input> [flags]`
 4. **Legacy `.ppt` input** additionally needs LibreOffice (`soffice`) on PATH
    (`sudo apt install libreoffice`). `.docx`/`.pptx` need nothing extra.
 5. **S3/R2 image upload** needs the extra: append `[s3]` to the package spec.
@@ -123,8 +123,8 @@ build-corpus report.md --inline-images                         # → report.inli
 build-corpus input.docx --images s3 --config build-corpus.config.json
 
 # portable one-offs when build-corpus is not yet installed:
-pipx run build-corpus input.docx --out out
-npx -y -p regen-mde build-corpus input.docx --out out
+pipx run --spec "git+https://github.com/LIFEAI/build-corpus.git" build-corpus input.docx --out out
+npx -y -p regen.mde build-corpus input.docx --out out
 ```
 
 ## Boundaries
@@ -134,5 +134,7 @@ npx -y -p regen-mde build-corpus input.docx --out out
 - The `regen-mde` GUI is Windows-only; do not attempt to launch it on Linux/macOS.
 
 ## Reference
-- Package: PyPI `build-corpus`, npm `regen-mde` (version-locked, dual-channel).
+- Package: npm `regen.mde` (CLI bin `build-corpus`, editor bin `regen-mde`). NOT on
+  PyPI — install the Python CLI from GitHub (step 2). MathML→OMML is an owned converter
+  (no `mathml2omml` dependency).
 - Source: `github.com/LIFEAI/build-corpus` (`C:/Dev/build-corpus` locally).
