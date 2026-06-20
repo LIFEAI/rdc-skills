@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.20.6",
+  "version": "0.21.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -30,6 +30,31 @@
     "codeflow_required": "bool — true if the skill MUST consult CodeFlow before acting on the codebase"
   },
   "skills_meta": {
+    "channel-formatter": {
+      "name": "channel-formatter",
+      "slash": "rdc:channel-formatter",
+      "category": "tooling",
+      "usage": "rdc:channel-formatter <channel> [content]",
+      "args": {
+        "positional": [
+          {
+            "name": "channel",
+            "required": false,
+            "description": "Target channel: linkedin | twitter | slack | email-ext | email-int | pitch-deck | word | pdf-report | web. Inferred from the request if omitted.",
+            "accepts": "string"
+          },
+          {
+            "name": "content",
+            "required": false,
+            "description": "Text/content to format. If omitted, formats content from the surrounding conversation.",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": []
+    },
     "brochure": {
       "name": "brochure",
       "slash": "rdc:brochure",

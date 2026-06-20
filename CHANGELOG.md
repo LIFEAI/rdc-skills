@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.21.0 — channel-formatter skill
+
+### Added
+- `rdc:channel-formatter` — channel-native output formatting for LinkedIn, Twitter/X,
+  Slack/Teams, Email (external/internal), Pitch Deck, Word/DOCX, PDF Report, and
+  Web/Landing Page. Ported from the `output-channel-formatter` claude.ai skill and
+  **inlined into a single self-contained SKILL.md** (no `references/` files) so it works
+  identically across the CLI plugin, the claude.ai web client (via `rdc_skill_get`, which
+  serves only SKILL.md), and Codex.
+
+---
+
 ## v0.9.38 — Clean-box npm install hardening
 
 ### Fixed
