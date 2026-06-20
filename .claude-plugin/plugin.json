@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -53,7 +53,23 @@
         "flags": []
       },
       "requires": [],
-      "produces": []
+      "produces": [],
+      "default_model": "inherit",
+      "triggers": [
+        "format this for linkedin",
+        "write a tweet",
+        "social media post",
+        "draft an email",
+        "make this a slide",
+        "format for slack",
+        "reformat this for"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
     },
     "brochure": {
       "name": "brochure",

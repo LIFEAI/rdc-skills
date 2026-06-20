@@ -1,6 +1,6 @@
 ---
 name: rdc:channel-formatter
-description: "Usage `rdc:channel-formatter <channel> [content]` — Apply precise, channel-native formatting to any output: LinkedIn, Twitter/X, Slack/Teams, Email (external/internal), Pitch Deck slides, Word/DOCX, PDF Report, and Web/Landing Page. Use EVERY TIME the user names an output channel/platform/document type, or asks to 'write a post', 'draft an email', 'format this for', 'make this a slide', 'send to LinkedIn', 'write a tweet', 'social media post', or 'reformat this for [channel]'. Each channel has its own Unicode strategy, emphasis system, length limits, and structure — never apply generic markdown to channel-specific output. Self-contained: all channel rules are inlined below (no external reference files)."
+description: "Usage `rdc:channel-formatter <channel> [content]` — Apply precise, channel-native formatting to any output: LinkedIn, Twitter/X, Slack/Teams, Email (external/internal), Pitch Deck slides, Word/DOCX, PDF Report, and Web/Landing Page. Use EVERY TIME the user names an output channel/platform/document type, or asks to 'write a post', 'draft an email', 'format this for', 'make this a slide', 'send to LinkedIn', 'write a tweet', 'social media post', or 'reformat this for [channel]'. Each channel has its own Unicode strategy, emphasis system, length limits, and structure — never apply generic markdown to channel-specific output. This skill FORMATS/STRUCTURES text only — for actual .docx/.pptx ↔ Markdown FILE conversion (either direction) use `rdc:convert` (build-corpus), not this skill. Self-contained: all channel rules are inlined below (no external reference files)."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -51,6 +51,15 @@ apply its rules exactly. Never apply generic markdown to a channel that doesn't 
 - Never use Word Styles notation in plain-text channels.
 - Always match the tone register of the channel (formal ≠ casual ≠ punchy).
 - For LIFEAI/PRT/RDC content, maintain REGEN-MODE voice unless Author-Mode is active.
+
+> ## ⛔ Scope boundary — this skill FORMATS text; it does NOT convert files
+> This skill governs **how to structure and format content** for a channel. It never
+> reads or writes binary office files. For the actual **Word ↔ Markdown (and .pptx/.ppt)
+> file conversion — in either direction — use `build-corpus` / the `rdc:convert` skill**,
+> never this one. So: "convert this .docx to markdown" / "turn this markdown into a Word
+> doc" → **`rdc:convert`**. "format this content the Word way / write it for LinkedIn" →
+> this skill. The Word/DOCX and PDF sections below describe target structure only; producing
+> the actual `.docx`/`.pdf` artifact is `rdc:convert` / `rdc:brochure`, not channel-formatter.
 
 ---
 
@@ -231,6 +240,10 @@ Typography (for JSX/design): Headline 28-36pt bold · Bullets 18-22pt · Data la
 ---
 
 ## § Word / DOCX
+
+> **This section = how to STRUCTURE Word content (Styles, hierarchy, tables).** To
+> generate an actual `.docx` file, or convert `.docx ↔ .md`, hand off to **`rdc:convert`
+> (build-corpus)** — channel-formatter does not produce or parse binary files.
 
 ### Core Principles
 - All formatting via **Word Styles** (never raw bold alone). Heading hierarchy is semantic (Heading 1/2/3, not font size). Tables use Word Table Styles, not markdown. Equations via Equation Editor (OMML). Explicit page structure (section breaks, headers/footers, page numbers).
