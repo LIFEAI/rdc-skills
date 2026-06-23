@@ -214,24 +214,42 @@ Read the task title and description, then:
 7. **For each wave — dispatch typed agents in parallel:**
 
    ### ⛔ Agent Dispatch Non-Negotiable Defaults
-   Every `Agent()` call MUST include these parameters — no exceptions:
+   Every `Agent()` call MUST include these parameters:
    ```
    model: <chosen per the routing table below>
    max_turns: 70
-   isolation: "worktree"
    ```
+   `isolation` is chosen per the dispatch-mode rule below — it is NOT a blanket
+   default. Worktree isolation is reserved for true parallel MULTI-committer waves
+   in the same repo; doc-only and single-committer waves default to NON-isolated.
 
-   ### ⛔ Concurrent committers ⇒ worktree isolation, no exceptions (docs included)
-   For ANY parallel agent dispatch where the agents COMMIT — **including a pure
-   docs wave** — force `isolation: "worktree"` so each agent commits in its own
-   tree and the orchestrator merges. NEVER fan out concurrent committers onto one
-   shared working tree (lesson 2026-06-13-build-concurrent-agents-same-branch-git-race:
-   three parallel doc agents on one `develop` tree raced on the git index/stash —
-   one commit swept in another agent's staged-but-uncommitted files under the wrong
-   message, two agents reported the SAME SHA, and a pre-commit `sync:docs` ref-lock
-   race misattributed authorship). "It's just docs" is NOT an exemption. The only
-   alternative to worktree isolation is running the committing agents **sequentially**
-   on the shared tree (one commits and pushes before the next starts).
+   ### ⛔ Dispatch mode — non-isolated is the default for single-committer / doc-only waves
+   Worktree isolation exists to protect a SHARED working tree from a git-index race
+   between MULTIPLE agents committing in parallel. When there is only ONE committer,
+   that race cannot occur, and the stale-base hazard of worktrees (see the HARD GATE
+   below — recurring across 2026-06-10/11/15/16/17/23) is pure downside. Pick the
+   dispatch mode by committer count, not by reflex:
+
+   | Wave shape | Dispatch mode | isolation |
+   |---|---|---|
+   | **Doc-only wave** (markdown/docs/plans, no code build) | NON-isolated, one committer on `develop` | omit `isolation` |
+   | **Single-committer wave** (only one agent commits, or work serializes to the supervisor) | NON-isolated, one committer on `develop` | omit `isolation` |
+   | **True parallel MULTI-committer wave** (2+ agents committing concurrently in the same repo, disjoint files) | worktree-isolated, supervisor merges | `isolation: "worktree"` |
+
+   - **Default = NON-isolated.** Only escalate to `isolation: "worktree"` when the
+     wave genuinely has 2+ concurrent committers in the same repo.
+   - A pure docs wave is single-committer by default: either dispatch ONE doc agent,
+     or have parallel doc agents return diffs/patches that the supervisor commits
+     serially. Do NOT fan out 2+ concurrent committers onto one shared `develop`
+     tree (lesson 2026-06-13-build-concurrent-agents-same-branch-git-race: three
+     parallel doc agents on one `develop` tree raced on the git index/stash — one
+     commit swept in another agent's staged-but-uncommitted files under the wrong
+     message, two agents reported the SAME SHA, a pre-commit `sync:docs` ref-lock
+     race misattributed authorship). The fix for that race is single-committer
+     serialization, NOT blanket worktree isolation.
+   - When you DO need a true MULTI-committer parallel wave, worktree isolation is
+     mandatory AND the HARD GATE below (base == develop HEAD) MUST pass before
+     dispatch — a stale-base worktree wave is a build failure, not a warning.
 
    ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
    Worktree isolation protects against THIS build's own agents, not against a
@@ -270,25 +288,34 @@ Read the task title and description, then:
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
-   ### ⛔ Worktree base must equal develop HEAD — assert BEFORE every isolated wave
+   ### ⛔ HARD GATE — Worktree base MUST equal develop HEAD (blocking, not advisory)
    The worktree-isolation harness has shipped worktrees pinned to a STALE base
-   commit (lessons 2026-06-10-build-worktree-stale-base, 2026-06-11-build-worktree-stale-base:
-   agents branched 464 commits / 4 days behind develop HEAD, on a tree where the
-   target app did not yet exist — their diffs would have silently reverted merged
-   work or operated on a deleted structure). **Before dispatching ANY
-   `isolation:"worktree"` wave**, assert each worktree's base equals current
-   develop HEAD:
+   commit (lessons 2026-06-10-build-worktree-stale-base, 2026-06-11-build-worktree-stale-base,
+   2026-06-15-build-worktree-stale-base, 2026-06-16-build-worktree-stale-base,
+   2026-06-17-build-worktree-stale-base, 2026-06-23-build-worktree-stale-base:
+   agents branched hundreds of commits / multiple days behind develop HEAD, on a
+   tree where the target app did not yet exist — their diffs would have silently
+   reverted merged work or operated on a deleted structure). This is a recurring
+   harness defect, so the check is a **HARD BLOCKING GATE, not a suggestion.**
+
+   **Before dispatching ANY `isolation:"worktree"` wave**, the supervisor MUST run
+   the base==HEAD assertion and MUST abort isolation on any mismatch — there is no
+   "proceed anyway" path:
    ```bash
    DEV_HEAD=$(git rev-parse develop)
    # After worktrees are created, for each agent worktree:
    git worktree list   # compare each agent worktree's SHA to $DEV_HEAD
-   # If a worktree base != $DEV_HEAD (it is behind), the wave is UNSAFE.
+   # If ANY worktree base != $DEV_HEAD (it is behind), the wave is UNSAFE — ABORT.
    ```
-   - If any worktree base is behind `$DEV_HEAD`: **ABORT isolation for this wave.**
-     Do NOT merge stale worktree output. Pivot to **sequential, non-isolated
-     dispatch on a real `develop` checkout** (one disjoint WP at a time to avoid
-     `.git/index` races; the supervisor pushes) — the same reason the validator
-     runs non-isolated (it must see merged develop).
+   - **MANDATORY ABORT:** if ANY worktree base != `$DEV_HEAD`, you MUST abort
+     isolation for this wave. Do NOT merge stale worktree output. Do NOT "fast-forward
+     and continue". Do NOT proceed with the isolated wave under any circumstance.
+     Pivot to **sequential, non-isolated dispatch on a real `develop` checkout**
+     (one disjoint WP at a time to avoid `.git/index` races; the supervisor pushes) —
+     the same reason the validator runs non-isolated (it must see merged develop).
+   - This gate is blocking by design: an isolated wave dispatched on a stale base
+     is treated as a build failure, not a warning. Skipping or downgrading this
+     assertion to advisory is a contract violation.
    - Also at every merge: `git show <branch>:<key-file> | grep -c <symbol-a-prior-wave-introduced>`
      — a 0 where there should be ≥1 means the branch is stale or deleted a shared
      export; resolve to `--ours` and re-apply that wave's real delta on current HEAD.
@@ -509,7 +536,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` + `isolation: "worktree"` — non-negotiable. Model is chosen per task per the routing table in Step 7: Sonnet 4.6 for updates/edits, Opus 4.6 for harder coding, Opus 4.8 for design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 omits isolation; validator model stays `claude-sonnet-4-6` (verification, not generation).
+- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. `isolation` is per the dispatch-mode rule in Step 7: NON-isolated (omit `isolation`) for doc-only and single-committer waves; `isolation: "worktree"` ONLY for true parallel MULTI-committer waves, and only after the HARD GATE (worktree base == develop HEAD) passes — a stale-base isolated wave is a build failure. Model is chosen per task per the routing table in Step 7: Sonnet 4.6 for updates/edits, Opus 4.6 for harder coding, Opus 4.8 for design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 always omits isolation; validator model stays `claude-sonnet-4-6` (verification, not generation).
 - Finding an existing file is NOT task completion — verify it satisfies the spec
 
 ## Capture lessons (exit step)
