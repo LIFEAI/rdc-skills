@@ -346,6 +346,25 @@ OG_IMG=$(echo "$HEAD" | grep -ioE 'property="og:image"[^>]*content="([^"]*)"' | 
 
 **Why this exists (2026-06-05):** life.ai deployed to production with zero social/SEO metadata — no description, no OG, no favicon, no sitemap. HTTP 200 + TLS + content passed; metadata was invisible to the existing gates. This audit catches that class of defect.
 
+## Hotlink referer allowlist — new media.place.fund consumer domains
+
+When onboarding a NEW brand domain that loads assets from `media.place.fund`, add
+that domain to the hotlink-protection Worker's referer allowlist **before
+go-live** (lesson 2026-06-14-deploy-issholiving-referer-hotlink-403: a new brand
+domain served its own HTML fine but every `media.place.fund` image returned 403
+because the hotlink Worker rejected the unknown `Referer`). The image 403 is
+invisible to the HTTP-200 / TLS / metadata gates — they probe the HTML document,
+not the cross-origin asset.
+
+- Add the new origin (apex + `www`, dev + prod) to the Worker's referer allowlist
+  and redeploy the Worker before the brand domain goes live.
+- Verify with an explicit `Referer` probe (NOT a bare curl — a missing Referer can
+  pass while the real browser Referer fails):
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}" -e "https://<new-brand-domain>/" \
+    "https://media.place.fund/<a-known-asset-path>"   # expect 200, not 403
+  ```
+
 ## PUBLISH.md Integration
 
 Every deploy reads `PUBLISH.md` from the app's source root to derive `watch_paths` and to register surfaces in Studio `artifact_registry`.

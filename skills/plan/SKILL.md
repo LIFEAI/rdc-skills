@@ -39,11 +39,51 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - What tests exist?
    - What's the dependency graph?
 
+   ### ⛔ Before planning "wire fetchers into an existing view" — prove the view can render real data
+   When a work package wires real data into a view that already renders, do NOT
+   assume the view is fetch-ready (lesson 2026-06-16-build-verify-view-prop-api-before-wiring:
+   a view imported its rows from a module-level `../mock/` constant with no data
+   prop, so wiring an API fetcher changed nothing the user saw — and `tsc` + a
+   route-200 probe both passed because they never prove real data renders). Before
+   writing the WP, grep the target view for module-level `../mock/` (or `mockData`,
+   `fixtures/`, hard-coded seed arrays) imports AND confirm a real data prop /
+   loader seam exists:
+   ```bash
+   grep -nE "from ['\"].*/(mock|fixtures)" <target-view-file>
+   ```
+   If the view binds to a module-level mock and exposes no data prop, the WP MUST
+   include removing the mock import and threading a real prop — not just adding a
+   fetcher. "tsc + route 200" is NOT acceptance for "real data renders"; require a
+   negative verifier (mock value is absent from the rendered output).
+
 3. **Make design decisions** — for each major choice:
    - State the decision clearly
    - Document what was chosen and what was rejected
    - Explain WHY (tradeoff rationale)
    - Note consequences and reversibility
+
+   ### Ops / runtime / observability surfaces — ask cloud-DB vs locally-observable, do NOT default to Supabase-SSOT
+   For any ops, runtime, monitoring, or observability surface (process state, log
+   tails, deploy health, queue depth, session liveness, local daemon status),
+   surface the **data-source tradeoff as an explicit AskUserQuestion** rather than
+   reaching for Supabase-as-single-source-of-truth by reflex (lesson
+   2026-06-20-plan-cloud-vs-local-source-tradeoff). Some of this data is only
+   truthfully observable LOCALLY (the process/host itself) and a cloud-DB mirror
+   is stale or lossy; other data genuinely belongs in Supabase. In interactive
+   mode ask which source; in unattended mode escalate via advisor. Record the
+   chosen source and its staleness window as a Design Decision.
+
+   ### New shared `@regen/*` package — force an explicit consume-strategy Design Decision
+   When the plan introduces a NEW shared `@regen/*` package, check who consumes it.
+   If ANY consumer is a non-Next / CJS context (a Node CLI, a PM2 script, a Jest
+   suite, an MCP server, a `.cjs` tool) — not just Next.js apps that transpile ESM
+   workspace packages — the plan MUST contain an explicit **consume-strategy Design
+   Decision** (lesson 2026-06-20-plan-shared-lib-cjs-esm-dist-gap: an ESM-only
+   `dist` shipped fine to Next consumers but `require()` from a CJS consumer threw
+   `ERR_REQUIRE_ESM` at runtime). The decision picks ONE: emit a CJS (or dual
+   ESM+CJS) `dist`, OR have the CJS consumer install a TS/ESM loader (e.g.
+   `tsx`/`ts-node`). Name the consumers and the chosen strategy; do not leave the
+   module format implicit.
 
 4. **Define work packages** — break into agent-dispatchable units:
    - Each work package = one agent assignment

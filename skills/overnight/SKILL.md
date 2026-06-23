@@ -42,17 +42,38 @@ If the sentinel file does not exist, the Stop hook will NOT block — which mean
 
 Before touching any code, verify the environment is safe:
 
-1. **Clauth daemon alive:**
+1. **Clauth daemon alive AND unlocked:** `/ping` alive is NOT enough — a LOCKED
+   vault answers `/ping` but every `/v/<service>` returns nothing, so credentials
+   silently resolve empty and a long unattended run fails hours later
+   (lesson 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells).
+   Assert `locked:false` before proceeding:
    ```bash
    curl -s http://127.0.0.1:52437/ping
+   curl -s http://127.0.0.1:52437/status | python3 -c "import sys,json; s=json.load(sys.stdin); print('locked:', s.get('locked')); sys.exit(1 if s.get('locked') else 0)"
    ```
-   If not responding: report `BLOCKED: credential daemon offline` and exit. Do not proceed.
+   If not responding OR `locked:true`: report `BLOCKED: credential daemon offline or locked` and exit. Do not proceed.
 
-2. **Git state clean:**
+2. **Git state clean AND no concurrent committer on shared develop:** Overnight
+   shares the `develop` working tree with other cells/sessions. A second session
+   committing concurrently can drop a just-committed file during a rebase
+   (lessons 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells,
+   2026-06-17-build-shared-develop-rebase-dropped-committed-file).
    ```bash
    git status --short
+   git fetch -q origin && git log --oneline @..@{u}   # any rows = origin moved under you
    ```
-   Must be on the development branch with no uncommitted changes. If dirty: commit or stash first.
+   Must be on the development branch with no uncommitted changes. If dirty: commit
+   or stash first. If `origin/develop` is ahead of local at preflight, another
+   session is actively committing — enforce these rules for the whole run:
+   - **Atomic stage+commit by explicit path** — `git add <paths>` then immediate
+     `git commit`; never leave a wide `git add -A` window open while another
+     session may stage.
+   - **Post-push origin verification** — after every push, confirm each committed
+     file actually reached origin (a rebase can silently drop it):
+     ```bash
+     git cat-file -e origin/develop:<path> && echo "OK: <path> on origin" || echo "DROPPED: <path> — re-apply and re-push"
+     ```
+     A `DROPPED` result means re-apply the file on fresh `origin/develop` HEAD and push again.
 
 3. **Baseline review:**
    Run `rdc:review --unattended`. If `REVIEW_STATUS.verdict = "HAS_ISSUES"` and

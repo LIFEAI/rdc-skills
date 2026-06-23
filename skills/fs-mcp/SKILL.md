@@ -73,6 +73,23 @@ Use URL ingest when the file already exists in cloud storage:
 fs_ingest_url url="https://..." path="docs/source/file.md" expected_sha256="<optional>"
 ```
 
+### ⛔ Ingest discipline (lesson 2026-06-16-collab-claudeai-fs-ingest-race-and-preview-pollution)
+
+- **Prefer synchronous `fs_write` over `fs_ingest_url` for commit-bound bytes.**
+  `fs_ingest_url` can return before the bytes have landed on disk; a `git add`
+  immediately after races the download and silently stages nothing. If you MUST
+  use `fs_ingest_url` for content you will commit, `fs_stat`-poll the target path
+  until size/hash is stable BEFORE staging or committing.
+- **A silent `git add` skip is NOT gitignore.** If `git add <path>` adds nothing
+  and the file is not obviously ignored, do not assume `.gitignore` — confirm with
+  `git check-ignore -v <path>`. No output means it is NOT ignored, so the real
+  cause is a missing/empty/racing file, not an ignore rule.
+- **Never ingest claude.ai preview / Artifacts URLs.** URLs like
+  `*.claude.ai/.../preview` or Artifact render endpoints serve a wrapped,
+  data-omelette-injected document (host chrome, sanitizer rewrites, injected
+  markers) — not the clean source bytes. Ingesting them pollutes the repo. Get
+  the durable source via the GitHub-branch import path (§4) instead.
+
 Use guarded append when appending to a known file:
 
 ```text

@@ -163,6 +163,28 @@ Read the task title and description, then:
    - DB/migration task: at least schema object, relationship/guard, policy/permission, seed/fixture or backfill, and smoke query.
    - Editor/sidebar/CLI workflow: at least start, attach/open, enqueue action, observe result, timeout/error, and live refresh where applicable.
 
+   ### ⛔ Deliverable / acceptance check-off table — show BEFORE any implementation
+   Before dispatching the first wave, render a deliverable/acceptance table and
+   keep it visible through the build (lesson 2026-06-16-build-poor-goal-execution-mdk-brain:
+   a build satisfied generic checklist rows — tsc clean, route 200 — while never
+   touching the surface the user actually named, because no row anchored the
+   user's TARGET SURFACE). The table MUST contain:
+   - **One mandatory row for the user-named TARGET SURFACE** — the exact screen,
+     endpoint, file, or behavior the user asked for, by name. Its acceptance check
+     is what proves THAT surface renders/works, not a proxy.
+   - **At least one NEGATIVE verifier row** — a check that proves the WRONG thing
+     does NOT happen (e.g. "mock data is NOT rendered", "old route returns 404",
+     "stub component is absent from the bundle"). A positive-only suite passes
+     even when the deliverable is wired to the wrong source.
+
+   | Deliverable | Target surface? | Acceptance check | Negative verifier | Status |
+   |---|---|---|---|---|
+
+   **Gating rule:** any work item whose deliverable maps to the TARGET SURFACE row
+   stays in `review` (never `done`) until that target-surface acceptance check
+   passes. Generic gates (tsc, route 200) clearing is NOT sufficient to advance
+   the target-surface item.
+
    If the gate fails:
    - Interactive: show the failing rows and invoke `rdc:plan <epic-id>` to repair the matrix before dispatch.
    - Unattended: invoke `rdc:plan <epic-id> --unattended`, reload tasks, and run this gate once more.
@@ -210,6 +232,23 @@ Read the task title and description, then:
    race misattributed authorship). "It's just docs" is NOT an exemption. The only
    alternative to worktree isolation is running the committing agents **sequentially**
    on the shared tree (one commits and pushes before the next starts).
+
+   ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
+   Worktree isolation protects against THIS build's own agents, not against a
+   DIFFERENT session (another cell, a Codex run, a human) already committing on
+   the same shared tree (lesson 2026-06-16-build-concurrent-session-shared-tree-commit-corruption:
+   a foreign session's staged-but-uncommitted files were swept into this build's
+   commit under the wrong message). Before dispatching any wave, run `git status`
+   to detect foreign-dirty files you did not create. If foreign-dirty files are
+   present: do NOT fan out concurrent committers — **serialize ALL committers to
+   the supervisor** (agents return diffs/patches; the supervisor stages and
+   commits each one alone). After every supervisor commit, assert the exact file
+   set landed and nothing foreign leaked in:
+   ```bash
+   git show --stat <sha>   # confirm ONLY the files this commit owns are listed
+   ```
+   A `git show --stat` that lists a file the agent did not touch = a foreign file
+   leaked into the commit; reset and re-stage by explicit path.
 
    **Agent model routing — pick per task, not per wave.** The supervisor session model does NOT cascade to agents; you must set `model` explicitly on every dispatch.
 
