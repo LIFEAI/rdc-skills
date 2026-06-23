@@ -160,11 +160,24 @@ Write to `.rdc/reports/YYYY-MM-DD-housekeeping.md`:
 
 ## Lessons triage (weekly)
 
-Read all `.rdc/lessons/*.md` with `status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). Cluster by `area` + root-cause similarity (dedupe repeats into one fix). For each cluster:
+Read all `.rdc/lessons/*.md` with `status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). Cluster by `area` + root-cause similarity (dedupe repeats into one fix).
+
+### Attended mode (default — a human is present)
+
+For each cluster:
 
 - `scope: simple` → apply the fix directly (rule line, skill-doc edit, config, guard), commit it, set the lesson(s) `status: applied` with the commit linked.
 - `scope: architectural` → do NOT edit. Present the issue + options via `AskUserQuestion` (per `.claude/rules/architectural-change-approval.md`). On approval, apply via the correct lifecycle (rdc-skills tag/push for skills; cited commit for rules) and set `status: applied`. If deferred, set `status: triaged` and spawn a `work_item`.
 - Not worth fixing → `status: wont-fix` with a one-line reason.
+
+### Unattended mode (no human — overnight / cron / `rdc:overnight`)
+
+When the weekly triage runs unattended, follow `.rdc/guides/lessons-learned-spec.md` § **Triage procedure — UNATTENDED weekly mode** — do not run `AskUserQuestion`. In brief (the spec is authoritative):
+
+- **Per-difficulty model routing** (reuses the `rdc:build` table): the run is led by `claude-opus-4-8` for clustering + scope/difficulty triage; mechanical apply → `claude-sonnet-4-6`; harder multi-file/migration fix → `claude-opus-4-6`; design/architectural fix → `claude-opus-4-8`.
+- `scope: simple` → apply directly or via `rdc:fixit`, commit, `status: applied`.
+- `scope: architectural` with a single clear correct fix (records an already-learned lesson — e.g. "document X", "add a gate", update a guide) → route through `rdc:plan` → `rdc:build` (or `rdc:fixit` if genuinely <5 files), update the documentation, set `status: applied`/`triaged`.
+- `scope: architectural` **and genuinely ambiguous** (multiple valid approaches, real tradeoffs) → write a `human_items` row (`item_type='decision'`, with options in `suggested_agent_prompt`, `source_type='lesson'`, `source_fingerprint` for dedupe), set `status: triaged`, spawn + link a `work_item`. Decided in the morning. This is the asynchronous equivalent of the attended interview and honors `.claude/rules/architectural-change-approval.md`.
 
 Never delete lesson files — `applied` and `wont-fix` stay as the audit trail. Report captured / applied / escalated / deferred counts in the housekeeping report.
 
