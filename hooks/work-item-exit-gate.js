@@ -11,6 +11,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const hookLog = require('./hook-logger');
 
@@ -25,6 +26,21 @@ const WITNESS_ALLOWLIST = new Set(['validator-rerun', 'ci', 'human-review']);
 //   Repo the gate runs `git` against. The work tree under verification is
 //   regen-root; overridable for tests via RDC_TRUTH_GATE_REPO.
 const TRUTH_GATE_REPO = process.env.RDC_TRUTH_GATE_REPO || 'C:/Dev/regen-root';
+
+// Truth Gate 3.0 — Layer 3 (validator re-run receipt).
+//   Ratified contract (c): "no done without a validator re-run receipt with a
+//   matching live nonce + running git_sha." This layer is FLAG-GATED and
+//   default-OFF so it does not break in-flight build closures; it activates at
+//   deploy by flipping the flag ON. When ON it is FAIL-CLOSED.
+//   Running-brain health endpoint — the source of the actually-running git_sha
+//   to pin against (mirrors .claude/hooks/truth-gate.mjs ~line 112).
+const BRAIN_HEALTH_URL = process.env.RDC_BRAIN_HEALTH_URL || 'http://127.0.0.1:3109/health';
+//   Canonical signed field order for a VALIDATOR re-run receipt. MUST match
+//   .claude/hooks/lib/receipt.mjs VALIDATOR_SIGNED_FIELDS exactly (the gate has
+//   no access to that ESM lib, so the contract is mirrored here, byte-for-byte).
+const VALIDATOR_SIGNED_FIELDS = [
+  'claim', 'witness', 'git_sha', 'nonce', 'command', 'result', 'nonce_in_output', 'ts',
+];
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -389,6 +405,256 @@ async function loadEvidenceLib() {
   return _evidenceLib;
 }
 
+// ===========================================================================
+// Truth Gate 3.0 — Layer 3 (validator re-run receipt). FLAG-GATED, default-OFF.
+//
+// Ratified contract (c): a `done` close requires a chain-stored, HMAC-valid,
+// fresh-nonce, running-sha-pinned validator receipt. Nothing consumed the
+// receipt layer before this. To avoid breaking in-flight closures, the check is
+// behind a flag (default OFF → behaves exactly as today). When the flag is ON it
+// is FAIL-CLOSED: a missing / forged / stale / replayed / wrong-sha receipt, or
+// an inability to evaluate, DENIES the close.
+// ===========================================================================
+
+/**
+ * Is the Layer-3 validator-receipt requirement enabled?
+ * Default OFF. Turned on at deploy via either:
+ *   - env RDC_TRUTHGATE_REQUIRE_VALIDATOR_RECEIPT in {1,true,on,yes}, OR
+ *   - a DB row in public.truthgate_flags(flag,enabled) with flag =
+ *     'require_validator_receipt' and enabled = true (best-effort; a lookup
+ *     failure does NOT enable the flag — absence is OFF).
+ * The env is the authoritative, test-stable switch; the DB lookup is an optional
+ * deploy-time toggle. Either being true enables it.
+ */
+function truthGateFlagEnabled(flag) {
+  const envName = 'RDC_TRUTHGATE_' + String(flag || '').toUpperCase();
+  const v = String(process.env[envName] || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'on' || v === 'yes';
+}
+
+/** Best-effort DB toggle for the flag. Absence / error → false (stays OFF). */
+async function truthGateFlagEnabledDb(flag) {
+  try {
+    const rows = await supabaseGet(
+      `truthgate_flags?flag=eq.${encodeURIComponent(flag)}&select=enabled&limit=1`,
+    );
+    return Array.isArray(rows) && rows[0] && rows[0].enabled === true;
+  } catch (_) {
+    return false; // a missing table or a lookup failure must NOT enable the gate
+  }
+}
+
+/** Canonical JSON the HMAC is computed over — mirrors receipt.mjs validatorCanonical(). */
+function validatorCanonical(receipt) {
+  const picked = {};
+  for (const k of VALIDATOR_SIGNED_FIELDS) picked[k] = receipt[k] ?? null;
+  return JSON.stringify(picked);
+}
+
+/** Verify the validator receipt HMAC with the truth-gate secret (constant-time). */
+function verifyValidatorSig(receipt, secret) {
+  if (!secret || !receipt || !receipt.hmac) return false;
+  let expected;
+  try {
+    expected = crypto.createHmac('sha256', secret).update(validatorCanonical(receipt)).digest('hex');
+  } catch (_) { return false; }
+  let a, b;
+  try {
+    a = Buffer.from(expected, 'hex');
+    b = Buffer.from(String(receipt.hmac), 'hex');
+  } catch (_) { return false; }
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Does a re-run result object read as a PASS? Mirrors receipt.mjs resultIsPass(). */
+function resultIsPass(result) {
+  if (!result || typeof result !== 'object') return false;
+  if (typeof result.exit_code === 'number') return result.exit_code === 0;
+  if (typeof result.exitCode === 'number') return result.exitCode === 0;
+  if (typeof result.passed === 'number') {
+    if (typeof result.failed === 'number') return result.failed === 0;
+    if (typeof result.total === 'number') return result.passed === result.total;
+  }
+  if (typeof result.tsc_errors === 'number') return result.tsc_errors === 0;
+  return false;
+}
+
+/**
+ * Validate a VALIDATOR re-run receipt for a `done` close. Pure + unit-testable;
+ * throws GateDenied on any failure so the caller fail-closes. ALL must hold:
+ *   - a secret is available (else INFRA → DENY, never a silent pass)
+ *   - HMAC valid (signed by the validator path, not hand-written)
+ *   - witness ∈ allow-list (never 'agent' / self-witnessed)
+ *   - git_sha === actualRunningSha (re-run pinned to the running brain HEAD)
+ *   - nonce_in_output === true (fresh nonce surfaced in captured output)
+ *   - result reads as a pass
+ *   - nonce NOT in seenNonces (durable replay set, loaded from the chain store)
+ *   - ts within maxAgeMin (fresh)
+ *
+ * @param {object}   receipt
+ * @param {object}   opts
+ * @param {string}   opts.secret           HMAC secret (truth-gate-secret)
+ * @param {string}   opts.actualRunningSha live brain HEAD to pin against (required)
+ * @param {string[]} [opts.seenNonces]     durable nonces already consumed
+ * @param {number}   [opts.maxAgeMin=30]
+ * @param {number}   [opts.nowMs]
+ */
+function assertValidatorReceipt(receipt, opts = {}) {
+  const { secret, actualRunningSha, seenNonces = [], maxAgeMin = 30, nowMs } = opts;
+  if (!secret) {
+    deny(
+      'L3: done rejected — INFRA: no truth-gate HMAC secret available to verify the validator receipt. ' +
+      'Cannot evaluate the Layer-3 receipt; fail-closed (INFRA is a BLOCK, not an allow).',
+      { layer: 3 },
+    );
+  }
+  if (!receipt || typeof receipt !== 'object') {
+    deny('L3: done rejected — no validator re-run receipt found for this work item (flag is ON).', { layer: 3 });
+  }
+  if (!verifyValidatorSig(receipt, secret)) {
+    deny('L3: done rejected — validator receipt HMAC invalid/absent (hand-written or tampered receipt).', { layer: 3 });
+  }
+  if (!WITNESS_ALLOWLIST.has(String(receipt.witness || ''))) {
+    deny(
+      'L3: done rejected — validator receipt witness "' + (receipt.witness || '<missing>') +
+      '" is not in {validator-rerun, ci, human-review} (the doer cannot self-witness).',
+      { layer: 3, witness: receipt.witness },
+    );
+  }
+  if (!receipt.git_sha) {
+    deny('L3: done rejected — validator receipt git_sha missing.', { layer: 3 });
+  }
+  if (actualRunningSha && String(receipt.git_sha) !== String(actualRunningSha)) {
+    deny(
+      'L3: done rejected — validator receipt git_sha ' + receipt.git_sha +
+      ' != the actually-running brain HEAD ' + actualRunningSha + ' (receipt not pinned to the live runtime).',
+      { layer: 3, receiptSha: receipt.git_sha, runningSha: actualRunningSha },
+    );
+  }
+  if (receipt.nonce_in_output !== true) {
+    deny('L3: done rejected — validator receipt nonce_in_output != true (fresh nonce absent from captured output: cached/replayed artifact).', { layer: 3 });
+  }
+  if (!resultIsPass(receipt.result)) {
+    deny('L3: done rejected — validator receipt result did not read as a pass (re-run failed or unparseable result).', { layer: 3 });
+  }
+  if (receipt.nonce && Array.isArray(seenNonces) && seenNonces.includes(receipt.nonce)) {
+    deny('L3: done rejected — validator receipt nonce ' + receipt.nonce + ' already consumed in the chain (replayed) — stale.', { layer: 3, nonce: receipt.nonce });
+  }
+  const t = Date.parse(receipt.ts);
+  if (Number.isNaN(t)) deny('L3: done rejected — validator receipt ts is unparseable.', { layer: 3 });
+  const now = typeof nowMs === 'number' ? nowMs : Date.now();
+  if (now - t > maxAgeMin * 60_000) {
+    deny('L3: done rejected — validator receipt is stale (> ' + maxAgeMin + 'm old).', { layer: 3 });
+  }
+  // No denial → the Layer-3 receipt is valid, fresh, pinned, and unreplayed.
+}
+
+/** Read the truth-gate HMAC secret from clauth/env. null when unavailable. */
+async function getTruthGateSecret() {
+  if (process.env.TRUTH_GATE_SECRET) return process.env.TRUTH_GATE_SECRET;
+  try {
+    const res = await fetch('http://127.0.0.1:52437/v/truth-gate-secret', { signal: AbortSignal.timeout(2500) });
+    if (res.ok) {
+      const text = (await res.text()).trim();
+      if (text && !text.startsWith('{')) return text;
+    }
+  } catch (_) {}
+  return null;
+}
+
+/** Pin against the running brain's /health git_sha (mirrors truth-gate.mjs). null on failure. */
+async function getRunningBrainSha() {
+  try {
+    const res = await fetch(BRAIN_HEALTH_URL, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const sha = String(j && j.git_sha ? j.git_sha : '').trim();
+    return sha || null;
+  } catch (_) { return null; }
+}
+
+/** Newest validator receipt stored for this work item, or null. Loaded from the chain store. */
+function pickNewestValidatorReceipt(receiptRows) {
+  if (!Array.isArray(receiptRows) || receiptRows.length === 0) return null;
+  let best = null;
+  let bestT = -Infinity;
+  for (const row of receiptRows) {
+    const payload = row && row.payload;
+    if (!payload || typeof payload !== 'object') continue;
+    const t = Date.parse(payload.ts);
+    const key = Number.isNaN(t) ? -Infinity : t;
+    if (key >= bestT) { bestT = key; best = payload; }
+  }
+  return best;
+}
+
+/**
+ * Layer-3 verification of a `done` close: require a chain-stored, HMAC-valid,
+ * fresh-nonce, running-sha-pinned validator receipt for THIS work item. Only
+ * runs when the flag is ON; otherwise it is a no-op (today's behaviour). When ON
+ * it is FAIL-CLOSED — any inability to load/evaluate the receipt is a DENY.
+ *
+ * Dependencies are injectable for unit tests via `deps`:
+ *   deps.flagEnabled()        → boolean
+ *   deps.getSecret()          → Promise<string|null>
+ *   deps.getRunningSha()      → Promise<string|null>
+ *   deps.loadReceiptRows(id)  → Promise<rows for this work item>
+ *   deps.loadSeenNonces()     → Promise<string[]> (durable consumed nonces)
+ */
+async function verifyLayer3(statusCall, item, deps = {}, nowMs) {
+  const flagEnabled = deps.flagEnabled ? await deps.flagEnabled() : false;
+  if (!flagEnabled) return; // default-OFF: behaves exactly as today
+
+  const secret = deps.getSecret ? await deps.getSecret() : await getTruthGateSecret();
+  const runningSha = deps.getRunningSha ? await deps.getRunningSha() : await getRunningBrainSha();
+  if (!runningSha) {
+    deny(
+      'L3: done rejected — INFRA: could not read the running brain git_sha from ' + BRAIN_HEALTH_URL +
+      '. Cannot pin the validator receipt to the live runtime; fail-closed (INFRA is a BLOCK).',
+      { layer: 3 },
+    );
+  }
+
+  let receiptRows;
+  let seenNonces;
+  try {
+    receiptRows = deps.loadReceiptRows
+      ? await deps.loadReceiptRows(statusCall.id)
+      : await supabaseGet(`truth_gate_receipts?work_item_id=eq.${encodeURIComponent(statusCall.id)}&select=payload&order=id.desc&limit=50`);
+    seenNonces = deps.loadSeenNonces
+      ? await deps.loadSeenNonces(statusCall.id)
+      : await loadSeenNonces(statusCall.id, pickNewestValidatorReceipt(receiptRows));
+  } catch (e) {
+    deny(
+      'L3: done rejected — INFRA: could not load validator receipts/seen-nonces (' +
+      (e && e.message ? e.message : String(e)) + '); fail-closed.',
+      { layer: 3 },
+    );
+  }
+
+  const receipt = pickNewestValidatorReceipt(receiptRows);
+  assertValidatorReceipt(receipt, { secret, actualRunningSha: runningSha, seenNonces, nowMs });
+}
+
+/**
+ * Durable replay set: every validator-receipt nonce already consumed in the
+ * chain, EXCLUDING the candidate receipt's own nonce (so the candidate is not
+ * spuriously flagged as a replay of itself). Replay rejection is therefore
+ * durable (chain-backed), not in-memory-only.
+ */
+async function loadSeenNonces(workItemId, candidateReceipt) {
+  const ownNonce = candidateReceipt && candidateReceipt.nonce ? String(candidateReceipt.nonce) : null;
+  const rows = await supabaseGet(
+    `truth_gate_receipts?select=payload&payload->>nonce=not.is.null&limit=1000`,
+  );
+  const seen = [];
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const n = r && r.payload && r.payload.nonce ? String(r.payload.nonce) : null;
+    if (n && n !== ownNonce) seen.push(n);
+  }
+  return seen;
+}
+
 /**
  * Layer-2 verification of a `done` close against the real repo. Throws (caught
  * by verifyDone → block) on any internal error so the gate is FAIL-CLOSED:
@@ -578,6 +844,24 @@ async function verifyDone(statusCall, blob) {
     // Any OTHER error during L2 is an inability to verify => FAIL-CLOSED.
     block('L2: done rejected — Layer-2 verification could not complete (' + (e && e.message ? e.message : String(e)) + '). Fail-closed: not closing.', statusCall);
   }
+
+  // --- Truth Gate 3.0 Layer 3 — validator re-run receipt (FLAG-GATED) ---------
+  // Default-OFF: a no-op until the flag is flipped at deploy, so in-flight build
+  // closures are unaffected. When ON it is FAIL-CLOSED: requires a chain-stored,
+  // HMAC-valid, fresh-nonce, running-sha-pinned validator receipt.
+  try {
+    await verifyLayer3(statusCall, item, {
+      flagEnabled: async () =>
+        truthGateFlagEnabled('require_validator_receipt') ||
+        (await truthGateFlagEnabledDb('require_validator_receipt')),
+    });
+  } catch (e) {
+    if (e instanceof GateDenied) {
+      block(e.reason, e.details);     // translate the L3 denial into a hard block
+    }
+    // Any OTHER error during L3 (flag ON) is an inability to verify => FAIL-CLOSED.
+    block('L3: done rejected — Layer-3 verification could not complete (' + (e && e.message ? e.message : String(e)) + '). Fail-closed: not closing.', statusCall);
+  }
 }
 
 function validateTick(tick, rawTool) {
@@ -647,5 +931,14 @@ if (require.main === module) {
     assertGitRepoAvailable,
     buildCapturedShaSet,
     WITNESS_ALLOWLIST,
+    // Truth Gate 3.0 Layer 3 (validator re-run receipt) — exported for tests.
+    verifyLayer3,
+    assertValidatorReceipt,
+    truthGateFlagEnabled,
+    validatorCanonical,
+    verifyValidatorSig,
+    resultIsPass,
+    pickNewestValidatorReceipt,
+    VALIDATOR_SIGNED_FIELDS,
   };
 }
