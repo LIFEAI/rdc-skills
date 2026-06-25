@@ -88,12 +88,19 @@ const projectRoot = projectRootArg || codexRoot || detectedLifeaiRoot;
 
 const PLUGIN_KEY   = 'rdc-skills@rdc-skills';
 const MARKETPLACE  = 'rdc-skills';
+const NPM_PACKAGE  = '@lifeaitools/rdc-skills';
+const MCP_NAME     = 'rdc-skills-mcp';
+const MCP_PORT     = '3110';
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 const ok   = msg => console.log(`  \x1b[32m✓\x1b[0m ${msg}`);
 const info = msg => console.log(`  \x1b[36m→\x1b[0m ${msg}`);
 const warn = msg => console.log(`  \x1b[33m⚠\x1b[0m ${msg}`);
 const fail = msg => console.log(`  \x1b[31m✗\x1b[0m ${msg}`);
+
+function run(cmd, options = {}) {
+  return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
+}
 
 // ── Filesystem helpers ────────────────────────────────────────────────────────
 function copyDir(src, dst, ext) {
@@ -245,6 +252,76 @@ function buildPluginCache(cacheDir, version, gitSha) {
     const dst = path.join(cacheDir, item);
     if (fs.statSync(src).isDirectory()) copyDirRecursive(src, dst);
     else fs.copyFileSync(src, dst);
+  }
+}
+
+function getPm2Process(name) {
+  try {
+    const list = JSON.parse(run('pm2 jlist'));
+    return Array.isArray(list) ? list.find((p) => p.name === name) || null : null;
+  } catch {
+    return null;
+  }
+}
+
+function isGlobalNpmRdcSkillsPath(scriptPath) {
+  if (!scriptPath) return false;
+  const normalized = scriptPath.replace(/\\/g, '/').toLowerCase();
+  return normalized.includes('/node_modules/@lifeaitools/rdc-skills/');
+}
+
+function packageRootFromMcpScript(scriptPath) {
+  return scriptPath ? path.resolve(path.dirname(scriptPath), '..') : null;
+}
+
+function readInstalledPackageVersion(scriptPath) {
+  const packageRoot = packageRootFromMcpScript(scriptPath);
+  if (!packageRoot) return null;
+  return readJson(path.join(packageRoot, 'package.json'), {}).version || null;
+}
+
+function syncGlobalMcpInstall(version) {
+  const proc = getPm2Process(MCP_NAME);
+  if (!proc) {
+    info('[2.9] MCP pkg    — PM2 process not registered yet; start handled below');
+    return;
+  }
+
+  const scriptPath = proc.pm2_env?.pm_exec_path || proc.pm_exec_path || '';
+  if (!isGlobalNpmRdcSkillsPath(scriptPath)) {
+    info(`[2.9] MCP pkg    — PM2 uses source checkout, not global npm (${scriptPath || 'unknown path'})`);
+    return;
+  }
+
+  const installedVersion = readInstalledPackageVersion(scriptPath);
+  if (installedVersion === version) {
+    ok(`[2.9] MCP pkg    — global ${NPM_PACKAGE}@${version} already installed`);
+    return;
+  }
+
+  let stopped = false;
+  let installed = false;
+  try {
+    info(`[2.9] MCP pkg    — updating global ${NPM_PACKAGE} ${installedVersion || '?'} → ${version}`);
+    run(`pm2 stop ${MCP_NAME}`);
+    stopped = true;
+    run(`npm install -g ${NPM_PACKAGE}@${version}`);
+    installed = true;
+    ok(`[2.9] MCP pkg    — installed global ${NPM_PACKAGE}@${version}`);
+  } catch (e) {
+    warn(`[2.9] MCP pkg    — global install failed (${String(e.message || e).split('\n')[0]})`);
+    if (String(e.message || '').includes('EBUSY')) {
+      info('       PM2 was stopped first; if EBUSY persists, another Node/npm process still holds the package directory.');
+    }
+  } finally {
+    if (stopped) {
+      try {
+        run(`pm2 restart ${MCP_NAME} --update-env`, { env: { ...process.env, PORT: MCP_PORT } });
+        ok(`[2.9] MCP pkg    — pm2 restarted ${MCP_NAME}${installed ? '' : ' (previous install restored)'}`);
+      } catch (e) {
+        warn(`[2.9] MCP pkg    — pm2 restart failed (${String(e.message || e).split('\n')[0]})`);
+      }
+    }
   }
 }
 
@@ -753,8 +830,6 @@ function buildHooksConfig(hooksDir, profile = 'core') {
 // under PM2 as `rdc-skills-mcp` on PORT=3110, and prints the claude.ai connector
 // line. Every failure here WARNs — it must never abort the installer.
 function registerMcpServer() {
-  const MCP_NAME = 'rdc-skills-mcp';
-  const MCP_PORT = '3110';
   const binPath = path.join(repoRoot, 'bin', 'rdc-skills-mcp.mjs');
   const connector = 'https://rdc-skills.regendevcorp.com/mcp';
 
@@ -907,12 +982,6 @@ async function main() {
     info(`       created settings.json`);
   }
 
-  // Read version + git SHA once
-  const pkg     = readJson(path.join(repoRoot, 'package.json'));
-  const version = pkg.version || '0.7.0';
-  let   gitSha  = '';
-  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim(); } catch {}
-
   // 0. Pull latest
   try {
     const before = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim();
@@ -922,6 +991,13 @@ async function main() {
   } catch {
     warn('[0/6] git pull failed — installing from local copy');
   }
+
+  // Read version + git SHA after pull so plugin caches and the MCP install do
+  // not stamp the pre-update checkout.
+  const pkg     = readJson(path.join(repoRoot, 'package.json'));
+  const version = pkg.version || '0.7.0';
+  let   gitSha  = '';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim(); } catch {}
 
   // 0.5a. User-skills cleanup — remove any rdc: skills from ~/.claude/skills/user/
   // (older installer versions wrote there; plugin cache is the only authoritative source)
@@ -999,6 +1075,11 @@ async function main() {
   } else {
     info('[2.6] MCP        — rdc-skills endpoint already registered (claude + codex)');
   }
+
+  // If the live MCP is served from the global npm package, update that exact
+  // install before restarting PM2. Windows otherwise holds the package tree open
+  // and `npm install -g` can fail with EBUSY.
+  syncGlobalMcpInstall(version);
 
   // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)
   if (codexRoot) {
