@@ -21,7 +21,8 @@ description: "Usage `rdc:help` — Show all rdc:* skills with usage, requirement
 3. Group entries by `category` in this order: `planning, build, deploy, release, dev-loop, reporting, tooling, infra`.
 4. For each entry render one row: `{slash}  —  {usage}  —  needs: {requires.join(',')}  —  cf: {codeflow_required ? 'yes' : 'no'}`.
 5. Print a Decision Tree at the end that maps natural-language phrases to skills, derived from each entry's `triggers[]`.
-6. Hard rules section at the bottom (see below — verbatim).
+6. Print the Direct MCP / curl Access block so non-Claude callers have the same entry point.
+7. Hard rules section at the bottom (see below — verbatim).
 
 ## Required output format
 
@@ -85,6 +86,26 @@ RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
   "ask codex" / "peer-aware"                            → /rdc:co-develop
   "claude.ai relay" / "collab session"                  → /rdc:collab
   "palette" / "studio design" / "tokens"                → /rdc:design
+
+## Direct MCP / curl Access
+
+  MCP endpoint: https://rdc-skills.regendevcorp.com/mcp
+  Health:       curl -s https://rdc-skills.regendevcorp.com/health
+  Header:       Accept: application/json, text/event-stream
+  Tools:        rdc_skill_list, rdc_skill_search, rdc_skill_get
+  Variants:     cli for Claude Code/Codex/local terminal; cloud for claude.ai
+
+  List skills:
+  curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rdc_skill_list","arguments":{}}}'
+
+  Fetch a skill:
+  curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
 
 ## Hard rules
 

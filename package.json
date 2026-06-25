@@ -35,7 +35,7 @@
     "rdc-design": "node scripts/rdc-design-cli.mjs",
     "test:hooks": "node scripts/test-rdc-hooks.mjs",
     "test:truth-gate": "node tests/run-evidence-gate.test.mjs && node tests/work-item-exit-gate-l2.test.mjs && node tests/work-item-exit-gate-l3.test.mjs && node tests/require-work-item-on-commit.test.mjs && node tests/harness-gates.test.mjs",
-    "test:acceptance": "node tests/acceptance.test.mjs && node tests/install-rdc-skills.test.mjs",
+    "test:acceptance": "node tests/acceptance.test.mjs && node tests/install-rdc-skills.test.mjs && node tests/help-surface.test.mjs",
     "acceptance": "node scripts/acceptance.mjs --changed",
     "test:mcp": "node tests/mcp.test.mjs",
     "test:mcp:remote": "node tests/mcp.test.mjs --remote",
