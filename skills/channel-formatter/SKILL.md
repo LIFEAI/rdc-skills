@@ -107,6 +107,12 @@ skills named in the scope boundary.
 > doc" → **`rdc:convert`**. "format this content the Word way / write it for LinkedIn" →
 > this skill. The Word/DOCX and PDF sections below describe target structure only; producing
 > the actual `.docx`/`.pdf` artifact is `rdc:convert` / `rdc:brochure`, not channel-formatter.
+>
+> Specialist routing:
+> - Office/Markdown file conversion → `rdc:convert`
+> - HTML/folder/zip/URL to PDF brochure rendering → `rdc:brochure`
+> - Brochurify orchestration jobs → `rdc:brochurify`
+> - Brochure JSX using `@lifeai/brochure-kit` → `lifeai-brochure-author`
 
 ---
 
