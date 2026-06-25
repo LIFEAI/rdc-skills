@@ -66,6 +66,61 @@ node scripts/install-rdc-skills.js --project-root /path/to/project --write-start
 
 This writes `.rdc/guides/rdc-skills-startup.md` and managed RDC sections in `CLAUDE.md` and `AGENTS.md`.
 
+### MCP endpoint and direct curl access
+
+The shared MCP endpoint is:
+
+```text
+https://rdc-skills.regendevcorp.com/mcp
+```
+
+Health check:
+
+```bash
+curl -s https://rdc-skills.regendevcorp.com/health
+```
+
+Streamable HTTP MCP calls must use `POST` and include the SSE-compatible
+`Accept` header:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+```
+
+List tools:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+List skills:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_list","arguments":{}}}'
+```
+
+Fetch a skill body for a specific caller surface:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
+```
+
+Use `variant:"cli"` for Claude Code/Codex/local terminal instructions. Use
+`variant:"cloud"` for claude.ai web sessions where local daemon, shell, or
+filesystem steps need cloud-safe wording.
+
 ### Legacy install scripts (deprecated since v0.6.0)
 
 `scripts/install.sh` and `scripts/install.ps1` copy files into `~/.claude/skills/user/`. These exist only for environments that cannot use the plugin system. Running them alongside the plugin creates duplicates. Do not use them if you have the plugin installed.
@@ -84,7 +139,7 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-23 skills organized into 5 categories:
+29 skills organized into 6 categories:
 
 ### Orchestration Skills (workflow drivers)
 - rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report
@@ -98,13 +153,25 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 
 ### Utility Skills
 - rdc:collab
+- rdc:co-develop — peer-aware Claude/Codex co-development over clauth
+- rdc:fs-mcp — File System MCP bridge guidance for live repo reads/writes
+- rdc:terminal-config — Windows Terminal and hidden-launch policy audit
+- rdc:watch — session-log viewer initialization for attended sessions
 - rdc:channel-formatter — channel-native formatting and content repurposing for LinkedIn, Twitter/X, Slack/Teams, email, decks, Word/PDF structure, web copy, and content packs
 
 ### Design Skills
 - rdc:design — RDC/Studio design, tokens, palettes, themes, and Rampa CLI-assisted color systems
 
+### Document and Brochure Skills
+- rdc:convert — Office/Markdown conversion via build-corpus
+- rdc:brochure — HTML/folder/zip/URL/Markdown to print-quality PDF
+- rdc:brochurify — six-wave Brochurify orchestration contract
+- lifeai-brochure-author — brochure JSX authoring contract for @lifeai/brochure-kit
+- rdc:extract-verifier-rules — verifier-rule candidates from enhancement logs
+- rpms-filemap — canonical RPMS file-map lookup
+
 ### Reference
-- rdc:help
+- rdc:help, rdc:self-test
 
 ## Channel Formatting and Content Packs
 
@@ -203,6 +270,13 @@ skills/
   release/SKILL.md     (atomic package/app release)
   self-test/SKILL.md   (skill suite health check)
   watch/SKILL.md       (session log watcher)
+  channel-formatter/SKILL.md (channel-native formatting and content packs)
+  convert/SKILL.md     (Office/Markdown conversion)
+  brochure/SKILL.md    (print-quality PDF rendering)
+  rdc-brochurify/SKILL.md (Brochurify orchestration)
+  lifeai-brochure-author/SKILL.md (brochure JSX authoring)
+  rdc-extract-verifier-rules/SKILL.md (verifier rule extraction)
+  rpms-filemap/SKILL.md (canonical RPMS file map)
 
 guides/agents/         (agent-only playbooks — dispatched by rdc:build, not user-invocable)
   frontend.md          (React, UI, Tailwind)
@@ -224,17 +298,15 @@ scripts/
 ## Check installed version
 
 ```bash
-# See version in rdc:help skill
-head -4 ~/.claude/skills/user/rdc-help.md   # if using manual install
+# Published package
+npm view @lifeaitools/rdc-skills version
 
-# Or check source directly
-python3 -c "import json; print(json.load(open('package.json'))['version'])"
+# Installed global package
+npm list -g @lifeaitools/rdc-skills --depth=0
 
-# Or invoke the skill
-/rdc:help
+# Running MCP service
+curl -s https://rdc-skills.regendevcorp.com/health
 ```
-
-Current version: **v0.9.36**
 
 ## Quick Start
 

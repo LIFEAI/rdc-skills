@@ -102,6 +102,48 @@ function run(cmd, options = {}) {
   return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
 }
 
+function updateCodexMcpToml(toml, mcpUrl) {
+  const blockRe = /(^|\n)(\[mcp_servers\.rdc-skills\]\n)([\s\S]*?)(?=\n\[|\s*$)/;
+  const desiredLine = `url = '${mcpUrl}'`;
+  if (blockRe.test(toml)) {
+    return toml.replace(blockRe, (match, prefix, header, body) => {
+      if (/^url\s*=.*$/m.test(body)) {
+        return `${prefix}${header}${body.replace(/^url\s*=.*$/m, desiredLine)}`;
+      }
+      const trimmed = body.replace(/\s*$/, '');
+      return `${prefix}${header}${trimmed}${trimmed ? '\n' : ''}${desiredLine}\n`;
+    });
+  }
+  return toml.replace(/\s*$/, '\n') + `\n[mcp_servers.rdc-skills]\n${desiredLine}\n`;
+}
+
+function selfTestCodexMcpToml() {
+  const url = 'https://rdc-skills.regendevcorp.com/mcp';
+  const stale = "[mcp_servers.clauth]\nurl = 'https://clauth.regendevcorp.com/mcp'\n\n[mcp_servers.rdc-skills]\nurl = 'https://rdc-skills.dev.regendevcorp.com/mcp'\n\n[mcp_servers.web-research]\nurl = 'https://research.regendevcorp.com/mcp'\n";
+  const updated = updateCodexMcpToml(stale, url);
+  if (!updated.includes(`url = '${url}'`)) throw new Error('did not write production rdc-skills URL');
+  if (updated.includes('rdc-skills.dev.regendevcorp.com')) throw new Error('stale dev URL survived');
+  if (!updated.includes('[mcp_servers.clauth]') || !updated.includes('[mcp_servers.web-research]')) throw new Error('neighbor MCP blocks were damaged');
+
+  const missing = updateCodexMcpToml("[mcp_servers.clauth]\nurl = 'https://clauth.regendevcorp.com/mcp'\n", url);
+  if (!missing.includes('[mcp_servers.rdc-skills]')) throw new Error('missing block was not appended');
+
+  const noUrl = updateCodexMcpToml('[mcp_servers.rdc-skills]\nstartup_timeout_sec = 30\n', url);
+  if (!noUrl.includes("startup_timeout_sec = 30") || !noUrl.includes(`url = '${url}'`)) throw new Error('url-less block was not repaired');
+
+  console.log('install-rdc-skills codex MCP TOML self-test — PASS');
+}
+
+if (args.includes('--self-test-codex-mcp-toml')) {
+  try {
+    selfTestCodexMcpToml();
+    process.exit(0);
+  } catch (e) {
+    console.error(e.message || e);
+    process.exit(1);
+  }
+}
+
 // ── Filesystem helpers ────────────────────────────────────────────────────────
 function copyDir(src, dst, ext) {
   if (!fs.existsSync(src)) { warn(`Source not found: ${src}`); return 0; }
@@ -624,14 +666,14 @@ function registerMcpEndpoints() {
     }
   } catch (e) { out.push(`claude WARN:${e.message}`); }
 
-  // Codex — append [mcp_servers.rdc-skills] to ~/.codex/config.toml if absent.
+  // Codex — ensure [mcp_servers.rdc-skills] exists and points at the live shared endpoint.
   try {
     const codexToml = path.join(os.homedir(), '.codex', 'config.toml');
     if (fs.existsSync(codexToml)) {
       const toml = fs.readFileSync(codexToml, 'utf8');
-      if (!/\[mcp_servers\.rdc-skills\]/.test(toml)) {
-        const block = `\n[mcp_servers.rdc-skills]\nurl = '${MCP_URL}'\n`;
-        fs.writeFileSync(codexToml, toml.replace(/\s*$/, '\n') + block);
+      const next = updateCodexMcpToml(toml, MCP_URL);
+      if (next !== toml) {
+        fs.writeFileSync(codexToml, next);
         out.push('codex(~/.codex/config.toml)');
       }
     }
