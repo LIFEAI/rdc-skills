@@ -78,10 +78,40 @@ const WI = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     else process.env.RDC_TRUTHGATE_TASKCOMPLETED = prev;
   }
 
+  // pure: flagDbOptIn default OFF, ON via env
+  {
+    const prev = process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB;
+    delete process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB;
+    assert('TCG DB-opt-in default OFF', tcg.flagDbOptIn() === false);
+    process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB = 'on';
+    assert('TCG DB-opt-in ON via env', tcg.flagDbOptIn() === true);
+    if (prev === undefined) delete process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB;
+    else process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB = prev;
+  }
+
   // process: flag OFF → no-op (exit 0, no block)
   {
     const r = runHook('task-completed-gate.js', { work_item_id: WI }, { RDC_TRUTHGATE_TASKCOMPLETED: '' });
     assert('TCG flag OFF → exit 0 no-op', r.status === 0, `status=${r.status} ${r.stderr}`);
+  }
+
+  // process: flag OFF + DB-opt-in unset → ZERO-COST OFF path makes NO DB call.
+  // Point Supabase + the clauth daemon at a non-routable, slow-to-fail address.
+  // If the OFF path consulted the DB, the call would stall near the hook's
+  // Supabase timeout (~3.5s) / clauth timeout (~2s). The run completing far
+  // under that floor proves no round-trip was attempted.
+  {
+    const t0 = Date.now();
+    const r = runHook('task-completed-gate.js', { work_item_id: WI }, {
+      RDC_TRUTHGATE_TASKCOMPLETED: '',
+      RDC_TRUTHGATE_TASKCOMPLETED_DB: '',     // DB check NOT opted into
+      SUPABASE_URL: 'http://10.255.255.1',    // non-routable: any call would hang
+      SUPABASE_SERVICE_ROLE_KEY: 'x',         // a key IS present, so only the opt-in gate keeps us off the network
+    });
+    const elapsed = Date.now() - t0;
+    assert('TCG OFF path → exit 0', r.status === 0, `status=${r.status} ${r.stderr}`);
+    assert('TCG OFF path makes no DB call (returns well under the network-timeout floor)',
+      elapsed < 1500, `elapsed=${elapsed}ms (a DB round-trip would approach the ~3.5s timeout)`);
   }
 
   // process: flag ON + no closure ref → BLOCK (exit 2)

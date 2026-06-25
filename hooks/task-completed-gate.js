@@ -21,7 +21,11 @@
  *
  * Flag (default OFF), either enables it:
  *   - env  RDC_TRUTHGATE_TASKCOMPLETED in {1,true,on,yes}, OR
- *   - DB   public.truthgate_flags(flag='taskcompleted', enabled=true) (best-effort).
+ *   - DB   public.truthgate_flags(flag='taskcompleted', enabled=true) — but the
+ *          DB check is OPT-IN: it only runs when RDC_TRUTHGATE_TASKCOMPLETED_DB
+ *          is in {1,true,on,yes}. This keeps the default-OFF path ZERO-COST: an
+ *          unset env flag returns false with NO Supabase/clauth round-trip, so a
+ *          dormant gate never makes a network call on every TaskCompleted.
  *
  * Offline test seam: when RDC_TASKCOMPLETED_CLOSURE_SINK points at a JSON file,
  * the hook reads the closure row from that file instead of Supabase. This lets
@@ -71,6 +75,17 @@ function pass(details = {}) {
  */
 function flagEnabledEnv() {
   const v = String(process.env.RDC_TRUTHGATE_TASKCOMPLETED || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'on' || v === 'yes';
+}
+
+/**
+ * Is the optional DB flag check opted into? Default OFF (returns false).
+ * The DB check is a Supabase/clauth round-trip; gating it behind this explicit
+ * env opt-in keeps the default-OFF path zero-cost (no network on every
+ * TaskCompleted). Only when this is set do we consult truthgate_flags.
+ */
+function flagDbOptIn() {
+  const v = String(process.env.RDC_TRUTHGATE_TASKCOMPLETED_DB || '').trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'on' || v === 'yes';
 }
 
@@ -202,8 +217,14 @@ async function main() {
   let raw;
   try { raw = JSON.parse(await readStdin()); } catch { process.exit(0); }
 
-  // Default-OFF: a no-op until the flag is flipped at deploy.
-  const enabled = flagEnabledEnv() || (await flagEnabledDb().catch(() => false));
+  // Default-OFF: a no-op until the flag is flipped at deploy. The env flag is
+  // checked first and short-circuits — when it is unset, the DB check runs ONLY
+  // if explicitly opted in via RDC_TRUTHGATE_TASKCOMPLETED_DB, so the dormant
+  // path is zero-cost (no Supabase/clauth round-trip on every TaskCompleted).
+  let enabled = flagEnabledEnv();
+  if (!enabled && flagDbOptIn()) {
+    enabled = await flagEnabledDb().catch(() => false);
+  }
   if (!enabled) return pass({ reason: 'flag-off' });
 
   // FAIL-CLOSED from here: any inability to confirm a sound closure is a BLOCK.
@@ -245,6 +266,7 @@ if (require.main === module) {
 } else {
   module.exports = {
     flagEnabledEnv,
+    flagDbOptIn,
     extractWorkItemId,
     closureIsSound,
     WITNESS_ALLOWLIST,
