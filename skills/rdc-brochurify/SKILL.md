@@ -16,6 +16,11 @@ triggers:
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Report brochure job state, artifacts, and blockers directly; do not dump raw tool logs.
 
+> **Sandbox contract:** When `RDC_TEST=1`, do not install dependencies, open browsers,
+> upload to R2/Supabase, ask follow-up questions, or fabricate a PDF/grade/URL. Inspect
+> the fixture, report Wave 1 feasibility, and state that render/grade/deliver are
+> gated when the Brochurify runtime is absent.
+
 The orchestrator dispatches six waves of typed sub-agents in sequence. Each wave has a clear input contract, an output contract, and a parallelism profile.
 
 ## Inputs

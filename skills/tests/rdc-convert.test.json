@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:convert",
+  "description": "Convert exposes the portable build-corpus command reference and recognizes a caller conversion request under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:convert help for converting markdown to Word in a sandbox; do not install packages or launch GUI",
+    "precondition_files": [
+      {
+        "path": "docs/source/convert-fixture.md",
+        "content": "# Convert Fixture\n\nThis markdown document proves the caller-facing convert path can accept a source file and report an output artifact.\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["build-corpus", "Markdown", "Word"]
+  },
+  "teardown": { "reset_branch": true }
+}

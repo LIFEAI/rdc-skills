@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:terminal-config",
+  "description": "Terminal config audits focus-safe launch policy without changing Windows Terminal settings.",
+  "fixture": {
+    "prompt": "rdc:terminal-config audit hidden-window launch policy and do not write settings",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["hidden-window", "No settings written"]
+  },
+  "teardown": { "reset_branch": true }
+}

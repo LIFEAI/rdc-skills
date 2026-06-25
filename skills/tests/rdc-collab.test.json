@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:collab",
+  "description": "Collab validates the missing/fixture session path without mutating git under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:collab --session self-test-fixture",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

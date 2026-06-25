@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:rdc-extract-verifier-rules",
+  "description": "Verifier-rule extraction reads a tiny enhancement-log fixture and reports candidate-rule status without opening a PR.",
+  "fixture": {
+    "prompt": "rdc:rdc-extract-verifier-rules --since 2026-01-01 --auto-merge=false docs/source/enhancement-log-fixture.jsonl",
+    "precondition_files": [
+      {
+        "path": "docs/source/enhancement-log-fixture.jsonl",
+        "content": "{\"input_fingerprint\":\"fixture-1\",\"reason\":\"raw div used in brochure JSX\",\"snippet\":\"<div>bad</div>\"}\n{\"input_fingerprint\":\"fixture-1\",\"reason\":\"raw div used in brochure JSX\",\"snippet\":\"<div>bad</div>\"}\n{\"input_fingerprint\":\"fixture-1\",\"reason\":\"raw div used in brochure JSX\",\"snippet\":\"<div>bad</div>\"}\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["candidate", "FP"]
+  },
+  "teardown": { "reset_branch": true }
+}

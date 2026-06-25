@@ -1,0 +1,21 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:fs-mcp",
+  "description": "FS MCP skill explains the local-script versus MCP access boundary for a read-only file task.",
+  "fixture": {
+    "prompt": "rdc:fs-mcp read docs/source/fs-mcp-fixture.md and summarize the access path",
+    "precondition_files": [
+      {
+        "path": "docs/source/fs-mcp-fixture.md",
+        "content": "# FS MCP Fixture\n\nThis fixture exists so the skill can demonstrate a read-only filesystem access handoff.\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["FS MCP", "access path"]
+  },
+  "teardown": { "reset_branch": true }
+}

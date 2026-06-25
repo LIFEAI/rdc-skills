@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:co-develop",
+  "description": "Co-develop status/list path is caller-safe under RDC_TEST and does not send a peer message.",
+  "fixture": {
+    "prompt": "rdc:co-develop status",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:brochure",
+  "description": "Brochure renders a small HTML fixture to a PDF artifact under RDC_TEST without modifying source inputs.",
+  "fixture": {
+    "prompt": "rdc:brochure docs/source/brochure-fixture.html --out .rdc/reports/brochure-fixture.pdf --format Letter",
+    "precondition_files": [
+      {
+        "path": "docs/source/brochure-fixture.html",
+        "content": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Fixture Brochure</title><style>@page{size:Letter;margin:0.75in}body{font-family:serif}h1{color:#234}</style></head><body><h1>Fixture Brochure</h1><p>This is a tiny print-ready brochure fixture for RDC skill acceptance.</p></body></html>"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["PDF", "Pages", "Size"]
+  },
+  "teardown": { "reset_branch": true }
+}

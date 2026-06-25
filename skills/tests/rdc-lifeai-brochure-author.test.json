@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:lifeai-brochure-author",
+  "description": "LifeAI brochure author contract rejects raw HTML and returns brochure-kit component guidance.",
+  "fixture": {
+    "prompt": "rdc:lifeai-brochure-author review this JSX fixture for brochure-kit compliance: docs/source/brochure-author-fixture.tsx",
+    "precondition_files": [
+      {
+        "path": "docs/source/brochure-author-fixture.tsx",
+        "content": "export default function Fixture(){ return <div><h1>Raw HTML Fixture</h1><p>This should be rewritten with brochure-kit components.</p></div>; }\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["brochure-kit", "Raw HTML"]
+  },
+  "teardown": { "reset_branch": true }
+}

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:rdc-brochurify",
+  "description": "Brochurify orchestrator accepts a markdown source fixture and reports sandboxed orchestration state.",
+  "fixture": {
+    "prompt": "rdc:rdc-brochurify docs/source/brochurify-fixture.md --mode read-only --theme editorial-neutral",
+    "precondition_files": [
+      {
+        "path": "docs/source/brochurify-fixture.md",
+        "content": "# Brochurify Fixture\n\nA short source document for a read-only brochure orchestration smoke test.\n"
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Brochurify", "Wave 1"]
+  },
+  "acceptance": {
+    "output_not_contains": ["Want me to", "Would you like me to"]
+  },
+  "teardown": { "reset_branch": true }
+}

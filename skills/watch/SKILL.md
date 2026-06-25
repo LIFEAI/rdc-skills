@@ -1,6 +1,6 @@
 ---
 name: rdc:watch
-description: "Usage `rdc:watch` — Open a live browser viewer tailing this session's activity. Zero infrastructure — pure filesystem + static HTML."
+description: "Usage `rdc:watch` — Initialize a live session-log viewer and report its path; open it only during attended, non-test use. Zero infrastructure — pure filesystem + static HTML."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -27,11 +27,17 @@ description: "Usage `rdc:watch` — Open a live browser viewer tailing this sess
 
 2. **Parse the output.** The script prints `run_id`, `log_path`, `current`, `viewer`, and `open_hint`. Capture `log_path` and `viewer` for the rest of the session.
 
-3. **Open the viewer in the browser.** Run the exact `open_hint` line from the script output. On Windows that's `start "" "<viewer-path>"`.
+3. **Open the viewer in the browser, unless running under `RDC_TEST=1`.**
+   - Normal attended use: run the exact `open_hint` line from the script output. On Windows that's `start "" "<viewer-path>"`.
+   - `RDC_TEST=1`: do not run `open_hint`, `start`, `open`, `xdg-open`, or any focus/window API. Report the viewer path only.
 
 4. **Report to the user.** One line:
    ```
    watcher live at <viewer-path> — tailing <log-path>
+   ```
+   In `RDC_TEST=1`, say:
+   ```
+   watcher initialized at <viewer-path> — not opened because RDC_TEST=1
    ```
 
 5. **Append one line per substantive action for the rest of the session.** Use the documented format — one line, no multi-line payloads:

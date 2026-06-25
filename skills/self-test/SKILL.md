@@ -23,7 +23,7 @@ description: "Usage `rdc:self-test [--strict]` — Validate all rdc:* skills, pl
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live — 13 manifests, blocked by check-cwd.js hook (see Rules) |
+| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live — 29 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Interactive UI
@@ -85,7 +85,7 @@ Test output streams live to the terminal. No server, no extra processes.
 
 ## Procedure (Tier 2)
 
-Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
+Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Build acceptance additionally records all observable engine events/tool calls, assistant output, stdout/stderr artifacts, lessons learned, and next build optimizations. Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
 
 1. **Prerequisites:**
    - `claude` CLI on PATH (headless mode: `claude --print`)
@@ -99,6 +99,7 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
    node scripts/self-test.mjs --tier2 --skill rdc:build  # single skill
    node scripts/self-test.mjs --tier2 --parallel 3       # up to 3 skills in parallel
    node scripts/self-test.mjs --tier2 --quick            # skip long-running assertions
+   node scripts/acceptance.mjs --skill rdc:build         # build acceptance with JSONL/tool-call evidence
    ```
 
 3. **What it does:**
@@ -106,10 +107,12 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
    - Creates one Supabase test branch for the run
    - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes `claude --print` with the skill prompt, waits for exit
    - Asserts per the skill's manifest: exit code, files touched, commits made, stdout patterns
+   - Build acceptance writes JSONL evidence and extracts tool calls from the engine stream
    - Cleans up worktrees + deletes the Supabase branch at the end (even on failure)
 
 4. **Reports:**
    - `.rdc/reports/self-test-tier2-<iso>.json` — full per-skill result, findings, timings
+   - `.rdc/reports/acceptance-*.jsonl` and `.rdc/reports/acceptance-*.md` — build acceptance evidence, transcript artifact pointers, lessons learned, and next build optimizations
    - Exit codes: `0` pass, `1` fail (one or more skills failed assertions), `2` runner error (couldn't set up sandbox / branch)
 
 5. **Adding a new manifest:**
@@ -123,4 +126,5 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
 - Use `--strict` in CI. Warnings matter in the release path.
 - Do NOT skip findings by relaxing the linter. Fix the skill.
 - Run Tier 2 before tagging a release. Gate the tag if any manifested skill fails.
-- Tier 2 blocker: `check-cwd.js` SessionStart hook blocks headless sessions not launched from the monorepo root — runner uses `--dangerously-skip-permissions` to bypass. If tier2 tests fail with `exit_code: -1`, verify the flag is present in `scripts/lib/runner.mjs`.
+- Headless sessions must not steal focus. The runner uses hidden process launch options where supported; if windows flash or focus is grabbed, inspect `scripts/lib/runner.mjs` before changing skill behavior.
+- If Tier 2 tests fail with `exit_code: -1`, verify the runner still passes `--dangerously-skip-permissions` and sets `RDC_TEST=1`.

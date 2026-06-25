@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:self-test",
+  "description": "Self-test strict mode validates all skill metadata and emits the package validation verdict.",
+  "fixture": {
+    "prompt": "rdc:self-test --strict",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["PASS", "strict"]
+  },
+  "teardown": { "reset_branch": true }
+}

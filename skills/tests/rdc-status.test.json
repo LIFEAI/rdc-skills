@@ -1,7 +1,6 @@
 {
   "manifest_version": 1,
   "skill": "rdc:status",
-  "timeout_ms": 180000,
   "description": "Status is read-only: prints kanban + health, makes no commits.",
   "fixture": {
     "prompt": "rdc:status",

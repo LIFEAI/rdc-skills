@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:housekeeping",
+  "description": "Housekeeping audit runs read-only checks under RDC_TEST and reports a caller-facing verdict.",
+  "fixture": {
+    "prompt": "rdc:housekeeping",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}

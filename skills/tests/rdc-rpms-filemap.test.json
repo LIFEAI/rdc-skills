@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:rpms-filemap",
+  "description": "RPMS file map answers a placement question using canonical homes and Rule #1 language.",
+  "fixture": {
+    "prompt": "rdc:rpms-filemap where should a project report and entity context live?",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["RULE #1", "Canonical"]
+  },
+  "teardown": { "reset_branch": true }
+}

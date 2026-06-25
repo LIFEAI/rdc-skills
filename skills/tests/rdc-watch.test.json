@@ -1,0 +1,24 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:watch",
+  "description": "Watch initializes or describes the live viewer in RDC_TEST mode without launching a foreground browser.",
+  "fixture": {
+    "prompt": "rdc:watch",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Verdict"]
+  },
+  "acceptance": {
+    "output_contains": ["not opened because RDC_TEST=1"],
+    "output_not_contains": ["SetForegroundWindow", "AppActivate", "BringWindowToTop", "SwitchToThisWindow"],
+    "tool_calls_argument_matches": [
+      {
+        "tools": ["Bash"],
+        "pattern": "watch-init\\.mjs"
+      }
+    ]
+  },
+  "teardown": { "reset_branch": true }
+}
