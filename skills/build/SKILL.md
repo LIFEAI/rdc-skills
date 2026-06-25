@@ -288,6 +288,16 @@ Read the task title and description, then:
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
+   ### ✅ PREVENTION FIRST — create worktrees fresh off origin/develop (kills stale-base by construction)
+   The repeated stale-base failures below come from creating worktrees off a
+   local/old ref. Eliminate the failure mode at the source: ALWAYS create agent
+   worktrees with a fresh fetch + `origin/develop` base, e.g.
+   `git fetch origin develop && git worktree add <dir> -b <branch> origin/develop`
+   — or use the canonical launcher `node scripts/wt.mjs add <name>`, which does
+   exactly that. A worktree cut from `origin/develop` HEAD **cannot** be stale.
+   The HARD GATE below remains as the blocking backstop (detection), but
+   construction-from-`origin/develop` is the primary defense.
+
    ### ⛔ HARD GATE — Worktree base MUST equal develop HEAD (blocking, not advisory)
    The worktree-isolation harness has shipped worktrees pinned to a STALE base
    commit (lessons 2026-06-10-build-worktree-stale-base, 2026-06-11-build-worktree-stale-base,
