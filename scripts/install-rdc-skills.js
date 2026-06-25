@@ -715,10 +715,21 @@ function buildHooksConfig(hooksDir, profile = 'core') {
       cmd('check-rdc-environment.js', 'Checking RDC skills runtime...'),
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
+      // Truth Gate 3.0 Layer 6 — gate watchdog (ADVISORY; SessionStart cannot block).
+      cmd('gate-watchdog-selfcheck.js', 'Truth Gate watchdog: verifying gate registration...'),
     ]}];
     config.PreToolUse[0].hooks.push(
       cmd('work-item-exit-gate.js', 'Checking work item exit gates...'),
     );
+    // Truth Gate 3.0 Layer 5 — harness completion gates. Both blocking hooks are
+    // FLAG-GATED, default OFF (no-op until the env/DB flag is flipped at deploy),
+    // so registering them does NOT disrupt the in-flight build session.
+    config.TaskCompleted = [{ hooks: [
+      cmd('task-completed-gate.js', 'Truth Gate: verifying task closure...'),
+    ]}];
+    config.PostToolBatch = [{ hooks: [
+      cmd('post-tool-batch-gate.js', 'Truth Gate: checking build-wave worktree bases...'),
+    ]}];
     config.PreCompact = [{ hooks: [
       cmd('precompact-log.js'),
     ]}];
