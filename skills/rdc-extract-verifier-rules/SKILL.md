@@ -13,6 +13,8 @@ triggers:
 ---
 
 # rdc:extract-verifier-rules
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Return candidate rules, evidence, and PR status directly; do not dump raw tool logs.
 
 The self-learning loop. The verifier corpus is the moat (per `DECISIONS-LOG.md` D-009). This skill is how the corpus grows.
 

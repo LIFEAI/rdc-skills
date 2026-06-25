@@ -128,6 +128,20 @@ export function checkStdoutContains(expected, observed) {
   };
 }
 
+export function checkStdoutNotContains(expected, observed) {
+  if (expected === undefined) return { pass: true };
+  if (!Array.isArray(expected)) {
+    return { pass: false, message: "stdout_not_contains assertion is not an array" };
+  }
+  const stdout = observed.stdout || "";
+  const present = expected.filter((s) => stdout.includes(s));
+  if (present.length === 0) return { pass: true };
+  return {
+    pass: false,
+    message: `stdout_not_contains: forbidden substrings present: ${present.map((s) => JSON.stringify(s)).join(", ")}`,
+  };
+}
+
 // ─── evaluator ──────────────────────────────────────────────────────────────
 
 const PREDICATES = [
@@ -137,6 +151,7 @@ const PREDICATES = [
   ["commits_made", checkCommitsMade],
   ["stderr_empty", checkStderrEmpty],
   ["stdout_contains", checkStdoutContains],
+  ["stdout_not_contains", checkStdoutNotContains],
 ];
 
 export function evaluateAssertions(assertions, observed) {
@@ -185,6 +200,7 @@ if (__isMain) {
         commits_made: { min: 1, message_matches: "fix.*README" },
         stderr_empty: true,
         stdout_contains: ["✓", "Verdict:"],
+        stdout_not_contains: ["NOTPRESENT"],
       },
       observed: baseObserved,
       expect: (r) => r.pass && r.failures.length === 0,
@@ -226,20 +242,27 @@ if (__isMain) {
     },
     {
       n: 7,
+      desc: "stdout_not_contains catches forbidden substring",
+      assertions: { stdout_not_contains: ["Verdict:"] },
+      observed: baseObserved,
+      expect: (r) => !r.pass && r.failures.some((f) => f.predicate === "stdout_not_contains"),
+    },
+    {
+      n: 8,
       desc: "work_items_created label filter rejects",
       assertions: { work_items_created: { min: 1, labels_include: ["nonexistent"] } },
       observed: baseObserved,
       expect: (r) => !r.pass && r.failures.some((f) => f.predicate === "work_items_created"),
     },
     {
-      n: 8,
+      n: 9,
       desc: "work_items_created max exceeded",
       assertions: { work_items_created: { max: 0 } },
       observed: baseObserved,
       expect: (r) => !r.pass && r.failures.some((f) => f.predicate === "work_items_created"),
     },
     {
-      n: 9,
+      n: 10,
       desc: "empty assertions → pass",
       assertions: {},
       observed: baseObserved,

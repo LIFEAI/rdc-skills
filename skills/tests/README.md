@@ -23,6 +23,11 @@ is the source of truth. Top-level fields:
 4. Run `node scripts/self-test.mjs --tier2 --skill rdc:<name>` to smoke-test
 5. Commit manifest + any skill changes together
 
+For content-producing skills, include both positive and negative output checks.
+Use `stdout_contains` for expected channel-native structure and source facts;
+use `stdout_not_contains` for source-fidelity violations or explicitly forbidden
+claims.
+
 ## Adding a new skill
 
 New skills MUST ship with a manifest. Tier 2 CI will block tag push if a

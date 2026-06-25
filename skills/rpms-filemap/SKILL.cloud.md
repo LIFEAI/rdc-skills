@@ -1,4 +1,5 @@
 ---
+name: rpms-filemap
 description: "Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root manifest."
 slash: "rdc:rpms-filemap"
 category: "tooling"
@@ -12,6 +13,9 @@ triggers:
   - "where should pm artifacts go"
 ---
 # RPMS File Map
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Return the requested file-map guidance directly; do not dump raw manifests or logs.
+
 > GENERATED FILE - DO NOT HAND-EDIT.
 > Source of truth: `docs/architecture/rpms.locations.json`
 > Regenerate: `pnpm rpms:gen-filemap`

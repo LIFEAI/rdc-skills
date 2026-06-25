@@ -83,11 +83,33 @@ skills named in the scope boundary.
 
 1. **Detect channel or pack mode** from the request using the tables above.
 2. **Classify the source**: already-drafted copy, long article/report, transcript, notes, or brief.
-3. **For long sources**, extract thesis, audience, proof points, CTA, constraints, and factual risks before writing.
-4. **Jump to the target channel or pack section** below and apply all rules exactly — do not rely on memory.
-5. **Never mix** markdown conventions across channels.
-6. If the channel or pack is ambiguous, ask once: "Is this for [Channel A] or [Channel B]?"
-7. Produce the formatted or repurposed output directly as the deliverable.
+3. **For thin or under-specified long sources**, enrich before writing instead
+   of inventing context:
+   - If the source names a corpus path, read it.
+   - Otherwise search/read the approved corpus first when available. Resolve
+     `CORPUS_ROOT` (usually `H:/My Drive/global-corpus`) and
+     `LOCAL_CORPUS_ROOT` (usually `C:/Dev/local-corpus`) before searching the
+     repo. If environment variables are not visible, try those default paths.
+   - The corpus search must use an explicit corpus path in the tool arguments
+     (`H:/My Drive/global-corpus` or `C:/Dev/local-corpus`). A relative repo
+     search does not count as enrichment.
+   - Use `Grep`/`Glob`/`Read` or the environment's equivalent tools so the
+     transcript records what was consulted.
+   - Use web search only when the requested output needs current/public facts,
+     the user asks for external context, or corpus context is absent and network
+     search is allowed. Cite/use only what the search actually supports.
+   - Searching only the project repo is not enough for enrichment unless the
+     source itself points to a repo-local corpus file.
+   - If neither corpus nor web context is available, keep the output sparse and
+     mark missing context in assumptions; do not fill gaps creatively.
+4. **For long sources**, extract thesis, audience, proof points, CTA, constraints, and factual risks before writing.
+5. **Jump to the target channel or pack section** below and apply all rules exactly — do not rely on memory.
+6. **Never mix** markdown conventions across channels.
+7. If the channel or pack is ambiguous, ask once: "Is this for [Channel A] or [Channel B]?"
+8. Produce the formatted or repurposed output directly as the deliverable.
+9. Treat extraction notes and source-fidelity guardrails as internal scratchwork.
+   Do not print a "Long-Source Extraction Checklist", factual guardrail list, or
+   absent-topic list unless the user explicitly asks for analysis.
 
 ## Hard Rules (all channels)
 
@@ -167,7 +189,7 @@ Repurpose one source for an announcement:
 - 3 CTA variants
 
 ### Long-Source Extraction Checklist
-Before writing from a long source, identify:
+Before writing from a long source, identify internally:
 - **Thesis:** the central argument or announcement
 - **Audience:** who this is for
 - **Proof:** facts, examples, data, names, dates, or quotes explicitly present
@@ -179,13 +201,39 @@ Before writing from a long source, identify:
 ### Source-Fidelity Rules
 - Do not invent statistics, dates, quotes, citations, partnerships, revenue,
   legal claims, customer names, or outcomes.
+- Do not infer adjacent finance/reporting concepts that sound plausible but are
+  absent from the source, such as pro forma assumptions, reporting cadence,
+  offset mechanisms, governance structures, verification status, or portfolio
+  implications.
+- If corpus or web context was consulted, use it only for facts it directly
+  supports. Do not blend generic domain knowledge into the source as if it were
+  documented.
+- If the source provides a theme label without an explanation, keep the theme
+  label or paraphrase it conservatively. Do not add explanatory clauses that
+  define how it works, who governs it, how it is verified, how often it reports,
+  or what financial model it opposes unless those details are explicit.
+- Do not contrast patient capital with quarters, earnings calls, fund cycles,
+  exits, venture speed, or portfolio management unless those words or concepts
+  appear in the source or consulted corpus/web material.
 - Do not upgrade tentative language into certainty.
 - Do not turn illustrative examples into facts.
 - Preserve caveats when they affect meaning.
 - If a stronger hook needs a proof point the source does not provide, write a
   proof-neutral hook instead.
+- If the source says a topic is absent, excluded, or not mentioned, treat that
+  as an internal guardrail. Do not repeat the absent topic in public-facing
+  channel copy, assumptions, caveats, notes, headings, or summaries unless the
+  user explicitly asks for a contrast, compliance note, or risk disclosure.
+  Strip absent-topic lists from the deliverable entirely.
 - When assumptions are material, include a short "Assumptions:" line before the
   deliverable rather than burying uncertainty in polished copy.
+- Do not output your extraction checklist. The deliverable should start with the
+  requested channel/pack output, except for a brief "Assumptions:" line when a
+  material gap affects the copy.
+- If you include an "Assumptions:" line, limit it to missing useful inputs such
+  as org name, audience, location, date, CTA, or link. Never list absent,
+  excluded, or not-mentioned topics in the assumptions line. If the only
+  uncertainty is an absent-topic guardrail, omit the assumptions line.
 
 ---
 
@@ -231,6 +279,8 @@ channel-native. A pack is not a generic summary repeated in several lengths.
   email/web, concise in Slack.
 - Use channel-specific formatting rules from the sections below.
 - If source proof is weak, use curiosity and framing instead of inflated claims.
+- Do not include extraction notes, guardrail notes, or absent-topic caveats in
+  the pack. Those are reasoning aids, not channel outputs.
 
 ---
 

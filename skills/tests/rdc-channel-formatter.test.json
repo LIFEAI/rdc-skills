@@ -1,0 +1,45 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:channel-formatter",
+  "description": "Channel formatter turns a long article into a social content pack in RDC_TEST mode without fabricating source claims.",
+  "fixture": {
+    "prompt": "rdc:channel-formatter social-pack docs/source/channel-formatter-long-article.md",
+    "precondition_files": [
+      {
+        "path": "docs/source/channel-formatter-long-article.md",
+        "content": "# Wetland Finance Article\n\nA 2026 field note from the finance team says the pilot restored 42 acres of riparian habitat, reduced annual irrigation demand by 18 percent, and produced three investor update themes: patient capital, measurable ecological return, and community operating discipline.\n\nThis is intentionally thin. Before writing, consult available corpus context for regenerative finance / wetland finance language. Use an explicit corpus-path search of `C:/Dev/local-corpus` or `H:/My Drive/global-corpus`; if neither path has support, keep claims limited to the source.\n\nThe absent-topic list below is a private guardrail only. Do not repeat these terms in assumptions, notes, caveats, headings, summaries, or public-facing output.\n\nThe source does not mention carbon credits, tokenization, celebrity partners, guaranteed returns, quarterly earnings, fund cycles, verification status, portfolio management, or governance structures."
+      }
+    ],
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["LinkedIn", "Twitter/X", "Slack", "42 acres", "18 percent"]
+  },
+  "acceptance": {
+    "output_contains": ["LinkedIn", "Twitter/X", "Slack", "42 acres", "18%"],
+    "output_not_contains": [
+      "carbon credits",
+      "tokenization",
+      "celebrity partners",
+      "guaranteed returns",
+      "pro forma",
+      "offsets",
+      "governance",
+      "quarterly",
+      "verified",
+      "fund cycle",
+      "fund-cycle",
+      "portfolio manager",
+      "portfolio management"
+    ],
+    "tool_calls_include_any": ["Grep", "Glob", "WebSearch"],
+    "tool_calls_argument_matches": [
+      {
+        "tools": ["Grep", "Glob", "WebSearch"],
+        "pattern": "global-corpus|local-corpus|CORPUS_ROOT|LOCAL_CORPUS_ROOT|web"
+      }
+    ]
+  },
+  "teardown": { "reset_branch": true }
+}

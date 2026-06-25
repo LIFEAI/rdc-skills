@@ -146,7 +146,37 @@ const WI = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 }
 
 // ===========================================================================
-// 2. post-tool-batch-gate.js
+// 2. foreground-process-gate.js
+// ===========================================================================
+{
+  const focusPayload = {
+    tool_input: {
+      command: "powershell -NoProfile -Command \"Add-Type '[DllImport(\\\"user32.dll\\\")] public static extern bool SetForegroundWindow(System.IntPtr hWnd);'\"",
+    },
+  };
+  const r = runHook('foreground-process-gate.js', focusPayload, {});
+  assert('FPG blocks SetForegroundWindow focus API', r.status === 1, `status=${r.status} ${r.stdout}${r.stderr}`);
+  assert('FPG block mentions window focus operations', /Window focus\/restore\/minimize\/collapse/.test(r.stdout + r.stderr));
+
+  const hiddenPayload = {
+    tool_input: {
+      command: 'powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -File ".\\\\scripts\\\\helper.ps1"',
+    },
+  };
+  const h = runHook('foreground-process-gate.js', hiddenPayload, {});
+  assert('FPG allows hidden PowerShell helper', h.status === 0, `status=${h.status} ${h.stdout}${h.stderr}`);
+
+  const minimizedPayload = {
+    tool_input: {
+      command: 'Start-Process powershell.exe -WindowStyle Minimized -ArgumentList "-NoProfile"',
+    },
+  };
+  const m = runHook('foreground-process-gate.js', minimizedPayload, {});
+  assert('FPG allows minimized Start-Process without focus APIs', m.status === 0, `status=${m.status} ${m.stdout}${m.stderr}`);
+}
+
+// ===========================================================================
+// 3. post-tool-batch-gate.js
 // ===========================================================================
 {
   const ptb = require(join(HOOKS, 'post-tool-batch-gate.js'));
@@ -197,7 +227,7 @@ const WI = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 }
 
 // ===========================================================================
-// 3. gate-watchdog-selfcheck.js
+// 4. gate-watchdog-selfcheck.js
 // ===========================================================================
 {
   const wd = require(join(HOOKS, 'gate-watchdog-selfcheck.js'));

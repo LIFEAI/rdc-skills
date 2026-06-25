@@ -36,6 +36,7 @@ const TOP_LEVEL_FIELDS = new Set([
   "description",
   "fixture",
   "assertions",
+  "acceptance",
   "teardown",
 ]);
 
@@ -48,6 +49,7 @@ const ASSERTION_FIELDS = new Set([
   "commits_made",
   "stderr_empty",
   "stdout_contains",
+  "stdout_not_contains",
 ]);
 
 const WIC_FIELDS = new Set(["min", "max", "status", "labels_include"]);
@@ -333,6 +335,17 @@ function validateAssertions(a, errors, warnings) {
       a.stdout_contains.forEach((s, i) => {
         if (typeof s !== "string") {
           err(errors, `assertions.stdout_contains[${i}]`, "type", "entry must be a string");
+        }
+      });
+    }
+  }
+  if (a.stdout_not_contains !== undefined) {
+    if (!Array.isArray(a.stdout_not_contains)) {
+      err(errors, "assertions.stdout_not_contains", "type", "stdout_not_contains must be an array");
+    } else {
+      a.stdout_not_contains.forEach((s, i) => {
+        if (typeof s !== "string") {
+          err(errors, `assertions.stdout_not_contains[${i}]`, "type", "entry must be a string");
         }
       });
     }

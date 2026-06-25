@@ -13,6 +13,8 @@ triggers:
 ---
 
 # rdc:brochurify Orchestrator
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Report brochure job state, artifacts, and blockers directly; do not dump raw tool logs.
 
 The orchestrator dispatches six waves of typed sub-agents in sequence. Each wave has a clear input contract, an output contract, and a parallelism profile.
 

@@ -21,6 +21,8 @@ required_validators:
 ---
 
 # LIFEAI Brochure Authoring Contract
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Return the authored JSX guidance or verification result directly; do not dump raw tool logs.
 
 This is the contract every AI engine obeys when generating brochure JSX. The contract is non-negotiable. If you cannot generate output that complies, **stop and ask for clarification rather than emit non-compliant code.**
 

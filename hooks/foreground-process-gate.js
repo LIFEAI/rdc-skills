@@ -46,6 +46,24 @@ function hasHiddenIntent(command) {
     /\bCI\s*=\s*(1|true)\b/i.test(command);
 }
 
+function hasExplicitWindowOverride(command) {
+  return /\bRDC_ALLOW_WINDOW_FOCUS\s*=\s*(1|true)\b/i.test(command) ||
+    /\bRDC_INTERACTIVE_WINDOW\s*=\s*(1|true)\b/i.test(command);
+}
+
+function checkWindowFocusApi(command) {
+  if (hasExplicitWindowOverride(command)) return;
+  const focusApi = /\b(SetForegroundWindow|SwitchToThisWindow|AppActivate|SetWindowPos|ShowWindowAsync?|BringWindowToTop)\b/i;
+  const broadWindowApi = /\b(EnumWindows|Get-Process\s+\|\s*Where-Object|GetWindow|FindWindow)\b/i;
+  const windowMutation = /\b(minimi[sz]e|restore|foreground|focus|activate|collapse)\b/i;
+  if (focusApi.test(command) || (broadWindowApi.test(command) && windowMutation.test(command))) {
+    block(
+      'Window focus/restore/minimize/collapse operations are not allowed in agent-launched commands. Spawn helpers hidden/no-window instead; set RDC_ALLOW_WINDOW_FOCUS=1 only for an explicitly requested interactive recovery action.',
+      { kind: 'window-focus-api' },
+    );
+  }
+}
+
 function checkPlaywright(command) {
   if (!/\b(playwright|@playwright\/test)\b/i.test(command)) return;
 
@@ -68,16 +86,16 @@ function checkPowerShell(command) {
   if (!/\bStart-Process\b/i.test(command)) return;
   if (hasHiddenIntent(command)) return;
   block(
-    '`Start-Process` must include `-WindowStyle Hidden` or `-WindowStyle Minimized` for agent-launched node/cmd/ps1/test processes.',
+    '`Start-Process` must include `-WindowStyle Hidden` or `-WindowStyle Minimized` for agent-launched node/cmd/ps1/test processes. Focus/restore/collapse APIs remain blocked unless explicitly requested.',
     { kind: 'start-process' },
   );
 }
 
 function checkCmdStart(command) {
   if (!/\bcmd(?:\.exe)?\s+\/c\s+start\b/i.test(command)) return;
-  if (/\bcmd(?:\.exe)?\s+\/c\s+start\s+(""|''|`"")?\s*\/(?:min|b)\b/i.test(command)) return;
+  if (/\bcmd(?:\.exe)?\s+\/c\s+start\s+(""|''|`"")?\s*\/b\b/i.test(command)) return;
   block(
-    '`cmd /c start` must use `/min` for visible tools or `/b`/a hidden wrapper for background tools.',
+    '`cmd /c start` must use `/min` or `/b` for background tools. Focus/restore/collapse APIs remain blocked unless explicitly requested.',
     { kind: 'cmd-start' },
   );
 }
@@ -98,6 +116,7 @@ async function main() {
   const command = toolText(raw);
   if (!command) pass({ reason: 'no-command' });
 
+  checkWindowFocusApi(command);
   checkPlaywright(command);
   checkPowerShell(command);
   checkCmdStart(command);

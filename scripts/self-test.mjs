@@ -95,6 +95,8 @@ const KNOWN_CLAUTH_KEYS = new Set([
   "supabase",
   "supabase-anon",
   "supabase-db",
+  "supabase-service",
+  "supabase-service-role",
   "r2-access-key-id",
   "r2-secret-key",
   "anthropic",
