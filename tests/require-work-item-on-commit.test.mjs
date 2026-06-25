@@ -126,22 +126,31 @@ function runHook(payload, extraEnv = {}) {
 
 // ---------------------------------------------------------------------------
 // 4. PreToolUse legacy behavior preserved (warn-only, never blocks)
+//    Uses a fresh temp dir as HOME/USERPROFILE so no fixit.marker is visible
+//    regardless of real machine state — makes the warn-path assertion deterministic.
 // ---------------------------------------------------------------------------
 {
-  const res = runHook({
-    hook_event_name: 'PreToolUse',
-    tool_name: 'Bash',
-    tool_input: { command: 'git commit -m "no convention and no uuid"' },
-  });
-  assert('pre: warn exits zero (never blocks)', res.status === 0, res.stderr);
-  assert('pre: emits warn systemMessage', /no work item reference/.test(res.stdout), res.stdout);
+  const fakeHome = mkdtempSync(join(tmpdir(), 'wic-home-'));
+  try {
+    const preEnv = { HOME: fakeHome, USERPROFILE: fakeHome };
 
-  const ok = runHook({
-    hook_event_name: 'PreToolUse',
-    tool_name: 'Bash',
-    tool_input: { command: 'git commit -m "feat(x): conventional"' },
-  });
-  assert('pre: conventional passes silently', ok.status === 0 && ok.stdout.trim() === '', ok.stdout);
+    const res = runHook({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'git commit -m "no convention and no uuid"' },
+    }, preEnv);
+    assert('pre: warn exits zero (never blocks)', res.status === 0, res.stderr);
+    assert('pre: emits warn systemMessage', /no work item reference/.test(res.stdout), res.stdout);
+
+    const ok = runHook({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'git commit -m "feat(x): conventional"' },
+    }, preEnv);
+    assert('pre: conventional passes silently', ok.status === 0 && ok.stdout.trim() === '', ok.stdout);
+  } finally {
+    rmSync(fakeHome, { recursive: true, force: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
