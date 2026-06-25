@@ -1,6 +1,6 @@
 ---
 name: rdc:channel-formatter
-description: "Usage `rdc:channel-formatter <channel> [content]` — Apply precise, channel-native formatting to any output: LinkedIn, Twitter/X, Slack/Teams, Email (external/internal), Pitch Deck slides, Word/DOCX, PDF Report, and Web/Landing Page. Use EVERY TIME the user names an output channel/platform/document type, or asks to 'write a post', 'draft an email', 'format this for', 'make this a slide', 'send to LinkedIn', 'write a tweet', 'social media post', or 'reformat this for [channel]'. Each channel has its own Unicode strategy, emphasis system, length limits, and structure — never apply generic markdown to channel-specific output. This skill FORMATS/STRUCTURES text only — for actual .docx/.pptx ↔ Markdown FILE conversion (either direction) use `rdc:convert` (build-corpus), not this skill. Self-contained: all channel rules are inlined below (no external reference files)."
+description: "Usage `rdc:channel-formatter <channel|pack> [content]` — Apply precise, channel-native formatting and content repurposing to any output: LinkedIn, Twitter/X, Slack/Teams, Email (external/internal), Pitch Deck slides, Word/DOCX, PDF Report, Web/Landing Page, and multi-output content packs. Use EVERY TIME the user names an output channel/platform/document type, asks to 'write a post', 'draft an email', 'format this for', 'make this a slide', 'send to LinkedIn', 'write a tweet', 'social media post', 'turn this article into posts', 'make a content pack', 'make a social pack', or 'repurpose this article'. Each channel has its own Unicode strategy, emphasis system, length limits, and structure — never apply generic markdown to channel-specific output. This skill FORMATS, STRUCTURES, and REPURPOSES text only — for actual .docx/.pptx ↔ Markdown FILE conversion (either direction) use `rdc:convert` (build-corpus), not this skill. Self-contained: all channel and pack rules are inlined below (no external reference files)."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -13,11 +13,44 @@ description: "Usage `rdc:channel-formatter <channel> [content]` — Apply precis
 
 # Channel Formatter
 
-Format output precisely for the target channel. This skill is **self-contained** —
-every channel's rules are inlined below. Detect the channel, jump to its section,
-apply its rules exactly. Never apply generic markdown to a channel that doesn't render it.
+Format or repurpose output precisely for the target channel. This skill is
+**self-contained** — every channel and pack rule is inlined below. Detect the
+channel or pack, jump to its section, apply its rules exactly. Never apply
+generic markdown to a channel that doesn't render it.
 
 ---
+
+## When to Use
+
+Use this skill whenever the user asks to write, format, adapt, or repurpose
+content for a specific channel, platform, document type, or output pack.
+
+Common triggers:
+- "write a LinkedIn post"
+- "turn this article into social posts"
+- "make a content pack"
+- "make a social pack"
+- "repurpose this article"
+- "write a tweet/thread"
+- "draft an email"
+- "format this for Slack"
+- "make this a slide"
+- "write landing-page copy"
+
+Do not use this skill for binary file conversion, PDF rendering, Brochurify
+orchestration, or brochure JSX authoring; delegate those to the specialist
+skills named in the scope boundary.
+
+## Arguments
+
+`rdc:channel-formatter <channel|pack> [content]`
+
+- `<channel|pack>`: optional target such as `linkedin`, `twitter`,
+  `twitter-thread`, `slack`, `email-ext`, `email-int`, `pitch-deck`, `word`,
+  `pdf-report`, `web`, `strict-format`, `social-pack`, `campaign-pack`,
+  `exec-pack`, or `launch-pack`.
+- `[content]`: optional source text, path reference, article, report, transcript,
+  rough draft, or surrounding conversation content.
 
 ## Channel Detection
 
@@ -34,15 +67,27 @@ apply its rules exactly. Never apply generic markdown to a channel that doesn't 
 | Website, landing page, web copy                       | Web/Landing Page | [§ Web / Landing Page](#-web--landing-page) |
 | Artifact, JSX, React component, Claude artifact       | Artifact/JSX     | → use the `jsx-author` / `impeccable` skill instead |
 
+### Pack Detection
+
+| If user says / context is...                          | Mode             | Go to section                 |
+|-------------------------------------------------------|------------------|-------------------------------|
+| social pack, content pack, posts from this, repurpose this article for social | `social-pack` | [§ Content Repurposing Packs](#-content-repurposing-packs) |
+| campaign pack, launch campaign, article into email + social + web | `campaign-pack` | [§ Content Repurposing Packs](#-content-repurposing-packs) |
+| exec pack, executive pack, leadership summary, internal briefing | `exec-pack` | [§ Content Repurposing Packs](#-content-repurposing-packs) |
+| launch pack, announce this, launch posts              | `launch-pack`    | [§ Content Repurposing Packs](#-content-repurposing-packs) |
+| strict format, preserve wording, do not rewrite       | `strict-format`  | [§ Repurposing Modes](#-repurposing-modes) |
+
 ---
 
 ## Workflow
 
-1. **Detect channel** from the request using the table above.
-2. **Jump to that channel's section** below and apply all rules exactly — do not rely on memory.
-3. **Never mix** markdown conventions across channels.
-4. If the channel is ambiguous, ask once: "Is this for [Channel A] or [Channel B]?"
-5. Produce the formatted output directly as the deliverable.
+1. **Detect channel or pack mode** from the request using the tables above.
+2. **Classify the source**: already-drafted copy, long article/report, transcript, notes, or brief.
+3. **For long sources**, extract thesis, audience, proof points, CTA, constraints, and factual risks before writing.
+4. **Jump to the target channel or pack section** below and apply all rules exactly — do not rely on memory.
+5. **Never mix** markdown conventions across channels.
+6. If the channel or pack is ambiguous, ask once: "Is this for [Channel A] or [Channel B]?"
+7. Produce the formatted or repurposed output directly as the deliverable.
 
 ## Hard Rules (all channels)
 
@@ -51,6 +96,8 @@ apply its rules exactly. Never apply generic markdown to a channel that doesn't 
 - Never use Word Styles notation in plain-text channels.
 - Always match the tone register of the channel (formal ≠ casual ≠ punchy).
 - For LIFEAI/PRT/RDC content, maintain REGEN-MODE voice unless Author-Mode is active.
+- When repurposing a long source, preserve the source thesis and never invent unsupported statistics, quotes, names, dates, citations, results, or commitments.
+- If the source lacks a needed CTA, audience, proof point, or date, either use a clearly generic placeholder or state the assumption before the polished output.
 
 > ## ⛔ Scope boundary — this skill FORMATS text; it does NOT convert files
 > This skill governs **how to structure and format content** for a channel. It never
@@ -60,6 +107,124 @@ apply its rules exactly. Never apply generic markdown to a channel that doesn't 
 > doc" → **`rdc:convert`**. "format this content the Word way / write it for LinkedIn" →
 > this skill. The Word/DOCX and PDF sections below describe target structure only; producing
 > the actual `.docx`/`.pdf` artifact is `rdc:convert` / `rdc:brochure`, not channel-formatter.
+
+---
+
+## § Repurposing Modes
+
+Use these modes when the input is longer than the requested output, such as an
+article, memo, transcript, report, rough draft, or notes.
+
+### `strict-format`
+Preserve the source wording and argument as much as the channel allows. Use this
+when the user says "format only", "do not rewrite", "preserve wording", or when
+legal/compliance precision matters. You may adjust line breaks, headings,
+emphasis, bullet symbols, and channel-specific structure, but do not add new
+claims or reframe the argument.
+
+### `single-channel`
+Repurpose the source into one target channel. Extract the usable argument,
+choose the strongest hook for that channel, compress or expand to the channel's
+native length, and produce one finished output.
+
+### `social-pack`
+Repurpose one source into a coordinated set of social outputs:
+- LinkedIn thought-leadership post
+- Short LinkedIn announcement or teaser variant
+- Twitter/X single post
+- Twitter/X thread
+- Slack/Teams internal share
+
+### `campaign-pack`
+Repurpose one source into a small campaign kit:
+- Everything in `social-pack`
+- External email intro/blurb
+- Web excerpt
+- SEO meta title and meta description
+- 3 CTA variants
+
+### `exec-pack`
+Repurpose one source for internal leadership alignment:
+- Internal email summary
+- Slack/Teams update
+- Executive-summary paragraph
+- 3 talking points
+- Decision/ask line if the source supports one
+
+### `launch-pack`
+Repurpose one source for an announcement:
+- LinkedIn launch post
+- Twitter/X launch post
+- Slack/Teams launch note
+- External email blurb
+- Web hero headline/subheadline/CTA
+- 3 CTA variants
+
+### Long-Source Extraction Checklist
+Before writing from a long source, identify:
+- **Thesis:** the central argument or announcement
+- **Audience:** who this is for
+- **Proof:** facts, examples, data, names, dates, or quotes explicitly present
+- **CTA:** what the reader should do next
+- **Tone:** formal, conversational, punchy, executive, regenerative, etc.
+- **Constraints:** length, compliance, brand voice, channel quirks
+- **Gaps:** missing proof, missing CTA, unsupported claims, unclear audience
+
+### Source-Fidelity Rules
+- Do not invent statistics, dates, quotes, citations, partnerships, revenue,
+  legal claims, customer names, or outcomes.
+- Do not upgrade tentative language into certainty.
+- Do not turn illustrative examples into facts.
+- Preserve caveats when they affect meaning.
+- If a stronger hook needs a proof point the source does not provide, write a
+  proof-neutral hook instead.
+- When assumptions are material, include a short "Assumptions:" line before the
+  deliverable rather than burying uncertainty in polished copy.
+
+---
+
+## § Content Repurposing Packs
+
+When a pack is requested, label each output clearly and make every item
+channel-native. A pack is not a generic summary repeated in several lengths.
+
+### `social-pack` Output Shape
+1. `LinkedIn thought-leadership post` — 900-1300 characters, hook-first, white space, Unicode emphasis only when useful, up to 3 hashtags.
+2. `LinkedIn short variant` — 400-700 characters, announcement or teaser style.
+3. `Twitter/X single post` — 265 characters or fewer unless the user asks otherwise.
+4. `Twitter/X thread` — 5-7 tweets, each self-contained and below 280 characters.
+5. `Slack/Teams internal share` — 3-6 lines, direct, with a clear FYI/action/decision framing.
+
+### `campaign-pack` Output Shape
+1. Full `social-pack`
+2. `External email intro` — subject line plus 80-150 word blurb with one ask
+3. `Web excerpt` — 80-120 words, scannable, CTA-ready
+4. `Meta title` — 50-60 characters
+5. `Meta description` — 150-160 characters
+6. `CTA variants` — 3 verb-led CTAs
+
+### `exec-pack` Output Shape
+1. `Internal email summary` — subject plus 6-12 lines
+2. `Slack/Teams update` — 3-5 lines
+3. `Executive summary paragraph` — 100-150 words
+4. `Talking points` — 3 concise bullets/fragments
+5. `Decision or ask` — one line, only if supported by source
+
+### `launch-pack` Output Shape
+1. `LinkedIn launch post` — announcement structure
+2. `Twitter/X launch post` — single post
+3. `Slack/Teams launch note` — internal update
+4. `External email blurb` — subject plus short body
+5. `Web hero` — headline, subheadline, CTA
+6. `CTA variants` — 3 options
+
+### Pack Quality Rules
+- Vary hooks by channel; do not repeat the same first sentence everywhere.
+- Keep the source thesis consistent across all outputs.
+- Adapt CTA strength to the channel: softer on thought leadership, direct in
+  email/web, concise in Slack.
+- Use channel-specific formatting rules from the sections below.
+- If source proof is weak, use curiosity and framing instead of inflated claims.
 
 ---
 

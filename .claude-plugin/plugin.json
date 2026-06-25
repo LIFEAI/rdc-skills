@@ -34,19 +34,19 @@
       "name": "channel-formatter",
       "slash": "rdc:channel-formatter",
       "category": "tooling",
-      "usage": "rdc:channel-formatter <channel> [content]",
+      "usage": "rdc:channel-formatter <channel|pack> [content]",
       "args": {
         "positional": [
           {
             "name": "channel",
             "required": false,
-            "description": "Target channel: linkedin | twitter | slack | email-ext | email-int | pitch-deck | word | pdf-report | web. Inferred from the request if omitted.",
+            "description": "Target channel or pack: linkedin | twitter | twitter-thread | slack | email-ext | email-int | pitch-deck | word | pdf-report | web | strict-format | social-pack | campaign-pack | exec-pack | launch-pack. Inferred from the request if omitted.",
             "accepts": "string"
           },
           {
             "name": "content",
             "required": false,
-            "description": "Text/content to format. If omitted, formats content from the surrounding conversation.",
+            "description": "Text/content to format or repurpose. If omitted, formats or repurposes content from the surrounding conversation.",
             "accepts": "string"
           }
         ],
@@ -57,6 +57,16 @@
       "default_model": "inherit",
       "triggers": [
         "format this for linkedin",
+        "turn this article into a linkedin post",
+        "repurpose this article",
+        "make a content pack",
+        "make a social pack",
+        "make a campaign pack",
+        "turn this into a twitter thread",
+        "make posts from this",
+        "write launch posts",
+        "format this for social",
+        "extract posts from this report",
         "write a tweet",
         "social media post",
         "draft an email",
@@ -65,7 +75,12 @@
         "reformat this for"
       ],
       "follows": [],
-      "leads_to": [],
+      "leads_to": [
+        "convert",
+        "brochure",
+        "rdc-brochurify",
+        "lifeai-brochure-author"
+      ],
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,

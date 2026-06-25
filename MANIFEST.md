@@ -110,6 +110,9 @@ All skills have been converted from project-specific to generic/portable:
 
 ### Utility (1)
 - rdc:collab — bidirectional claude.ai ↔ Claude Code relay via file transport
+- rdc:channel-formatter — channel-native formatting and content repurposing,
+  including article-to-post, social-pack, campaign-pack, exec-pack, and
+  launch-pack outputs
 
 ### Bridge (3)
 - rdc:handoff — planning → work items
@@ -132,6 +135,26 @@ All skills have been converted from project-specific to generic/portable:
    - Interactive: `/rdc:build <epic-id>`
    - Unattended: `/rdc:overnight`
    - Quality: `/rdc:review --unattended`
+   - Content repurposing: `/rdc:channel-formatter social-pack article.md`
+
+## Channel Formatter Content Packs
+
+`rdc:channel-formatter` can strictly format copy for one channel or repurpose a
+long source into a channel-native output set.
+
+Examples:
+
+```bash
+rdc:channel-formatter linkedin article.md
+rdc:channel-formatter twitter-thread article.md
+rdc:channel-formatter social-pack article.md
+rdc:channel-formatter campaign-pack report.md
+```
+
+Use `rdc:convert` for actual Office/Markdown file conversion, `rdc:brochure`
+for HTML/folder/URL PDF rendering, and `rdc:brochurify` for Brochurify
+orchestration. Channel formatter writes and repurposes text; it does not produce
+binary Word or PDF artifacts.
 
 ## Key Differences from Source
 

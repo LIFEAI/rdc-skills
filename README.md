@@ -98,12 +98,49 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 
 ### Utility Skills
 - rdc:collab
+- rdc:channel-formatter — channel-native formatting and content repurposing for LinkedIn, Twitter/X, Slack/Teams, email, decks, Word/PDF structure, web copy, and content packs
 
 ### Design Skills
 - rdc:design — RDC/Studio design, tokens, palettes, themes, and Rampa CLI-assisted color systems
 
 ### Reference
 - rdc:help
+
+## Channel Formatting and Content Packs
+
+`rdc:channel-formatter` handles both strict channel formatting and content
+repurposing. It can take a long article, memo, report, transcript, or rough
+draft and turn it into a single channel-native output or a coordinated pack.
+
+Examples:
+
+```bash
+rdc:channel-formatter linkedin article.md
+rdc:channel-formatter twitter-thread article.md
+rdc:channel-formatter social-pack article.md
+rdc:channel-formatter campaign-pack report.md
+rdc:channel-formatter strict-format "preserve this wording for LinkedIn"
+```
+
+Pack modes:
+
+- `social-pack` — LinkedIn thought-leadership post, short LinkedIn variant,
+  Twitter/X single post, Twitter/X thread, and Slack/Teams internal share.
+- `campaign-pack` — social pack plus external email intro, web excerpt, meta
+  title/description, and CTA variants.
+- `exec-pack` — internal email summary, Slack/Teams update, executive summary,
+  talking points, and a decision/ask line when supported by the source.
+- `launch-pack` — launch posts and blurbs for LinkedIn, Twitter/X, Slack/Teams,
+  external email, and web hero copy.
+
+Boundaries:
+
+- Actual `.docx`, `.pptx`, `.ppt`, or Markdown file conversion uses
+  `rdc:convert`.
+- HTML/folder/zip/URL to PDF rendering uses `rdc:brochure`.
+- Brochurify jobs use `rdc:brochurify`.
+- Brochure JSX authored with `@lifeai/brochure-kit` uses
+  `lifeai-brochure-author`.
 
 ## Key Features
 
