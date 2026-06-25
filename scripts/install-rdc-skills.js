@@ -696,9 +696,14 @@ function buildHooksConfig(hooksDir, profile = 'core') {
         cmd('require-work-item-on-commit.js'),
       ]},
     ],
-    PostToolUse: [{ hooks: [
-      cmd('check-services.js'),
-    ]}],
+    PostToolUse: [
+      { hooks: [
+        cmd('check-services.js'),
+      ]},
+      { matcher: 'Bash', hooks: [
+        cmd('require-work-item-on-commit.js', 'Capturing commit SHA for work item...'),
+      ]},
+    ],
     Stop: [{ hooks: [
       cmd('rdc-output-contract-gate.js', 'Checking RDC output contract...'),
       cmd('post-work-check.js',    'Checking for undocumented work...'),
