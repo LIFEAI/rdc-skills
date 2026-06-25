@@ -247,18 +247,84 @@ function deny(reason, details) {
   throw new GateDenied(reason, details);
 }
 
-/** Run a git command in the truth-gate repo; returns trimmed stdout or null. */
+/**
+ * Build the L1-captured SHA set bound to the item's ORIGINATING session, or
+ * DENY (throw GateDenied) when there is no originating session to bind to.
+ *
+ * FAIL-CLOSED: a null/empty originating session must NOT disable the per-session
+ * binding (the old `!originatingSession` short-circuit accepted ANY session's
+ * captured SHA — a fail-open laundering hole). With no session, there is no
+ * provenance to verify, so we DENY. Otherwise we keep ONLY rows whose
+ * session_id exactly equals the originating session.
+ *
+ * @param originatingSession string|null  the item's session_id
+ * @param capturedRows       Array<{sha, session_id}> from work_item_commits
+ * @returns Set<string>      full-SHA (lowercased) set for this item+session
+ */
+function buildCapturedShaSet(originatingSession, capturedRows) {
+  const sess = originatingSession || null;
+  if (!sess) {
+    deny(
+      'L2: done rejected — cannot bind commit provenance: work item has no originating session. ' +
+      'Without a session to bind captured SHAs to, the per-session commit binding cannot be verified; fail-closed.',
+      { originatingSession },
+    );
+  }
+  return new Set(
+    (Array.isArray(capturedRows) ? capturedRows : [])
+      .filter((r) => r && r.session_id === sess)
+      .map((r) => String((r && r.sha) || '').toLowerCase())
+      .filter((s) => FULL_SHA_RE.test(s)),
+  );
+}
+
+/** Run a git command in the truth-gate repo; returns trimmed stdout or null.
+ * stderr is captured (piped) so a failure carries a usable diagnostic instead
+ * of being swallowed. On failure with allowFail, returns null; otherwise the
+ * thrown error retains git's stderr in e.stderr / e.message. */
 function git(args, { allowFail = false } = {}) {
   try {
     return execFileSync('git', args, {
       cwd: TRUTH_GATE_REPO,
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
+      stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 16 * 1024 * 1024,
     }).trim();
   } catch (e) {
     if (allowFail) return null;
     throw e;
+  }
+}
+
+/**
+ * Verify, once at entry, that TRUTH_GATE_REPO is a real git work tree the gate
+ * can interrogate. If git is missing or the path is not a work tree, every
+ * downstream SHA/file check would silently mis-verify, so we fail-closed with a
+ * clear `truth-gate repo unavailable` block — distinct from a `ref not found`.
+ */
+function assertGitRepoAvailable() {
+  let out;
+  try {
+    out = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd: TRUTH_GATE_REPO,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 1024 * 1024,
+    }).trim();
+  } catch (e) {
+    const detail = (e && (e.stderr || e.message)) ? String(e.stderr || e.message).trim().slice(0, 200) : 'git invocation failed';
+    deny(
+      'L2: done rejected — truth-gate repo unavailable: cannot run git in "' + TRUTH_GATE_REPO + '" (' + detail + '). ' +
+      'The gate cannot verify commit/file provenance without a working git tree; fail-closed.',
+      { repo: TRUTH_GATE_REPO },
+    );
+  }
+  if (out !== 'true') {
+    deny(
+      'L2: done rejected — truth-gate repo unavailable: "' + TRUTH_GATE_REPO + '" is not a git work tree (rev-parse returned "' + out + '"). ' +
+      'The gate cannot verify commit/file provenance; fail-closed.',
+      { repo: TRUTH_GATE_REPO },
+    );
   }
 }
 
@@ -310,16 +376,17 @@ function fileOnDisk(repoPath) {
   try { return fs.existsSync(path.join(TRUTH_GATE_REPO, p)); } catch { return false; }
 }
 
-let _isMachineArtifact = null;
-/** Lazy-load the fused primitive's artifact discriminator (ESM from CJS).
- * Uses a file:// URL so the dynamic import works on Windows absolute paths. */
-async function loadIsMachineArtifact() {
-  if (_isMachineArtifact) return _isMachineArtifact;
+let _evidenceLib = null;
+/** Lazy-load the fused primitive's artifact discriminators (ESM from CJS).
+ * Uses a file:// URL so the dynamic import works on Windows absolute paths.
+ * Returns { isMachineArtifact, isPassingArtifact }. */
+async function loadEvidenceLib() {
+  if (_evidenceLib) return _evidenceLib;
   const { pathToFileURL } = require('url');
   const libPath = path.join(__dirname, 'lib', 'run-evidence-gate.mjs');
   const mod = await import(pathToFileURL(libPath).href);
-  _isMachineArtifact = mod.isMachineArtifact;
-  return _isMachineArtifact;
+  _evidenceLib = { isMachineArtifact: mod.isMachineArtifact, isPassingArtifact: mod.isPassingArtifact };
+  return _evidenceLib;
 }
 
 /**
@@ -332,6 +399,10 @@ async function loadIsMachineArtifact() {
  * @param capturedShas Set<string> of FULL L1-captured SHAs for this item/session
  */
 async function verifyLayer2(statusCall, item, capturedShas) {
+  // Fail-closed: the gate's commit/file checks all shell out to git. If the
+  // truth-gate repo is not a usable git work tree, verify nothing — DENY.
+  assertGitRepoAvailable();
+
   const post = item.implementation_report && item.implementation_report.codeflow_post;
   if (!post || typeof post !== 'object') {
     deny('L2: done rejected — implementation_report.codeflow_post is missing or not an object.', statusCall);
@@ -407,19 +478,33 @@ async function verifyLayer2(statusCall, item, capturedShas) {
     }
   }
 
-  // (4) Every verification entry is a machine-parseable artifact, not prose.
-  const isMachineArtifact = await loadIsMachineArtifact();
+  // (4) Every verification entry is a machine-parseable artifact, not prose,
+  //     AND its OUTCOME is a PASS — not merely that it RAN. A failing run
+  //     (exit_code:1), an error HTTP status (500), a fused verdict:'fail', or a
+  //     test artifact with failures must DENY: "ran" is not "passed".
+  const { isMachineArtifact, isPassingArtifact } = await loadEvidenceLib();
   const verifications = Array.isArray(post.verification) ? post.verification : [];
   if (verifications.length === 0) {
     deny('L2: done rejected — codeflow_post.verification is empty; closure needs a captured verification artifact.', statusCall);
   }
   for (const v of verifications) {
+    // 4a. Shape gate — it must be a captured machine artifact, not prose.
     if (!isMachineArtifact(v)) {
       const shown = typeof v === 'string' ? v.slice(0, 60) : JSON.stringify(v).slice(0, 80);
       deny(
         'L2: done rejected — verification entry is prose/proxy, not a captured artifact: "' + shown + '". ' +
         'Each verification must be a run-evidence-gate result or a machine shape ' +
         '({exit_code|http_status|rowcount|passed/total}). Strings like "HTTP 200" / "works" are rejected.',
+        { ...statusCall, verification: shown },
+      );
+    }
+    // 4b. Outcome gate — the captured artifact must read as a PASS.
+    if (!isPassingArtifact(v)) {
+      const shown = typeof v === 'string' ? v.slice(0, 80) : JSON.stringify(v).slice(0, 120);
+      deny(
+        'L2: done rejected — verification-not-passing: the captured artifact ran but did NOT pass: "' + shown + '". ' +
+        'A closure requires a PASSING verification (fused verdict:"pass" / exit_code:0 / http 2xx-3xx / ' +
+        'failed:0 / passed===total / tsc_errors:0). A failing or error run is not evidence of done.',
         { ...statusCall, verification: shown },
       );
     }
@@ -481,15 +566,10 @@ async function verifyDone(statusCall, blob) {
   // --- Truth Gate 3.0 Layer 2 — FUSED evidence gate (freeze-the-leak) ---------
   // The L1-captured SHA set is restricted to the item's ORIGINATING session
   // (the session that ticked the checklist) so a SHA captured by some other
-  // session against this item cannot launder a fabricated close.
-  const originatingSession = item.session_id || null;
-  const capturedShas = new Set(
-    (Array.isArray(capturedRows) ? capturedRows : [])
-      .filter((r) => !originatingSession || r.session_id === originatingSession)
-      .map((r) => String(r.sha || '').toLowerCase())
-      .filter((s) => FULL_SHA_RE.test(s)),
-  );
+  // session against this item cannot launder a fabricated close. A null
+  // originating session is fail-closed (DENY) inside buildCapturedShaSet.
   try {
+    const capturedShas = buildCapturedShaSet(item.session_id || null, capturedRows);
     await verifyLayer2(statusCall, item, capturedShas);
   } catch (e) {
     if (e instanceof GateDenied) {
@@ -525,6 +605,20 @@ async function main() {
   const statusCall = extractStatusCall(blob);
   if (!statusCall) pass({ reason: 'no-status-call' });
 
+  // Ambiguous-parse fail-closed: the tool blob references update_work_item_status
+  // AND contains a 'done' literal, but we could not extract a usable id/status.
+  // A done-close we cannot parse must NOT slip through as a pass — block.
+  if (/update_work_item_status/i.test(blob) && /\bdone\b/i.test(blob)) {
+    if (!statusCall.id || !statusCall.status) {
+      block(
+        'Work item exit gate could not parse the `update_work_item_status` call that references `done` ' +
+        '(missing ' + (!statusCall.id ? 'work item id' : 'status') + '). ' +
+        'Ambiguous done-close parses are fail-closed; re-issue the call in the documented 5-argument RPC shape.',
+        statusCall,
+      );
+    }
+  }
+
   const status = String(statusCall.status || '').toLowerCase();
   if (status === 'review' && (!statusCall.actorSessionId || statusCall.actorRole !== 'agent')) {
     block('Implementation agents must move completed work to `review` with `p_actor_session_id` and `p_actor_role := agent`.', statusCall);
@@ -549,7 +643,9 @@ if (require.main === module) {
     fileOnDisk,
     fileKnownToRepo,
     normalizeRepoPath,
-    loadIsMachineArtifact,
+    loadEvidenceLib,
+    assertGitRepoAvailable,
+    buildCapturedShaSet,
     WITNESS_ALLOWLIST,
   };
 }

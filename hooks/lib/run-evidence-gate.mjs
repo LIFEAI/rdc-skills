@@ -171,4 +171,71 @@ export function isMachineArtifact(v) {
   return false;
 }
 
-export default { runEvidenceGate, hashOutput, isMachineArtifact, EVIDENCE_KIND };
+/**
+ * Does `v` represent a verification whose OUTCOME is a PASS — not merely that it
+ * ran? This is the outcome gate that complements isMachineArtifact (the shape
+ * gate). A failing run (exit_code:1), an error HTTP status (500), a fused
+ * artifact with verdict:'fail', or a test artifact with failures must NOT be
+ * accepted as evidence of a passing verification.
+ *
+ * Returns true ONLY when the artifact is a recognised machine shape AND its
+ * outcome reads as a pass. Anything ambiguous or non-passing returns false.
+ *
+ * Pass rules (mirrors isMachineArtifact's accepted shapes):
+ *   - fused run-evidence-gate/v1 → ran===true && verdict==='pass'
+ *   - { exit_code }              → exit_code === 0
+ *   - { http_status|status_code }→ 200 <= s <= 399
+ *   - { passed, failed }         → failed === 0
+ *   - { passed, total }          → passed === total
+ *   - { tsc_errors }             → tsc_errors === 0
+ *   - { rowcount }               → a captured rowcount is presence-only evidence;
+ *                                  any numeric rowcount counts as a pass.
+ */
+export function isPassingArtifact(v) {
+  if (v == null) return false;
+
+  // String input: only accepted if it parses to a recognised JSON artifact.
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (!(s.startsWith('{') || s.startsWith('['))) return false; // bare prose
+    let parsed;
+    try { parsed = JSON.parse(s); } catch { return false; }
+    return isPassingArtifact(parsed);
+  }
+
+  if (typeof v !== 'object') return false;
+
+  // Must be a recognised machine shape first.
+  if (!isMachineArtifact(v)) return false;
+
+  // 1. Fused artifact — the verdict is authoritative.
+  if (v.kind === EVIDENCE_KIND) {
+    return v.ran === true && v.verdict === 'pass';
+  }
+
+  // 2. Captured-artifact shapes — read the outcome, not just the presence.
+  //    A tsc/test error count is checked even alongside another field.
+  if (typeof v.tsc_errors === 'number') return v.tsc_errors === 0;
+  if (typeof v.tscErrors === 'number') return v.tscErrors === 0;
+
+  if (typeof v.exit_code === 'number') return v.exit_code === 0;
+
+  if (typeof v.http_status === 'number') return v.http_status >= 200 && v.http_status <= 399;
+  if (typeof v.httpStatus === 'number') return v.httpStatus >= 200 && v.httpStatus <= 399;
+  if (typeof v.status_code === 'number') return v.status_code >= 200 && v.status_code <= 399;
+  if (typeof v.statusCode === 'number') return v.statusCode >= 200 && v.statusCode <= 399;
+
+  if (typeof v.passed === 'number') {
+    if (typeof v.failed === 'number') return v.failed === 0;
+    if (typeof v.total === 'number') return v.passed === v.total;
+  }
+
+  if (typeof v.rowcount === 'number') return true;
+  if (typeof v.row_count === 'number') return true;
+  if (typeof v.rowCount === 'number') return true;
+
+  // Recognised shape but no readable outcome → not a pass (fail-closed).
+  return false;
+}
+
+export default { runEvidenceGate, hashOutput, isMachineArtifact, isPassingArtifact, EVIDENCE_KIND };
