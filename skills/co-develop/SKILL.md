@@ -6,6 +6,7 @@ description: "Usage `rdc:co-develop <ask|reply|inbox|start|resume|status>` — p
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Under the flag, do not create/send/reply to live co-development turns; report the intended clauth command and mark the external relay action as skipped.
 
 # rdc:co-develop — Peer-Aware Co-Development
 

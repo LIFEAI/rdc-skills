@@ -382,7 +382,7 @@
       "follows": [],
       "leads_to": [],
       "sandbox_aware": false,
-      "output_contract": null,
+      "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
     },
@@ -1005,7 +1005,7 @@
       ],
       "follows": [],
       "leads_to": [],
-      "sandbox_aware": false,
+      "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
@@ -1135,7 +1135,7 @@
       ],
       "follows": [],
       "leads_to": [],
-      "sandbox_aware": false,
+      "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
