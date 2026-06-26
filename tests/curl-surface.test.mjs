@@ -211,6 +211,21 @@ async function main() {
     check('rdc_skill_get returns tool text path', getText.length > 500, `length ${getText.length}`);
     check('rdc_skill_get accepts visible rdc:build alias', /rdc:build/i.test(getText));
 
+    const getJson = postMcp({
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: {
+        name: 'rdc_skill_get',
+        arguments: { name: 'rdc:build', variant: 'cli', format: 'json' },
+      },
+    }, 'rdc_skill_get_json');
+    check('rdc_skill_get format=json curl exits 0', getJson.status === 0, getJson.stderr);
+    const getJsonBody = JSON.parse(resultText(latestEnvelope(getJson.stdout)));
+    check('rdc_skill_get format=json returns resolved name', getJsonBody.resolved_name === 'build');
+    check('rdc_skill_get format=json returns skill metadata', getJsonBody.skill?.slash === 'rdc:build' && getJsonBody.skill?.codeflow_required === true);
+    check('rdc_skill_get format=json returns rendered body', /rdc:build/i.test(getJsonBody.body || ''));
+
     const getMcp = curlWithStatus([
       '-s',
       `${TARGET}/mcp`,

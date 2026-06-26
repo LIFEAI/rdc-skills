@@ -201,6 +201,12 @@ async function sweep(url, label, { compareSource }) {
   const aliasBody = strip(callText(aliasGet.json));
   check(`${label}: rdc_skill_get accepts slash aliases`, /rdc:brochurify Orchestrator/.test(aliasBody));
 
+  const jsonGet = await mcp(url, { jsonrpc: '2.0', id: 23, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: 'rdc:build', variant: 'cli', format: 'json' } } });
+  let jsonBody; try { jsonBody = JSON.parse(callText(jsonGet.json)); } catch { jsonBody = {}; }
+  check(`${label}: rdc_skill_get format=json returns resolved name`, jsonBody.resolved_name === 'build');
+  check(`${label}: rdc_skill_get format=json returns metadata`, jsonBody.skill?.slash === 'rdc:build' && jsonBody.skill?.codeflow_required === true);
+  check(`${label}: rdc_skill_get format=json returns rendered body`, typeof jsonBody.body === 'string' && jsonBody.body.includes('rdc:build'));
+
   // search
   const se = await mcp(url, { jsonrpc: '2.0', id: 21, method: 'tools/call', params: { name: 'rdc_skill_search', arguments: { query: 'deploy' } } });
   let sr; try { sr = JSON.parse(callText(se.json)); } catch { sr = { results: [] }; }

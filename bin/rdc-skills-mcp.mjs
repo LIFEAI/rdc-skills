@@ -189,24 +189,47 @@ function buildMcpServer() {
     'rdc_skill_get',
     {
       description:
-        "Get a skill's SKILL.md body rendered for the caller. variant 'cli' returns the body unchanged; 'cloud' rewrites local-shell/clauth-daemon steps for the claude.ai web client. Omit variant to use auto-detection (defaults to cloud).",
+        "Get a skill's SKILL.md body rendered for the caller. variant 'cli' returns the body unchanged; 'cloud' rewrites local-shell/clauth-daemon steps for the claude.ai web client. Omit variant to use auto-detection (defaults to cloud). format 'json' returns metadata plus rendered body for direct API/curl callers.",
       inputSchema: {
         name: z.string().describe('Skill name or slash form (e.g. "deploy", "rdc:build", "rdc:brochurify", "lifeai-brochure-author"). See rdc_skill_list.'),
         variant: z.enum(['cli', 'cloud']).optional().describe('Force the rendered variant; overrides caller detection.'),
+        format: z.enum(['text', 'json']).optional().describe("Return 'text' (default) for agent-readable SKILL.md, or 'json' for metadata plus rendered body."),
       },
     },
-    async ({ name, variant }) => {
+    async ({ name, variant, format }) => {
       const resolvedName = resolveSkillName(name);
       if (!resolvedName) {
-        const valid = listSkills().map((s) => `${s.name} (${s.slash})`);
-        return textResult(
-          `Unknown skill '${name}'. Valid skills (${valid.length}): ${valid.join(', ')}`,
-        );
+        const valid = listSkills().map((s) => ({
+          name: s.name,
+          slash: s.slash,
+          aliases: s.aliases,
+          usage: s.usage,
+        }));
+        if (format === 'json') {
+          return textResult(JSON.stringify({
+            error: 'unknown_skill',
+            requested: name,
+            message: `Unknown skill '${name}'.`,
+            valid_count: valid.length,
+            valid,
+          }, null, 2));
+        }
+        return textResult(`Unknown skill '${name}'. Valid skills (${valid.length}): ${valid.map((s) => `${s.name} (${s.slash})`).join(', ')}`);
       }
       const resolved = variant || lastDetectedVariant || 'cloud';
       const rendered = renderSkill(resolvedName, resolved);
       if (!rendered) {
         return textResult(`Skill '${resolvedName}' exists in the catalog but has no SKILL.md body on disk.`);
+      }
+      if (format === 'json') {
+        return textResult(JSON.stringify({
+          skill: getSkill(resolvedName),
+          requested: name,
+          resolved_name: resolvedName,
+          variant: resolved,
+          header: rendered.header,
+          body: rendered.body,
+        }, null, 2));
       }
       return textResult(`${rendered.header}\n\n${rendered.body}`);
     },

@@ -149,6 +149,16 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli"}}}'
 ```
 
+For direct API/curl clients that want metadata and rendered body in one parsed
+payload, add `format:"json"`:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli","format":"json"}}}'
+```
+
 Use `variant:"cli"` for Claude Code/Codex/local terminal instructions. Use
 `variant:"cloud"` for claude.ai web sessions where local daemon, shell, or
 filesystem steps need cloud-safe wording.

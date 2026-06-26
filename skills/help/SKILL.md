@@ -122,6 +122,12 @@ RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
     -H 'Accept: application/json, text/event-stream' \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli"}}}'
 
+  Fetch a structured skill payload:
+  curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli","format":"json"}}}'
+
 ## Hard rules
 
 - `cf: yes` skills MUST consult CodeFlow before acting. Hooks fail-closed on unreachable CodeFlow for these.
