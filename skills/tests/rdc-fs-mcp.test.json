@@ -17,5 +17,21 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["FS MCP", "access path"]
   },
+  "acceptance": {
+    "output_contains": [
+      "FS MCP",
+      "access path",
+      "local scripts",
+      "MCP",
+      "live local FS"
+    ],
+    "output_not_contains": [
+      "preview",
+      "git add",
+      "overwrite",
+      "raw MCP"
+    ],
+    "tool_calls_include_any": ["Read", "Grep", "Glob", "fs_read", "fs_grep", "fs_glob"]
+  },
   "teardown": { "reset_branch": true }
 }

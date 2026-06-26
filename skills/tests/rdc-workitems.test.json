@@ -11,5 +11,19 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "get_open_epics",
+      "read-only",
+      "Verdict",
+      "RDC_TEST"
+    ],
+    "output_not_contains": [
+      "insert_work_item",
+      "update_work_item_status",
+      "bump_epic_version",
+      "raw MCP"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

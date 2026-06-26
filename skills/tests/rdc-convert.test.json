@@ -16,5 +16,20 @@
     "exit_code": 0,
     "stdout_contains": ["build-corpus", "Markdown", "Word"]
   },
+  "acceptance": {
+    "output_contains": [
+      "build-corpus",
+      "Markdown",
+      "Word",
+      "--to",
+      "--out"
+    ],
+    "output_not_contains": [
+      "launch GUI",
+      "install global dependencies implicitly",
+      "commit",
+      "deploy"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

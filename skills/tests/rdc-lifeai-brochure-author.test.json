@@ -16,5 +16,20 @@
     "exit_code": 0,
     "stdout_contains": ["brochure-kit", "Raw HTML"]
   },
+  "acceptance": {
+    "output_contains": [
+      "@lifeai/brochure-kit",
+      "Raw HTML",
+      "<Brochure>",
+      "<Stack>",
+      "validator"
+    ],
+    "output_not_contains": [
+      "<div className",
+      "style={{",
+      "hex codes",
+      "viewport units"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

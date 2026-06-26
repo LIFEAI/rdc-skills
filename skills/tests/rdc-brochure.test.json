@@ -16,5 +16,20 @@
     "exit_code": 0,
     "stdout_contains": ["PDF", "Pages", "Size"]
   },
+  "acceptance": {
+    "output_contains": [
+      "PDF",
+      "Pages",
+      "Size",
+      "Source",
+      ".rdc/reports/brochure-fixture.pdf"
+    ],
+    "output_not_contains": [
+      "upload",
+      "deploy",
+      "git push",
+      "modify source"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

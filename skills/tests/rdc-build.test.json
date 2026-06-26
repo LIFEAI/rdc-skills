@@ -18,5 +18,20 @@
     "commits_made": { "min": 0, "message_matches": "." },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "RDC_TEST",
+      "agent-bootstrap",
+      "engineering-behavior",
+      "code-review",
+      "validator"
+    ],
+    "output_not_contains": [
+      "git push origin",
+      "raw MCP",
+      "dispatch without",
+      "skip validation"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

@@ -17,5 +17,20 @@
     "commits_made": { "min": 1, "message_matches": "[Ff]ix" },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "fixit",
+      "scope",
+      "code-review",
+      "specific files",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "git add -A",
+      "git add .",
+      "skip code-review",
+      "scope exceeded"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }
