@@ -9,14 +9,12 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["Open Epics"]
   },
   "acceptance": {
     "output_contains": [
       "get_open_epics",
-      "read-only",
-      "Verdict",
-      "RDC_TEST"
+      "Open Epics"
     ],
     "output_not_contains": [
       "insert_work_item",

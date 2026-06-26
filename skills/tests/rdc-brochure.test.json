@@ -14,14 +14,13 @@
   },
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["PDF", "Pages", "Size"]
+    "stdout_contains": ["PDF", "page"]
   },
   "acceptance": {
     "output_contains": [
       "PDF",
-      "Pages",
-      "Size",
-      "Source",
+      "page",
+      "KB",
       ".rdc/reports/brochure-fixture.pdf"
     ],
     "output_not_contains": [

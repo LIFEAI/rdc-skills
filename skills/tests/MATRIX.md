@@ -1,6 +1,6 @@
 # RDC Skill Test Suite Matrix
 
-Current coverage: 29 manifests for 29 skill directories.
+Current coverage: 30 manifests for 30 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
@@ -15,6 +15,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:collab` | `rdc-collab.test.json` | Claude session relay fixture | `commits_made`, `exit_code`, `stdout_contains` | chitchat/SSE session handling, sandbox skip, and no-reply/no-push negative checks |
 | `rdc:convert` | `rdc-convert.test.json` | Markdown-to-Word conversion fixture | `exit_code`, `stdout_contains` | build-corpus command surface, Word/Markdown flags, and no-GUI/global-install/commit checks |
 | `rdc:deploy` | `rdc-deploy.test.json` | Deployment diagnosis | `commits_made`, `exit_code`, `stdout_contains` | Read-only diagnose output and destructive deploy/DNS negative checks |
+| `rdc:edit` | `rdc-edit.test.json` | Local editor launch | `exit_code`, `stdout_contains` | Resolved target, editor host URL, and no-unknown-target negative checks |
 | `rdc:design` | `rdc-design.test.json` | Studio palette audit | `exit_code`, `stdout_contains` | Studio/token/Rampa references and external-write negative checks |
 | `rdc:fixit` | `rdc-fixit.test.json` | Tiny sandbox typo fix | `commits_made`, `exit_code`, `stdout_contains` | Scope, code-review, specific-file staging, and broad-add negative checks |
 | `rdc:fs-mcp` | `rdc-fs-mcp.test.json` | File-system bridge read fixture | `commits_made`, `exit_code`, `stdout_contains` | Local-vs-MCP access boundary, live FS, no-preview/no-overwrite checks, and read-tool routing |

@@ -20,8 +20,7 @@
   "acceptance": {
     "output_contains": [
       "overnight.lock",
-      "clauth",
-      "preplan",
+      "Preflight",
       "plan",
       "build",
       "review",

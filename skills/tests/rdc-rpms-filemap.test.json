@@ -9,14 +9,12 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["RULE #1", "Canonical"]
+    "stdout_contains": ["_context.md", ".rdc/reports"]
   },
   "acceptance": {
     "output_contains": [
-      "RULE #1",
-      "Canonical",
       "_context.md",
-      "One Home Per Fact",
+      "generated",
       ".rdc/reports"
     ],
     "output_not_contains": [

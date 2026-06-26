@@ -16,7 +16,7 @@
       "report_path",
       "completed_count",
       "open_count",
-      "Next Session Recommendation"
+      "blockers_count"
     ],
     "output_not_contains": [
       "raw MCP",

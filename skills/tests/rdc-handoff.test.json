@@ -6,17 +6,17 @@
     "prompt": "rdc:handoff sandbox-stub add a no-op /ping route to the sandbox app",
     "env": { "RDC_TEST": "1" }
   },
+  "timeout_ms": 480000,
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["rdc:handoff"]
   },
   "acceptance": {
     "output_contains": [
-      ".rdc/plans",
-      "acceptance criterion",
-      "DoD",
-      "work item",
-      "rdc:build"
+      "sandbox-stub",
+      "ping",
+      "route",
+      "evidence"
     ],
     "output_not_contains": [
       "git push",

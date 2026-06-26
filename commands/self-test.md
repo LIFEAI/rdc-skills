@@ -22,7 +22,7 @@ description: >-
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude or Codex runs each skill in sandbox, asserts artifacts | ✅ live — 29 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
+| Tier 2 | Behavioral — headless Claude or Codex runs each skill in sandbox, asserts artifacts | ✅ live — 30 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Procedure (Tier 1)

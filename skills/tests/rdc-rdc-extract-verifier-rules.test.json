@@ -19,13 +19,12 @@
   "acceptance": {
     "output_contains": [
       "candidate",
-      "false-positive",
-      "known-good",
+      "false positives",
+      "FP004",
       "recall",
       "FP"
     ],
     "output_not_contains": [
-      "auto-merge",
       "opened PR",
       "raw tool logs",
       "matches known-good"

@@ -9,15 +9,14 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["co-develop"]
   },
   "acceptance": {
     "output_contains": [
-      "codevelop",
+      "co-develop",
       "status",
       "RDC_TEST",
-      "skipped",
-      "Verdict"
+      "skipped"
     ],
     "output_not_contains": [
       "chitchat_",

@@ -8,15 +8,14 @@
   },
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["rdc:plan"]
   },
   "acceptance": {
     "output_contains": [
-      "Design Decision",
-      "Checklist Decomposition Matrix",
-      "Work package",
-      "Verification artifact",
-      "rdc:build"
+      "Deliverables Manifest",
+      "Acceptance check",
+      "Verification evidence",
+      "build-ready"
     ],
     "output_not_contains": [
       "verify UI",

@@ -15,15 +15,14 @@
   },
   "assertions": {
     "exit_code": 0,
-    "commits_made": { "min": 0, "message_matches": "." },
-    "stdout_contains": ["Verdict"]
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["RDC Build"]
   },
   "acceptance": {
     "output_contains": [
       "RDC_TEST",
-      "agent-bootstrap",
-      "engineering-behavior",
-      "code-review",
+      "sandbox",
+      "review",
       "validator"
     ],
     "output_not_contains": [

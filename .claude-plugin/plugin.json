@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.24.35",
+  "version": "0.24.36",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -533,6 +533,42 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true
+    },
+    "edit": {
+      "name": "edit",
+      "slash": "rdc:edit",
+      "category": "dev-loop",
+      "usage": "rdc:edit <site|brand|route|file>",
+      "args": {
+        "positional": [
+          {
+            "name": "target",
+            "required": true,
+            "description": "Site, brand, route, or file to open in the local editor host",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "git"
+      ],
+      "produces": [],
+      "default_model": "inherit",
+      "triggers": [
+        "open this in the editor",
+        "edit this site",
+        "open site in editor",
+        "launch editor host"
+      ],
+      "follows": [],
+      "leads_to": [
+        "design"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
     },
     "design": {
       "name": "design",

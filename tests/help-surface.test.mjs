@@ -35,8 +35,8 @@ for (const [name, text] of Object.entries(docs)) {
   assert.doesNotMatch(text, /https:\/\/rdc-skills\.dev\.regendevcorp\.com\/mcp/, `${name} must not point callers at dev MCP`);
 }
 
-assert.match(docs.readme, /29 MCP skills organized into 8 manifest categories/, 'README should use manifest category count');
-assert.match(docs.readme, /Eighteen[\s\S]*\/rdc:\*` command shorthands/i, 'README should distinguish slash-command shorthands from full MCP skills');
+assert.match(docs.readme, /30 MCP skills organized into 8 manifest categories/, 'README should use manifest category count');
+assert.match(docs.readme, /Nineteen[\s\S]*\/rdc:\*` command shorthands/i, 'README should distinguish slash-command shorthands from full MCP skills');
 assert.match(docs.readme, /Use `rdc_skill_list` for the authoritative live catalog/, 'README should point callers to live MCP catalog');
 assert.doesNotMatch(docs.readme, /All user-invocable skills become available as slash commands/, 'README must not imply all MCP skills are slash commands');
 assert.doesNotMatch(docs.readme, /29 skills organized into 6 categories/, 'README must not carry stale category count');

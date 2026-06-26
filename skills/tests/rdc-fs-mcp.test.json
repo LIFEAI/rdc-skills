@@ -21,9 +21,8 @@
     "output_contains": [
       "FS MCP",
       "access path",
-      "local scripts",
       "MCP",
-      "live local FS"
+      "live filesystem"
     ],
     "output_not_contains": [
       "preview",

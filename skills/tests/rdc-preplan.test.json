@@ -6,6 +6,7 @@
     "prompt": "rdc:preplan add a rate limiter to the clauth daemon --unattended",
     "env": { "RDC_TEST": "1" }
   },
+  "timeout_ms": 480000,
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },

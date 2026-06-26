@@ -1,0 +1,29 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:edit",
+  "description": "Edit opens the local website editor host for a site target and reports the resolved editor URL under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:edit prtrust.fund",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["rdc:edit", "editor", "prtrust.fund"]
+  },
+  "acceptance": {
+    "output_contains": [
+      "localhost:3015",
+      "editor/local/prt",
+      "targetUrl",
+      "prtrust.fund",
+      "opened"
+    ],
+    "output_not_contains": [
+      "unsupported target",
+      "not found",
+      "raw MCP",
+      "focus"
+    ]
+  },
+  "teardown": { "reset_branch": true }
+}

@@ -21,7 +21,7 @@
       "@lifeai/brochure-kit",
       "Raw HTML",
       "<Brochure>",
-      "<Stack>",
+      "<Section>",
       "validator"
     ],
     "output_not_contains": [

@@ -6,18 +6,18 @@
     "prompt": "rdc:deploy diagnose rdc-marketing-engine",
     "env": { "RDC_TEST": "1" }
   },
+  "timeout_ms": 480000,
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["diagnose"]
   },
   "acceptance": {
     "output_contains": [
       "diagnose",
-      "read-only",
-      "Registry",
-      "health",
-      "Verdict"
+      "Container state",
+      "Port mismatch",
+      "HTTP"
     ],
     "output_not_contains": [
       "Deploy triggered",

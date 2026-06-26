@@ -8,14 +8,14 @@
   },
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["watcher"]
   },
   "acceptance": {
-    "output_contains": ["not opened because RDC_TEST=1"],
+    "output_contains": ["not opened", "RDC_TEST=1"],
     "output_not_contains": ["SetForegroundWindow", "AppActivate", "BringWindowToTop", "SwitchToThisWindow"],
     "tool_calls_argument_matches": [
       {
-        "tools": ["Bash"],
+        "tools": ["Bash", "Shell"],
         "pattern": "watch-init\\.mjs"
       }
     ]

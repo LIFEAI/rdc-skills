@@ -8,13 +8,13 @@
   },
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["prototype"]
   },
   "acceptance": {
     "output_contains": [
       "docs/source",
       "prototype",
-      "TSX",
+      "Card",
       "registry",
       "RDC_TEST"
     ],

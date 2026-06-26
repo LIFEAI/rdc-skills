@@ -39,7 +39,9 @@ const ONLY_SKILLS = args
 
 function normalizeSkillName(name) {
   if (!name) return name;
-  return name.startsWith('rdc:') ? name : `rdc:${name.replace(/^rdc-/, '')}`;
+  if (name.includes(':')) return name;
+  if (name.startsWith('lifeai-')) return name;
+  return `rdc:${name.replace(/^rdc-/, '')}`;
 }
 
 function sh(cmd, cmdArgs, cwd = REPO_ROOT) {
@@ -482,7 +484,7 @@ async function main() {
   }
 }
 
-export { assistantText, codexToolCalls };
+export { assistantText, codexToolCalls, normalizeSkillName };
 
 const isMain = (() => {
   try {

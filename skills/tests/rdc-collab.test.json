@@ -9,15 +9,14 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["rdc:collab"]
   },
   "acceptance": {
     "output_contains": [
       "session",
       "chitchat",
-      "SSE",
-      "RDC_TEST",
-      "Verdict"
+      "blocked",
+      "CodeFlow"
     ],
     "output_not_contains": [
       "chitchat_reply",

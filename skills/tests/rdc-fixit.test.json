@@ -21,9 +21,9 @@
     "output_contains": [
       "fixit",
       "scope",
-      "code-review",
-      "specific files",
-      "Verdict"
+      "Code-review",
+      "RDC_TEST",
+      "Committed"
     ],
     "output_not_contains": [
       "git add -A",

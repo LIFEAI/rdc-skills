@@ -142,7 +142,7 @@ async function main() {
   try {
     const health = await waitHealth();
     check('health reports ok', health.status === 'ok');
-    check('health reports 29 skills', health.skills === 29, `skills ${health.skills}`);
+    check('health reports 30 skills', health.skills === 30, `skills ${health.skills}`);
 
     const init = postMcp({
       jsonrpc: '2.0',
@@ -168,7 +168,7 @@ async function main() {
     check('rdc_skill_list curl exits 0', list.status === 0, list.stderr);
     check('rdc_skill_list returns SSE data line', /^data:/m.test(list.stdout));
     const listed = JSON.parse(resultText(latestEnvelope(list.stdout)));
-    check('rdc_skill_list exposes 29 skills', listed.count === 29, `count ${listed.count}`);
+    check('rdc_skill_list exposes 30 skills', listed.count === 30, `count ${listed.count}`);
     check('rdc_skill_list includes visible slash name', listed.skills.some((s) => s.slash === 'rdc:build'));
     const buildRow = listed.skills.find((s) => s.name === 'build');
     check('rdc_skill_list exposes aliases for slash callers', buildRow?.aliases?.includes('/rdc:build'));
@@ -244,7 +244,7 @@ async function main() {
       check('rdc_skill_get unknown format=json returns parseable JSON', false, getJsonUnknownText || getJsonUnknown.stdout.slice(0, 500));
     }
     check('rdc_skill_get unknown format=json returns machine error', getJsonUnknownBody.error === 'unknown_skill');
-    check('rdc_skill_get unknown format=json returns alternatives', getJsonUnknownBody.valid_count >= 29 && getJsonUnknownBody.valid?.some((s) => s.slash === 'rdc:help'));
+    check('rdc_skill_get unknown format=json returns alternatives', getJsonUnknownBody.valid_count >= 30 && getJsonUnknownBody.valid?.some((s) => s.slash === 'rdc:help'));
 
     const getMcp = curlWithStatus([
       '-s',

@@ -10,7 +10,7 @@ import { dirname } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const script = join(REPO_ROOT, 'scripts', 'acceptance.mjs');
-const { codexToolCalls } = await import(`file://${script.replace(/\\/g, '/')}`);
+const { codexToolCalls, normalizeSkillName } = await import(`file://${script.replace(/\\/g, '/')}`);
 
 const syntax = spawnSync(process.execPath, ['--check', script], { encoding: 'utf8' });
 assert.equal(syntax.status, 0, syntax.stderr);
@@ -27,6 +27,8 @@ const codexEvents = [
 const parsedCalls = codexToolCalls(codexEvents);
 assert.equal(parsedCalls[0]?.name, 'Grep');
 assert.match(parsedCalls[0]?.input?.command || '', /local-corpus/);
+assert.equal(normalizeSkillName('lifeai-brochure-author'), 'lifeai-brochure-author');
+assert.equal(normalizeSkillName('build'), 'rdc:build');
 
 const missing = spawnSync(process.execPath, [script, '--skill', 'rdc:not-a-real-skill'], {
   cwd: REPO_ROOT,

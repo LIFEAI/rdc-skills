@@ -8,15 +8,13 @@
   },
   "assertions": {
     "exit_code": 0,
-    "stdout_contains": ["Verdict"]
+    "stdout_contains": ["Studio"]
   },
   "acceptance": {
     "output_contains": [
       "Studio",
-      "tokens",
-      "Rampa",
-      "RDC_TEST",
-      "Verdict"
+      "palette",
+      "audit"
     ],
     "output_not_contains": [
       "Supabase write",

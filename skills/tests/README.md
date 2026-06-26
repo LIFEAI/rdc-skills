@@ -1,7 +1,7 @@
 # Tier 2 Test Manifests
 
 Each RDC skill directory has a colocated test manifest at `skills/tests/rdc-<name>.test.json`.
-There are currently 29 manifests for 29 skill directories. These drive the Tier 2
+There are currently 30 manifests for 30 skill directories. These drive the Tier 2
 behavioral runner and the build acceptance harness for both Claude and Codex.
 
 See `MATRIX.md` for the current skill-by-skill coverage table.
