@@ -46,7 +46,7 @@ import {
   getSkill,
   getSkillBody,
   getCloudOverride,
-  skillNames,
+  resolveSkillName,
   searchSkills,
 } from '../lib/catalog.mjs';
 import { toCloudBody } from '../lib/cloud-rewrite.mjs';
@@ -161,21 +161,22 @@ function buildMcpServer() {
       description:
         "Get a skill's SKILL.md body rendered for the caller. variant 'cli' returns the body unchanged; 'cloud' rewrites local-shell/clauth-daemon steps for the claude.ai web client. Omit variant to use auto-detection (defaults to cloud).",
       inputSchema: {
-        name: z.string().describe('Skill name (e.g. "deploy", "build"). See rdc_skill_list.'),
+        name: z.string().describe('Skill name or slash form (e.g. "deploy", "rdc:build", "rdc:brochurify", "lifeai-brochure-author"). See rdc_skill_list.'),
         variant: z.enum(['cli', 'cloud']).optional().describe('Force the rendered variant; overrides caller detection.'),
       },
     },
     async ({ name, variant }) => {
-      const valid = skillNames();
-      if (!valid.includes(name)) {
+      const resolvedName = resolveSkillName(name);
+      if (!resolvedName) {
+        const valid = listSkills().map((s) => `${s.name} (${s.slash})`);
         return textResult(
           `Unknown skill '${name}'. Valid skills (${valid.length}): ${valid.join(', ')}`,
         );
       }
       const resolved = variant || lastDetectedVariant || 'cloud';
-      const rendered = renderSkill(name, resolved);
+      const rendered = renderSkill(resolvedName, resolved);
       if (!rendered) {
-        return textResult(`Skill '${name}' exists in the catalog but has no SKILL.md body on disk.`);
+        return textResult(`Skill '${resolvedName}' exists in the catalog but has no SKILL.md body on disk.`);
       }
       return textResult(`${rendered.header}\n\n${rendered.body}`);
     },

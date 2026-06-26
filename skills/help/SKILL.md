@@ -111,7 +111,7 @@ RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
   curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
     -H 'Content-Type: application/json' \
     -H 'Accept: application/json, text/event-stream' \
-    -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
+    -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli"}}}'
 
 ## Hard rules
 

@@ -24,6 +24,7 @@ for (const [name, text] of Object.entries(docs)) {
   assert.match(text, /rdc_skill_search/, `${name} must mention rdc_skill_search`);
   assert.match(text, /rdc_skill_get/, `${name} must mention rdc_skill_get`);
   assert.match(text, /turn this article into social posts/, `${name} must include a natural-language search example`);
+  assert.match(text, /"name":"rdc:build"/, `${name} must show rdc_skill_get accepts visible slash names`);
   assert.doesNotMatch(text, /https:\/\/rdc-skills\.dev\.regendevcorp\.com\/mcp/, `${name} must not point callers at dev MCP`);
 }
 

@@ -32,6 +32,7 @@ import {
   getSkillBody,
   getCloudOverride,
   searchSkills,
+  resolveSkillName,
 } from '../lib/catalog.mjs';
 import { toCloudBody } from '../lib/cloud-rewrite.mjs';
 
@@ -96,6 +97,11 @@ function unitTests() {
   check('unit: getSkill(nonexistent) is null', getSkill('___nope___') === null);
   check('unit: search ranks exact name first', searchSkills('deploy')[0]?.name === 'deploy');
   check('unit: empty search returns []', searchSkills('').length === 0);
+  check('unit: resolves bare skill name', resolveSkillName('build') === 'build');
+  check('unit: resolves rdc slash skill name', resolveSkillName('rdc:build') === 'build');
+  check('unit: resolves leading slash command form', resolveSkillName('/rdc:build') === 'build');
+  check('unit: resolves specialist slash alias', resolveSkillName('rdc:brochurify') === 'rdc-brochurify');
+  check('unit: resolves non-rdc specialist name', resolveSkillName('lifeai-brochure-author') === 'lifeai-brochure-author');
 
   // Searchability gate — the dimension the first "100% coverage" missed. Every
   // catalog entry MUST carry triggers + usage (frontmatter or skills_meta) so
@@ -174,6 +180,11 @@ async function sweep(url, label, { compareSource }) {
   // error path
   const unk = await mcp(url, { jsonrpc: '2.0', id: 20, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: '___nope___' } } });
   check(`${label}: unknown skill returns helpful error`, /unknown skill/i.test(callText(unk.json)));
+
+  // Alias path: callers naturally copy the slash form from rdc_skill_list.
+  const aliasGet = await mcp(url, { jsonrpc: '2.0', id: 22, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: 'rdc:brochurify', variant: 'cli' } } });
+  const aliasBody = strip(callText(aliasGet.json));
+  check(`${label}: rdc_skill_get accepts slash aliases`, /rdc:brochurify Orchestrator/.test(aliasBody));
 
   // search
   const se = await mcp(url, { jsonrpc: '2.0', id: 21, method: 'tools/call', params: { name: 'rdc_skill_search', arguments: { query: 'deploy' } } });

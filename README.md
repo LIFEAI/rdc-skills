@@ -117,13 +117,14 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rdc_skill_search","arguments":{"query":"turn this article into social posts"}}}'
 ```
 
-Fetch a skill body for a specific caller surface:
+Fetch a skill body for a specific caller surface. `name` accepts either the
+catalog `name` (`build`) or the visible slash form (`rdc:build`):
 
 ```bash
 curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli"}}}'
 ```
 
 Use `variant:"cli"` for Claude Code/Codex/local terminal instructions. Use
