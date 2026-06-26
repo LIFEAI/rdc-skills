@@ -11,5 +11,19 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["rdc:help", "Decision tree"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Direct MCP / curl Access",
+      "https://rdc-skills.regendevcorp.com/mcp",
+      "rdc_skill_list",
+      "rdc_skill_search",
+      "rdc_skill_get",
+      "\"format\":\"json\""
+    ],
+    "output_not_contains": [
+      "https://rdc-skills.dev.regendevcorp.com/mcp",
+      "All user-invocable skills become available as slash commands"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

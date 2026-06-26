@@ -2,7 +2,7 @@
 //
 // Source of truth: .rdc/plans/skill-self-test-tier-2.md decision D3.
 //
-// A manifest describes one behavioral test for an rdc:* skill. The Tier 2
+// A manifest describes one behavioral test for an installed skill. The Tier 2
 // runner loads a manifest, validates it here, then uses it to drive a headless
 // Claude invocation inside a sandbox and assert on real artifacts.
 //
@@ -55,8 +55,16 @@ const ASSERTION_FIELDS = new Set([
 const WIC_FIELDS = new Set(["min", "max", "status", "labels_include"]);
 const COMMITS_FIELDS = new Set(["min", "message_matches"]);
 const TEARDOWN_FIELDS = new Set(["reset_branch"]);
+const ACCEPTANCE_FIELDS = new Set([
+  "output_contains",
+  "output_not_contains",
+  "tool_calls_include_any",
+  "tool_calls_include_all",
+  "tool_calls_argument_matches",
+]);
+const TOOL_CALL_MATCHER_FIELDS = new Set(["tools", "pattern"]);
 
-const SKILL_RE = /^rdc:[a-z][a-z0-9-]*$/;
+const SKILL_RE = /^(rdc:)?[a-z][a-z0-9-]*$/;
 
 function isPlainObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -92,12 +100,12 @@ function validateFixture(fx, errors, warnings) {
   // prompt
   if (typeof fx.prompt !== "string" || fx.prompt.trim().length === 0) {
     err(errors, "fixture.prompt", "missing", "fixture.prompt must be a non-empty string");
-  } else if (!fx.prompt.startsWith("rdc:")) {
+  } else if (!SKILL_RE.test(fx.prompt.split(/\s+/, 1)[0] || "")) {
     err(
       errors,
       "fixture.prompt",
-      "prompt-not-rdc",
-      `fixture.prompt must start with "rdc:" (got "${fx.prompt.slice(0, 20)}...")`,
+      "prompt-not-skill",
+      `fixture.prompt must start with a valid skill name (got "${fx.prompt.slice(0, 20)}...")`,
     );
   }
 
@@ -372,6 +380,78 @@ function validateTeardown(t, errors, warnings) {
   }
 }
 
+function validateStringArray(value, path, errors) {
+  if (!Array.isArray(value)) {
+    err(errors, path, "type", `${path} must be an array`);
+    return;
+  }
+  value.forEach((s, i) => {
+    if (typeof s !== "string" || s.length === 0) {
+      err(errors, `${path}[${i}]`, "type", "entry must be a non-empty string");
+    }
+  });
+}
+
+function validateAcceptance(a, errors, warnings) {
+  if (!isPlainObject(a)) {
+    err(errors, "acceptance", "type", "acceptance must be an object");
+    return;
+  }
+
+  if (a.output_contains !== undefined) {
+    validateStringArray(a.output_contains, "acceptance.output_contains", errors);
+  }
+  if (a.output_not_contains !== undefined) {
+    validateStringArray(a.output_not_contains, "acceptance.output_not_contains", errors);
+  }
+  if (a.tool_calls_include_any !== undefined) {
+    validateStringArray(a.tool_calls_include_any, "acceptance.tool_calls_include_any", errors);
+  }
+  if (a.tool_calls_include_all !== undefined) {
+    validateStringArray(a.tool_calls_include_all, "acceptance.tool_calls_include_all", errors);
+  }
+
+  if (a.tool_calls_argument_matches !== undefined) {
+    if (!Array.isArray(a.tool_calls_argument_matches)) {
+      err(
+        errors,
+        "acceptance.tool_calls_argument_matches",
+        "type",
+        "tool_calls_argument_matches must be an array",
+      );
+    } else {
+      a.tool_calls_argument_matches.forEach((matcher, i) => {
+        const p = `acceptance.tool_calls_argument_matches[${i}]`;
+        if (!isPlainObject(matcher)) {
+          err(errors, p, "type", "matcher must be an object");
+          return;
+        }
+        validateStringArray(matcher.tools, `${p}.tools`, errors);
+        if (typeof matcher.pattern !== "string" || matcher.pattern.length === 0) {
+          err(errors, `${p}.pattern`, "type", "pattern must be a non-empty regex string");
+        } else {
+          try {
+            new RegExp(matcher.pattern);
+          } catch (e) {
+            err(errors, `${p}.pattern`, "invalid-regex", `invalid regex: ${e.message}`);
+          }
+        }
+        for (const k of Object.keys(matcher)) {
+          if (!TOOL_CALL_MATCHER_FIELDS.has(k)) {
+            warn(warnings, `${p}.${k}`, "unknown-field", `unknown matcher field "${k}"`);
+          }
+        }
+      });
+    }
+  }
+
+  for (const k of Object.keys(a)) {
+    if (!ACCEPTANCE_FIELDS.has(k)) {
+      warn(warnings, `acceptance.${k}`, "unknown-field", `unknown acceptance field "${k}"`);
+    }
+  }
+}
+
 export function validateManifest(raw) {
   const errors = [];
   const warnings = [];
@@ -405,7 +485,7 @@ export function validateManifest(raw) {
       errors,
       "skill",
       "skill-invalid",
-      `skill must match /^rdc:[a-z][a-z0-9-]*$/ (got ${JSON.stringify(raw.skill)})`,
+      `skill must be a slash skill like "rdc:build" or bare skill like "lifeai-brochure-author" (got ${JSON.stringify(raw.skill)})`,
     );
   }
 
@@ -428,6 +508,10 @@ export function validateManifest(raw) {
     err(errors, "assertions", "missing", "assertions is required");
   } else {
     validateAssertions(raw.assertions, errors, warnings);
+  }
+
+  if (raw.acceptance !== undefined) {
+    validateAcceptance(raw.acceptance, errors, warnings);
   }
 
   // teardown (optional)
@@ -545,6 +629,17 @@ if (__isMain) {
       expectStr: "error code=rdc-test-not-set",
     },
     {
+      n: 4.5,
+      desc: "valid bare installed skill",
+      input: {
+        ...validMinimal,
+        skill: "lifeai-brochure-author",
+        fixture: { ...validMinimal.fixture, prompt: "lifeai-brochure-author review fixture" },
+      },
+      expect: (r) => r.ok && r.errors.length === 0,
+      expectStr: "ok=true, 0 errors",
+    },
+    {
       n: 5,
       desc: "invalid regex in commits_made.message_matches",
       input: {
@@ -590,6 +685,45 @@ if (__isMain) {
       },
       expect: (r) => !r.ok && r.errors.some((e) => e.code === "path-not-relative"),
       expectStr: "error code=path-not-relative",
+    },
+    {
+      n: 9,
+      desc: "valid acceptance tool matcher",
+      input: {
+        ...validMinimal,
+        acceptance: {
+          output_contains: ["PASS"],
+          output_not_contains: ["fabricated"],
+          tool_calls_include_any: ["Grep", "Glob"],
+          tool_calls_argument_matches: [{ tools: ["Grep"], pattern: "global-corpus|web-search" }],
+        },
+      },
+      expect: (r) => r.ok && r.errors.length === 0,
+      expectStr: "ok=true, 0 errors",
+    },
+    {
+      n: 10,
+      desc: "invalid acceptance matcher regex",
+      input: {
+        ...validMinimal,
+        acceptance: {
+          tool_calls_argument_matches: [{ tools: ["Grep"], pattern: "[unclosed" }],
+        },
+      },
+      expect: (r) => !r.ok && r.errors.some((e) => e.path.endsWith(".pattern") && e.code === "invalid-regex"),
+      expectStr: "error code=invalid-regex",
+    },
+    {
+      n: 11,
+      desc: "unknown acceptance field",
+      input: {
+        ...validMinimal,
+        acceptance: { made_up: true },
+      },
+      expect: (r) =>
+        r.ok &&
+        r.warnings.some((w) => w.path === "acceptance.made_up" && w.code === "unknown-field"),
+      expectStr: "ok=true, warning code=unknown-field",
     },
   ];
 
