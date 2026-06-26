@@ -125,6 +125,36 @@ function textResult(text) {
   return { content: [{ type: 'text', text }] };
 }
 
+function directMcpUsage(message) {
+  return {
+    jsonrpc: '2.0',
+    error: {
+      code: -32000,
+      message,
+      help: {
+        endpoint: '/mcp',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+        },
+        tools: ['rdc_skill_list', 'rdc_skill_search', 'rdc_skill_get'],
+        response: 'Streamable HTTP returns Server-Sent Events. Parse the JSON-RPC envelope from each data: line; tool text is at result.content[0].text.',
+        curl: `curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \\
+  -H 'Content-Type: application/json' \\
+  -H 'Accept: application/json, text/event-stream' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rdc_skill_list","arguments":{}}}'`,
+      },
+    },
+    id: null,
+  };
+}
+
+function acceptsStreamableHttp(req) {
+  const accept = String(req.headers.accept || '');
+  return accept.includes('application/json') && accept.includes('text/event-stream');
+}
+
 function buildMcpServer() {
   const srv = new McpServer({ name: 'rdc-skills', version: pkgVersion() });
 
@@ -225,6 +255,10 @@ function startHttp() {
   // POST /mcp — stateless StreamableHTTP transport, no Authorization required.
   app.post('/mcp', async (req, res) => {
     try {
+      if (!acceptsStreamableHttp(req)) {
+        res.status(406).json(directMcpUsage('MCP Streamable HTTP requires Accept: application/json, text/event-stream'));
+        return;
+      }
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
       const srv = buildMcpServer();
       await srv.connect(transport);
@@ -246,11 +280,7 @@ function startHttp() {
   });
 
   app.get('/mcp', (_req, res) => {
-    res.status(405).json({
-      jsonrpc: '2.0',
-      error: { code: -32000, message: 'Use POST for MCP requests' },
-      id: null,
-    });
+    res.status(405).json(directMcpUsage('Use POST for MCP requests.'));
   });
 
   app.listen(PORT, () => {

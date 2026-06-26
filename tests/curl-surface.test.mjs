@@ -67,6 +67,16 @@ function curl(args, label) {
   return { status: res.status, stdout, stderr };
 }
 
+function curlWithStatus(args, label) {
+  const res = curl([...args, '-w', '\n%{http_code}'], label);
+  const marker = res.stdout.match(/\n(\d{3})$/);
+  return {
+    ...res,
+    httpStatus: marker ? Number(marker[1]) : null,
+    body: marker ? res.stdout.slice(0, marker.index) : res.stdout,
+  };
+}
+
 function postMcp(payload, label) {
   return curl([
     '-s',
@@ -191,7 +201,19 @@ async function main() {
     check('rdc_skill_get returns tool text path', getText.length > 500, `length ${getText.length}`);
     check('rdc_skill_get accepts visible rdc:build alias', /rdc:build/i.test(getText));
 
-    const badAccept = curl([
+    const getMcp = curlWithStatus([
+      '-s',
+      `${TARGET}/mcp`,
+    ], 'get_mcp_help');
+    check('GET /mcp curl exits 0', getMcp.status === 0, getMcp.stderr);
+    check('GET /mcp returns 405', getMcp.httpStatus === 405, `status ${getMcp.httpStatus}`);
+    const getHelp = JSON.parse(getMcp.body);
+    check('GET /mcp explains POST method', getHelp.error?.help?.method === 'POST');
+    check('GET /mcp includes Streamable HTTP Accept header', getHelp.error?.help?.headers?.Accept === 'application/json, text/event-stream');
+    check('GET /mcp points to discovery tools', getHelp.error?.help?.tools?.includes('rdc_skill_list'));
+    check('GET /mcp explains result.content text path', /result\.content\[0\]\.text/.test(getHelp.error?.help?.response || ''));
+
+    const badAccept = curlWithStatus([
       '-s',
       '-X', 'POST',
       `${TARGET}/mcp`,
@@ -199,7 +221,10 @@ async function main() {
       '-d', JSON.stringify({ jsonrpc: '2.0', id: 5, method: 'tools/list' }),
     ], 'missing_accept_header');
     check('missing Accept header still returns inspectable response', badAccept.status === 0, badAccept.stderr);
-    check('missing Accept header mentions Accept or returns JSON/SSE', /Accept|data:|jsonrpc|result/i.test(badAccept.stdout));
+    check('missing Accept header returns 406', badAccept.httpStatus === 406, `status ${badAccept.httpStatus}`);
+    const badAcceptHelp = JSON.parse(badAccept.body);
+    check('missing Accept header names required header', badAcceptHelp.error?.help?.headers?.Accept === 'application/json, text/event-stream');
+    check('missing Accept header includes curl example', /curl -s -X POST/.test(badAcceptHelp.error?.help?.curl || ''));
   } finally {
     if (proc) proc.kill();
   }
