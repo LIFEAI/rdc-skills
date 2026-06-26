@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,5 +42,16 @@ assert.match(docs.skillHelp, /manifest-driven/i, 'skill help should be manifest-
 assert.match(docs.commandHelp, /manifest-driven/i, 'command help should be manifest-driven');
 assert.doesNotMatch(docs.commandHelp, /Print the full usage menu below verbatim/, 'command help must not use stale static menu wording');
 assert.doesNotMatch(docs.commandHelp, /get\/<service>/, 'command help must use current clauth /v/<service> wording');
+
+const skillDirs = readdirSync(join(root, 'skills'))
+  .filter((name) => {
+    const dir = join(root, 'skills', name);
+    return statSync(dir).isDirectory() && existsSync(join(dir, 'SKILL.md'));
+  })
+  .sort();
+const readmeSkillDirs = [...docs.readme.matchAll(/^\s{2}([A-Za-z0-9_-]+)\/SKILL\.md/gm)]
+  .map((match) => match[1])
+  .sort();
+assert.deepEqual(readmeSkillDirs, skillDirs, 'README File Structure must list every skill directory exactly once');
 
 console.log('help surface tests — PASS');
