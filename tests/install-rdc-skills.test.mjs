@@ -20,10 +20,20 @@ assert.equal(toml.status, 0, `${toml.stdout}\n${toml.stderr}`);
 assert.match(toml.stdout, /PASS/);
 
 const source = readFileSync(script, 'utf8');
+const plugin = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8'));
+const skillCount = Array.isArray(plugin.skills_meta)
+  ? plugin.skills_meta.length
+  : Object.keys(plugin.skills_meta || {}).length;
+assert.equal(skillCount, 29, 'test fixture should expose all 29 MCP skills from plugin skills_meta');
 assert.match(
   source,
   /Available MCP skills.*\/rdc:\* command shorthands/,
   'installer should distinguish the full MCP skill catalog from slash-command shorthands',
+);
+assert.match(
+  source,
+  /Object\.keys\(plugin\.skills_meta\)\.length/,
+  'installer should count object-shaped skills_meta manifests',
 );
 assert.match(
   source,

@@ -944,7 +944,9 @@ function listCommands() {
   if (!fs.existsSync(cmdsDir)) return;
   const files = fs.readdirSync(cmdsDir).filter(f => f.endsWith('.md')).sort();
   const plugin = readJson(path.join(repoRoot, '.claude-plugin', 'plugin.json'), {});
-  const skillCount = Array.isArray(plugin.skills_meta) ? plugin.skills_meta.length : null;
+  const skillCount = Array.isArray(plugin.skills_meta)
+    ? plugin.skills_meta.length
+    : (plugin.skills_meta && typeof plugin.skills_meta === 'object' ? Object.keys(plugin.skills_meta).length : null);
   console.log('');
   if (skillCount !== null) {
     console.log(`  \x1b[32mAvailable MCP skills (${skillCount}) and /rdc:* command shorthands (${files.length}):\x1b[0m`);
