@@ -170,6 +170,12 @@ async function main() {
     const listed = JSON.parse(resultText(latestEnvelope(list.stdout)));
     check('rdc_skill_list exposes 29 skills', listed.count === 29, `count ${listed.count}`);
     check('rdc_skill_list includes visible slash name', listed.skills.some((s) => s.slash === 'rdc:build'));
+    const buildRow = listed.skills.find((s) => s.name === 'build');
+    check('rdc_skill_list exposes aliases for slash callers', buildRow?.aliases?.includes('/rdc:build'));
+    check('rdc_skill_list exposes supported variants', JSON.stringify(buildRow?.variants) === JSON.stringify(['cli', 'cloud']));
+    check('rdc_skill_list exposes output contract metadata', typeof buildRow?.output_contract === 'string');
+    check('rdc_skill_list exposes CodeFlow requirement metadata', buildRow?.codeflow_required === true);
+    check('rdc_skill_list exposes side-effect metadata', Array.isArray(buildRow?.produces));
 
     const search = postMcp({
       jsonrpc: '2.0',
@@ -186,6 +192,10 @@ async function main() {
       'natural language search finds channel formatter',
       searchBody.results?.some((s) => s.name === 'channel-formatter' || s.slash === 'rdc:channel-formatter'),
     );
+    const formatterHit = searchBody.results?.find((s) => s.name === 'channel-formatter');
+    check('rdc_skill_search exposes usage metadata', /rdc:channel-formatter/.test(formatterHit?.usage || ''));
+    check('rdc_skill_search exposes category metadata', formatterHit?.category === 'tooling');
+    check('rdc_skill_search exposes variant metadata', formatterHit?.variants?.includes('cloud'));
 
     const get = postMcp({
       jsonrpc: '2.0',

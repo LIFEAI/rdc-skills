@@ -89,6 +89,21 @@ function unitTests() {
   check('unit: catalog non-empty', cat.length >= 20, `got ${cat.length}`);
   check('unit: every entry has name+slash+category+summary field',
     cat.every((s) => s.name && s.slash && s.category && 'summary' in s));
+  check('unit: every entry exposes caller metadata fields',
+    cat.every((s) => Array.isArray(s.aliases)
+      && Array.isArray(s.produces)
+      && Array.isArray(s.follows)
+      && Array.isArray(s.leads_to)
+      && Array.isArray(s.variants)
+      && 'default_model' in s
+      && 'sandbox_aware' in s
+      && 'output_contract' in s
+      && 'enabled_default' in s
+      && 'codeflow_required' in s));
+  check('unit: every entry exposes cli/cloud variants',
+    cat.every((s) => JSON.stringify(s.variants) === JSON.stringify(['cli', 'cloud'])));
+  check('unit: every rdc slash entry includes leading slash alias',
+    cat.every((s) => !s.slash.startsWith('rdc:') || s.aliases.includes(`/${s.slash}`)));
   check('unit: every slash is explicit caller-facing shape',
     cat.every((s) => /^rdc:/.test(s.slash) || s.slash === s.name));
   check('unit: no synthesized duplicate rdc prefixes',
@@ -190,6 +205,8 @@ async function sweep(url, label, { compareSource }) {
   const se = await mcp(url, { jsonrpc: '2.0', id: 21, method: 'tools/call', params: { name: 'rdc_skill_search', arguments: { query: 'deploy' } } });
   let sr; try { sr = JSON.parse(callText(se.json)); } catch { sr = { results: [] }; }
   check(`${label}: search returns ranked results`, (sr.results || []).length > 0 && sr.results[0].name);
+  check(`${label}: search result includes caller metadata`,
+    Boolean(sr.results?.[0]?.usage && sr.results?.[0]?.category && Array.isArray(sr.results?.[0]?.variants)));
 
   return names.length;
 }

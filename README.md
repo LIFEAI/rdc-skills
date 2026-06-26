@@ -124,6 +124,12 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_list","arguments":{}}}'
 ```
 
+`rdc_skill_list` returns the full caller-facing catalog for each skill:
+`name`, `slash`, accepted `aliases`, `category`, `summary`, `when_to_use`,
+`usage`, `args`, `requires`, `produces`, `follows`, `leads_to`,
+`default_model`, `sandbox_aware`, `output_contract`, `enabled_default`,
+`codeflow_required`, and supported `variants` (`cli`, `cloud`).
+
 Search by natural-language intent:
 
 ```bash
