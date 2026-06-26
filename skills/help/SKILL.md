@@ -1,12 +1,12 @@
 ---
 name: rdc:help
-description: "Usage `rdc:help` — Show all rdc:* skills with usage, requirements, and codeflow status. Reads `.claude-plugin/plugin.json` skills_meta (single source of truth). Call when unsure which skill to use or what args it takes."
+description: "Usage `rdc:help` — Show all MCP skills with usage, requirements, slash forms, and codeflow status. Reads `.claude-plugin/plugin.json` skills_meta (single source of truth). Call when unsure which skill to use or what args it takes."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 
-# rdc:help — Command Reference (manifest-driven)
+# rdc:help — Skill Reference (manifest-driven)
 
 > **⚠️ HARD OUTPUT RULE:** Read the plugin manifest, render the table, exit.
 > No preamble. No follow-up question. No summary.

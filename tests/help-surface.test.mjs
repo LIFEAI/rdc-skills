@@ -31,6 +31,13 @@ for (const [name, text] of Object.entries(docs)) {
   assert.doesNotMatch(text, /https:\/\/rdc-skills\.dev\.regendevcorp\.com\/mcp/, `${name} must not point callers at dev MCP`);
 }
 
+assert.match(docs.readme, /29 MCP skills organized into 8 manifest categories/, 'README should use manifest category count');
+assert.match(docs.readme, /Eighteen[\s\S]*\/rdc:\*` command shorthands/i, 'README should distinguish slash-command shorthands from full MCP skills');
+assert.match(docs.readme, /Use `rdc_skill_list` for the authoritative live catalog/, 'README should point callers to live MCP catalog');
+assert.doesNotMatch(docs.readme, /All user-invocable skills become available as slash commands/, 'README must not imply all MCP skills are slash commands');
+assert.doesNotMatch(docs.readme, /29 skills organized into 6 categories/, 'README must not carry stale category count');
+assert.match(docs.commandHelp, /menu of all MCP skills/, 'command help should refer to MCP skill catalog');
+assert.match(docs.skillHelp, /Show all MCP skills/, 'skill help should refer to MCP skill catalog');
 assert.match(docs.skillHelp, /manifest-driven/i, 'skill help should be manifest-driven');
 assert.match(docs.commandHelp, /manifest-driven/i, 'command help should be manifest-driven');
 assert.doesNotMatch(docs.commandHelp, /Print the full usage menu below verbatim/, 'command help must not use stale static menu wording');

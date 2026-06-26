@@ -1,15 +1,15 @@
 ---
 name: rdc:help
 description: >-
-  Usage `rdc:help` or `rdc` — manifest-driven menu of all rdc:* skills with
+  Usage `rdc:help` or `rdc` — manifest-driven menu of all MCP skills with
   argument syntax, requirements, decision hints, and direct MCP/curl access.
 ---
 
 > **Output contract:** Checklist/table output only. No raw MCP/JSON/log dumps.
 
-# rdc:help — Manifest-Driven Command Reference
+# rdc:help — Manifest-Driven Skill Reference
 
-Print a concise command reference from the plugin manifest, then stop. Do not
+Print a concise skill reference from the plugin manifest, then stop. Do not
 ask which command to run unless the user explicitly asks for a recommendation.
 
 ## Source Of Truth

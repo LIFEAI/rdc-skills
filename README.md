@@ -13,7 +13,10 @@ From any Claude Code session:
 /plugin install rdc-skills
 ```
 
-All user-invocable skills become available as slash commands. Agent playbooks in `guides/agents/` are dispatched internally by `rdc:build` and are not user-invocable.
+The full catalog is available through the MCP as 29 skills. Eighteen common
+workflows also ship as `/rdc:*` command shorthands. Agent playbooks in
+`guides/agents/` are dispatched internally by `rdc:build` and are not
+user-invocable.
 
 ### Option B — Directory plugin (LIFEAI dev machines)
 
@@ -162,39 +165,47 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-29 skills organized into 6 categories:
+29 MCP skills organized into 8 manifest categories. Eighteen of these also have
+`/rdc:*` command shorthands for Claude Code/plugin callers.
 
-### Orchestration Skills (workflow drivers)
-- rdc:build, rdc:plan, rdc:preplan, rdc:review, rdc:overnight, rdc:fixit, rdc:status, rdc:report
+Use `rdc_skill_list` for the authoritative live catalog, including names,
+visible slash forms, requirements, triggers, and usage.
+
+### Planning
+- rdc:preplan, rdc:plan, rdc:handoff
 
 ### Agent Guides (dispatched by rdc:build, not user-invocable)
 Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 - frontend, backend, data, design, infrastructure, content, cs2, viz, setup, verify
 
-### Bridge Skills (Planning → CLI)
-- rdc:handoff, rdc:prototype, rdc:workitems
+### Build
+- rdc:build, rdc:design, rdc:prototype, rdc:overnight, rdc:review
 
-### Utility Skills
-- rdc:collab
-- rdc:co-develop — peer-aware Claude/Codex co-development over clauth
-- rdc:fs-mcp — File System MCP bridge guidance for live repo reads/writes
-- rdc:terminal-config — Windows Terminal and hidden-launch policy audit
-- rdc:watch — session-log viewer initialization for attended sessions
+### Deploy
+- rdc:deploy
+
+### Release
+- rdc:release
+
+### Dev Loop
+- rdc:fixit, rdc:collab, rdc:co-develop
+
+### Reporting
+- rdc:help, rdc:housekeeping, rdc:report, rdc:status, rdc:watch
+
+### Tooling
 - rdc:channel-formatter — channel-native formatting and content repurposing for LinkedIn, Twitter/X, Slack/Teams, email, decks, Word/PDF structure, web copy, and content packs
-
-### Design Skills
-- rdc:design — RDC/Studio design, tokens, palettes, themes, and Rampa CLI-assisted color systems
-
-### Document and Brochure Skills
-- rdc:convert — Office/Markdown conversion via build-corpus
 - rdc:brochure — HTML/folder/zip/URL/Markdown to print-quality PDF
-- rdc:brochurify — six-wave Brochurify orchestration contract
-- lifeai-brochure-author — brochure JSX authoring contract for @lifeai/brochure-kit
-- rdc:extract-verifier-rules — verifier-rule candidates from enhancement logs
-- rpms-filemap — canonical RPMS file-map lookup
+- rdc:brochurify — Brochurify orchestration for polished PDF jobs
+- lifeai-brochure-author — JSX authoring contract for Brochurify inputs
+- rdc:convert — Office/Markdown conversion via build-corpus
+- rdc:fs-mcp — File System MCP bridge guidance for live repo reads/writes
+- rdc:extract-verifier-rules — verifier-rule extraction from enhancement logs
+- rdc:rpms-filemap — generated RPMS file-map guidance
+- rdc:workitems — manual work item CRUD
 
-### Reference
-- rdc:help, rdc:self-test
+### Infra
+- rdc:self-test, rdc:terminal-config
 
 ## Channel Formatting and Content Packs
 
