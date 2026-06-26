@@ -10,5 +10,20 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Studio",
+      "tokens",
+      "Rampa",
+      "RDC_TEST",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "Supabase write",
+      "git push",
+      "package publish",
+      "deploy"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

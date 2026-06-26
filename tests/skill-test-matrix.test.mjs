@@ -56,4 +56,11 @@ for (const entry of valid) {
   }
 }
 
+const shallow = valid
+  .map((entry) => entry.manifest)
+  .filter((manifest) => !manifest.acceptance || Object.keys(manifest.acceptance).length === 0)
+  .map((manifest) => manifest.skill);
+assert.deepEqual(shallow, [], `all skill manifests must include acceptance checks; missing: ${shallow.join(', ')}`);
+assert.match(matrix, /All manifests now include a deeper acceptance block/);
+
 console.log('skill test matrix tests — PASS');

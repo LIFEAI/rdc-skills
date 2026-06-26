@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["RULE #1", "Canonical"]
   },
+  "acceptance": {
+    "output_contains": [
+      "RULE #1",
+      "Canonical",
+      "_context.md",
+      "One Home Per Fact",
+      ".rdc/reports"
+    ],
+    "output_not_contains": [
+      "hand-edit generated",
+      "second home",
+      "raw manifests",
+      "binary commit"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

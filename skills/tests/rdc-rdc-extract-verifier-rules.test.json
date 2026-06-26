@@ -16,5 +16,20 @@
     "exit_code": 0,
     "stdout_contains": ["candidate", "FP"]
   },
+  "acceptance": {
+    "output_contains": [
+      "candidate",
+      "false-positive",
+      "known-good",
+      "recall",
+      "FP"
+    ],
+    "output_not_contains": [
+      "auto-merge",
+      "opened PR",
+      "raw tool logs",
+      "matches known-good"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

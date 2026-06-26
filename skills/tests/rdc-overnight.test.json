@@ -17,5 +17,22 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "overnight.lock",
+      "clauth",
+      "preplan",
+      "plan",
+      "build",
+      "review",
+      "report"
+    ],
+    "output_not_contains": [
+      "credential daemon offline",
+      "git add -A",
+      "raw MCP",
+      "leave overnight.lock"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

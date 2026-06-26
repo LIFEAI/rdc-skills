@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Housekeeping",
+      "PUBLISH.md",
+      "CLAUDE.md",
+      "orphan",
+      ".rdc/reports"
+    ],
+    "output_not_contains": [
+      "auto-remediate",
+      "git push",
+      "raw MCP",
+      "Coolify write"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

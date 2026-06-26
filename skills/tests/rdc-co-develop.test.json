@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "codevelop",
+      "status",
+      "RDC_TEST",
+      "skipped",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "chitchat_",
+      "send a live turn",
+      "raw MCP",
+      "git push"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

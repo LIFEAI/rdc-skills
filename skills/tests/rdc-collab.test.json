@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "session",
+      "chitchat",
+      "SSE",
+      "RDC_TEST",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "chitchat_reply",
+      "git push",
+      "curl exit 28 is failure",
+      "raw MCP"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }
