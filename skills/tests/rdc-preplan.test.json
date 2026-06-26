@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Research",
+      "Best-in-Class",
+      "Comparison",
+      "Unknowns",
+      "Recommendation"
+    ],
+    "output_not_contains": [
+      "create work items",
+      "architectural decision",
+      "write code"
+    ],
+    "tool_calls_include_any": ["WebSearch", "web.search_query", "Grep", "Glob"]
+  },
   "teardown": { "reset_branch": true }
 }

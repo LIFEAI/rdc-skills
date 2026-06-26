@@ -10,5 +10,19 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "docs/source",
+      "prototype",
+      "TSX",
+      "registry",
+      "RDC_TEST"
+    ],
+    "output_not_contains": [
+      "git push",
+      "production deploy",
+      "Supabase insert"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

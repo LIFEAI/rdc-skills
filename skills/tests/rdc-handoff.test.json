@@ -10,5 +10,19 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      ".rdc/plans",
+      "acceptance criterion",
+      "DoD",
+      "work item",
+      "rdc:build"
+    ],
+    "output_not_contains": [
+      "git push",
+      "raw MCP",
+      "[specific acceptance criterion]"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

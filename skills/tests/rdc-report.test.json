@@ -10,5 +10,19 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "REPORT_STATUS",
+      "report_path",
+      "completed_count",
+      "open_count",
+      "Next Session Recommendation"
+    ],
+    "output_not_contains": [
+      "raw MCP",
+      "git push",
+      "unbounded dump"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

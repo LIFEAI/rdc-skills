@@ -4,7 +4,7 @@ Current coverage: 29 manifests for 29 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
-`rdc:channel-formatter` currently has the strongest content acceptance fixture: it asserts source-grounded social-pack output, forbidden-claim absence, and observable corpus or web-search tool routing. `rdc:help` asserts the public MCP/curl caller surface and structured `format:"json"` discovery path. `rdc:self-test` validates the test-tier/evidence language. `rdc:release`, `rdc:deploy`, `rdc:terminal-config`, `rdc:status`, and `rdc:watch` add safety negative checks for publish/deploy/window/read-only behavior. The remaining manifests are basic behavioral smoke tests and should gain deeper acceptance assertions as each skill is touched.
+`rdc:channel-formatter` currently has the strongest content acceptance fixture: it asserts source-grounded social-pack output, forbidden-claim absence, and observable corpus or web-search tool routing. `rdc:help` asserts the public MCP/curl caller surface and structured `format:"json"` discovery path. `rdc:self-test` validates the test-tier/evidence language. Planning/reporting skills (`rdc:preplan`, `rdc:plan`, `rdc:handoff`, `rdc:prototype`, `rdc:review`, `rdc:report`) now assert their required artifacts and safety boundaries. `rdc:release`, `rdc:deploy`, `rdc:terminal-config`, `rdc:status`, and `rdc:watch` add safety negative checks for publish/deploy/window/read-only behavior. The remaining manifests are basic behavioral smoke tests and should gain deeper acceptance assertions as each skill is touched.
 
 | Skill | Manifest | Fixture prompt class | Assertions | Acceptance depth |
 |---|---|---|---|---|
@@ -18,19 +18,19 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:design` | `rdc-design.test.json` | Studio palette audit | `exit_code`, `stdout_contains` | Basic manifest |
 | `rdc:fixit` | `rdc-fixit.test.json` | Tiny sandbox typo fix | `commits_made`, `exit_code`, `stdout_contains` | Basic manifest |
 | `rdc:fs-mcp` | `rdc-fs-mcp.test.json` | File-system bridge read fixture | `commits_made`, `exit_code`, `stdout_contains` | Basic manifest |
-| `rdc:handoff` | `rdc-handoff.test.json` | Stub work handoff | `exit_code`, `stdout_contains` | Basic manifest |
+| `rdc:handoff` | `rdc-handoff.test.json` | Stub work handoff | `exit_code`, `stdout_contains` | Plan path, DoD, work-item handoff, and placeholder negative checks |
 | `rdc:help` | `rdc-help.test.json` | Help menu rendering | `commits_made`, `exit_code`, `stdout_contains` | MCP/curl output, structured JSON fetch, dev-endpoint negative checks |
 | `rdc:housekeeping` | `rdc-housekeeping.test.json` | Read-only housekeeping audit | `commits_made`, `exit_code`, `stdout_contains` | Basic manifest |
 | `lifeai-brochure-author` | `rdc-lifeai-brochure-author.test.json` | JSX compliance review fixture | `exit_code`, `stdout_contains` | Basic manifest |
 | `rdc:overnight` | `rdc-overnight.test.json` | Label-based overnight queue drain | `exit_code`, `stdout_contains` | Basic manifest |
-| `rdc:plan` | `rdc-plan.test.json` | Health-endpoint planning prompt | `exit_code`, `stdout_contains` | Basic manifest |
-| `rdc:preplan` | `rdc-preplan.test.json` | Rate-limiter research prompt | `commits_made`, `exit_code`, `stdout_contains` | Basic manifest |
-| `rdc:prototype` | `rdc-prototype.test.json` | Tiny component prototype prompt | `exit_code`, `stdout_contains` | Basic manifest |
+| `rdc:plan` | `rdc-plan.test.json` | Health-endpoint planning prompt | `exit_code`, `stdout_contains` | Design-decision, decomposition-matrix, work-package, and coarse-check negative checks |
+| `rdc:preplan` | `rdc-preplan.test.json` | Rate-limiter research prompt | `commits_made`, `exit_code`, `stdout_contains` | Research artifact, comparison, unknowns, recommendation, and research-tool routing checks |
+| `rdc:prototype` | `rdc-prototype.test.json` | Tiny component prototype prompt | `exit_code`, `stdout_contains` | Local TSX prototype artifact, registry, test-mode, and production-write negative checks |
 | `rdc:brochurify` | `rdc-rdc-brochurify.test.json` | Read-only markdown Brochurify fixture | `exit_code`, `stdout_contains` | Sandbox output and no-follow-up negative checks |
 | `rdc:extract-verifier-rules` | `rdc-rdc-extract-verifier-rules.test.json` | Enhancement-log verifier fixture | `exit_code`, `stdout_contains` | Basic manifest |
 | `rdc:release` | `rdc-release.test.json` | Dry-run package release | `commits_made`, `exit_code`, `stdout_contains` | Dry-run release checklist and force/bypass negative checks |
-| `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Basic manifest |
-| `rdc:review` | `rdc-review.test.json` | Unattended review gate | `exit_code`, `stdout_contains` | Basic manifest |
+| `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Report status block, counts, next recommendation, and dump/push negative checks |
+| `rdc:review` | `rdc-review.test.json` | Unattended review gate | `exit_code`, `stdout_contains` | Code-review, verify, fresh-evidence, tsc, and forbidden-build negative checks |
 | `rdc:rpms-filemap` | `rdc-rpms-filemap.test.json` | Canonical location lookup | `commits_made`, `exit_code`, `stdout_contains` | Basic manifest |
 | `rdc:self-test` | `rdc-self-test.test.json` | Strict self-test prompt | `commits_made`, `exit_code`, `stdout_contains` | Tier/evidence output checks and no-relaxed-linter negative check |
 | `rdc:status` | `rdc-status.test.json` | Read-only status snapshot | `commits_made`, `exit_code`, `stdout_contains` | Read-only status output and raw-MCP/write negative checks |

@@ -10,5 +10,19 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "code-review",
+      "verify",
+      "fresh evidence",
+      "tsc",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "pnpm build",
+      "raw MCP",
+      "CLEAN without"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

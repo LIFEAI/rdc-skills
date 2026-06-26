@@ -10,5 +10,19 @@
     "exit_code": 0,
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Design Decision",
+      "Checklist Decomposition Matrix",
+      "Work package",
+      "Verification artifact",
+      "rdc:build"
+    ],
+    "output_not_contains": [
+      "verify UI",
+      "integration complete",
+      "raw MCP"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }
