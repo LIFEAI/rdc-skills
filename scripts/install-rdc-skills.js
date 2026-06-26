@@ -943,8 +943,15 @@ function listCommands() {
   const cmdsDir = path.join(repoRoot, 'commands');
   if (!fs.existsSync(cmdsDir)) return;
   const files = fs.readdirSync(cmdsDir).filter(f => f.endsWith('.md')).sort();
+  const plugin = readJson(path.join(repoRoot, '.claude-plugin', 'plugin.json'), {});
+  const skillCount = Array.isArray(plugin.skills_meta) ? plugin.skills_meta.length : null;
   console.log('');
-  console.log(`  \x1b[32mAvailable /rdc:* commands (${files.length}):\x1b[0m`);
+  if (skillCount !== null) {
+    console.log(`  \x1b[32mAvailable MCP skills (${skillCount}) and /rdc:* command shorthands (${files.length}):\x1b[0m`);
+    console.log('  Use MCP tools rdc_skill_list, rdc_skill_search, and rdc_skill_get for the full skill catalog.');
+  } else {
+    console.log(`  \x1b[32mAvailable /rdc:* command shorthands (${files.length}):\x1b[0m`);
+  }
   console.log('');
   const COL = 18;
   for (const f of files) {
@@ -1190,7 +1197,7 @@ async function main() {
   const zipPath = buildZip(version);
   if (zipPath) {
     ok(`[5/6] Plugin zip  — ${zipPath}`);
-    info('       claude.ai : upload this zip when prompted to add a plugin');
+    info('       claude.ai : optional plugin-upload artifact; MCP callers normally use the connector URL below');
   } else {
     warn('[5/6] Plugin zip  — build failed (zip/powershell missing?)');
   }
@@ -1259,7 +1266,7 @@ async function main() {
   console.log('  \x1b[33mNext steps:\x1b[0m');
   console.log('  CLI    : restart Claude Code — /rdc:status to verify');
   console.log('  Cowork : restart Claude Desktop — /rdc:status in a new Cowork session');
-  console.log('  claude.ai : no plugin install needed — use FS MCP to read commands on demand');
+  console.log('  claude.ai : no plugin upload needed for MCP — use the connector URL above');
   console.log('            dist/rdc-skills-plugin-v' + version + '.zip available if needed');
   console.log('');
   console.log(`  Profile: ${installProfile}`);
