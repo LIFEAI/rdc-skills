@@ -234,13 +234,23 @@ function codexToolCalls(stdout) {
   const calls = [];
   for (const event of parseJsonLines(stdout)) {
     const type = event.type || event.event || event.kind || '';
-    const name = findToolName(event) || findToolName(event.call) || findToolName(event.item);
+    const item = event.item || {};
+    let name = findToolName(event) || findToolName(event.call) || findToolName(item);
+    let input = event.input || event.arguments || event.params || event.call?.arguments || null;
+    if (item.type === 'command_execution') {
+      const command = String(item.command || '');
+      if (/\brg(\.exe)?\b|ripgrep/i.test(command)) name = 'Grep';
+      else if (/Get-ChildItem|\bdir\b|\bls\b/i.test(command)) name = 'Glob';
+      else if (/Get-Content|\bcat\b|\btype\b/i.test(command)) name = 'Read';
+      else name = 'Shell';
+      input = { command };
+    }
     if (/tool|function/i.test(type) || name) {
       calls.push({
         engine: 'codex',
         id: event.id || event.call_id || event.item_id || null,
         name,
-        input: event.input || event.arguments || event.params || event.call?.arguments || null,
+        input,
         raw_type: type || null,
       });
     }
@@ -472,7 +482,19 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+export { assistantText, codexToolCalls };
+
+const isMain = (() => {
+  try {
+    return import.meta.url === new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
