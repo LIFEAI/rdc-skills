@@ -1,7 +1,7 @@
 ---
 name: rdc:self-test
 description: >-
-  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix] [--tier2] [--parallel <n>] [--quick]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint; Tier 2 behavioral runs via headless claude in isolated worktrees + Supabase branch. Run before every release.
+  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix] [--tier2] [--parallel <n>] [--quick]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint; Tier 2 behavioral runs via headless Claude or Codex in isolated worktrees + Supabase branch. Run before every release.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -22,7 +22,7 @@ description: >-
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live, see `.rdc/plans/skill-self-test-tier-2.md` |
+| Tier 2 | Behavioral — headless Claude or Codex runs each skill in sandbox, asserts artifacts | ✅ live — 29 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Procedure (Tier 1)
@@ -67,10 +67,11 @@ description: >-
 
 ## Procedure (Tier 2)
 
-Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
+Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Build acceptance additionally records all observable engine events/tool calls, assistant output, stdout/stderr artifacts, lessons learned, and next build optimizations. It supports `--engine claude` and `--engine codex`; both engines use the same manifests, worktree sandbox, JSONL evidence, and Markdown report. Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
 
 1. **Prerequisites:**
-   - `claude` CLI on PATH (headless mode: `claude --print`)
+   - `claude` CLI on PATH for Claude runs (headless mode: `claude --print`)
+   - `codex` CLI on PATH for Codex runs (headless mode: `codex exec --json`)
    - clauth daemon unlocked (`curl -s http://127.0.0.1:52437/ping`)
    - Supabase MCP reachable (runner creates a throwaway test branch)
    - Clean git tree in `rdc-skills` (worktrees are added under `.rdc/sandbox/<run-id>/`)
@@ -81,17 +82,21 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
    node scripts/self-test.mjs --tier2 --skill rdc:build  # single skill
    node scripts/self-test.mjs --tier2 --parallel 3       # up to 3 skills in parallel
    node scripts/self-test.mjs --tier2 --quick            # skip long-running assertions
+   node scripts/acceptance.mjs --skill rdc:build         # build acceptance with JSONL/tool-call evidence
+   node scripts/acceptance.mjs --engine codex --skill rdc:build
    ```
 
 3. **What it does:**
    - Runs Tier 1 as a pre-gate (fails fast if static lint fails)
    - Creates one Supabase test branch for the run
-   - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes `claude --print` with the skill prompt, waits for exit
+   - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes the selected headless engine with the skill prompt, waits for exit
    - Asserts per the skill's manifest: exit code, files touched, commits made, stdout patterns
+   - Build acceptance writes JSONL evidence and extracts tool calls from the engine stream
    - Cleans up worktrees + deletes the Supabase branch at the end (even on failure)
 
 4. **Reports:**
    - `.rdc/reports/self-test-tier2-<iso>.json` — full per-skill result, findings, timings
+   - `.rdc/reports/acceptance-*.jsonl` and `.rdc/reports/acceptance-*.md` — build acceptance evidence, transcript artifact pointers, lessons learned, and next build optimizations
    - Exit codes: `0` pass, `1` fail (one or more skills failed assertions), `2` runner error (couldn't set up sandbox / branch)
 
 5. **Adding a new manifest:**
@@ -104,4 +109,5 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
 - Run Tier 1 **before every `rdc:release rdc-skills`** — it catches the backtick-drift class of bugs that break the skill menu silently.
 - Use `--strict` in CI. Warnings matter in the release path.
 - Do NOT skip findings by relaxing the linter. Fix the skill.
-- Tier 2 is in planning — see epic `462b3e0a-37dd-4c9d-bed7-a1ad260b8bc1`.
+- Run Tier 2 before tagging a release. Gate the tag if any manifested skill fails.
+- Headless sessions must not steal focus. The runner uses hidden process launch options where supported; if windows flash or focus is grabbed, inspect `scripts/lib/runner.mjs` before changing skill behavior.

@@ -2,7 +2,7 @@
 
 Each RDC skill directory has a colocated test manifest at `skills/tests/rdc-<name>.test.json`.
 There are currently 29 manifests for 29 skill directories. These drive the Tier 2
-behavioral runner and the build acceptance harness.
+behavioral runner and the build acceptance harness for both Claude and Codex.
 
 See `MATRIX.md` for the current skill-by-skill coverage table.
 
@@ -32,8 +32,9 @@ is the source of truth. Top-level fields:
 1. Start from an existing manifest in this dir
 2. Set `fixture.env.RDC_TEST = "1"` (required — sandbox contract)
 3. Write assertions tight enough to catch real regressions but not flaky
-4. Run `node scripts/acceptance.mjs --skill rdc:<name>` to capture the transcript, tool calls, and lessons learned
-5. Commit manifest + any skill changes together
+4. Run `node scripts/acceptance.mjs --skill rdc:<name>` to capture the Claude transcript, tool calls, and lessons learned
+5. When Codex behavior matters, also run `node scripts/acceptance.mjs --engine codex --skill rdc:<name>` against the same manifest
+6. Commit manifest + any skill changes together
 
 For content-producing skills, include both positive and negative output checks.
 Use `stdout_contains` for expected channel-native structure and source facts;

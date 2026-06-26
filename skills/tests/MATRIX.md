@@ -2,7 +2,7 @@
 
 Current coverage: 29 manifests for 29 skill directories.
 
-The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
+The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
 `rdc:channel-formatter` currently has the strongest content acceptance fixture: it asserts source-grounded social-pack output, forbidden-claim absence, and observable corpus or web-search tool routing. `rdc:help` asserts the public MCP/curl caller surface and structured `format:"json"` discovery path. `rdc:self-test` validates the test-tier/evidence language. Planning/reporting skills (`rdc:preplan`, `rdc:plan`, `rdc:handoff`, `rdc:prototype`, `rdc:review`, `rdc:report`) assert their required artifacts and safety boundaries. Operational/content skills (`rdc:brochure`, `rdc:convert`, `lifeai-brochure-author`, `rdc:build`, `rdc:fixit`, `rdc:fs-mcp`, `rdc:workitems`) assert artifact paths, dispatch gates, scoped commits, filesystem boundaries, and sandboxed work-item behavior. Coordination/design/maintenance skills (`rdc:co-develop`, `rdc:collab`, `rdc:design`, `rdc:extract-verifier-rules`, `rdc:housekeeping`, `rdc:overnight`, `rdc:rpms-filemap`) assert relay safety, token/reference use, verifier corpus safety, maintenance/reporting, unattended sentinel behavior, and canonical file-map rules. All manifests now include a deeper acceptance block beyond the basic executable smoke fixture.
 
@@ -48,6 +48,6 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 
 ## Next Coverage Upgrades
 
-- Add tool-call assertions to read/research skills (`rdc:preplan`, `rdc:fs-mcp`, `rdc:co-develop`, `rdc:collab`).
-- Add artifact existence checks for output-producing skills (`rdc:brochure`, `rdc:convert`, `rdc:prototype`, `rdc:report`).
-- Add negative safety assertions for skills that open windows, launch terminals, deploy, release, or write commits.
+- Run full scheduled Claude and Codex sweeps regularly, not only changed-skill acceptance, so transcripts and lessons stay fresh.
+- Add richer artifact-content checks for output-producing skills (`rdc:brochure`, `rdc:convert`, `rdc:prototype`, `rdc:report`).
+- Promote recurring transcript review findings into manifest assertions instead of relying on human inspection.

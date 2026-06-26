@@ -23,7 +23,7 @@ description: "Usage `rdc:self-test [--strict]` — Validate all rdc:* skills, pl
 | Tier | What it checks | Status |
 |------|----------------|--------|
 | Tier 1 | Static lint — frontmatter, Usage line, referenced files, name match | ✅ live |
-| Tier 2 | Behavioral — headless Claude runs each skill in sandbox, asserts artifacts | ✅ live — 29 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
+| Tier 2 | Behavioral — headless Claude or Codex runs each skill in sandbox, asserts artifacts | ✅ live — 29 manifests; acceptance harness records transcripts, tool calls, artifacts, and lessons learned |
 | Tier 3 | Golden checklists — snapshot output format, regress on drift | 🔒 future |
 
 ## Interactive UI
@@ -85,10 +85,11 @@ Test output streams live to the terminal. No server, no extra processes.
 
 ## Procedure (Tier 2)
 
-Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Build acceptance additionally records all observable engine events/tool calls, assistant output, stdout/stderr artifacts, lessons learned, and next build optimizations. Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
+Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed state (files touched, commits made, work items, exit code). Build acceptance additionally records all observable engine events/tool calls, assistant output, stdout/stderr artifacts, lessons learned, and next build optimizations. It supports `--engine claude` and `--engine codex`; both engines use the same manifests, worktree sandbox, JSONL evidence, and Markdown report. Use it before shipping behavioral changes — Tier 1 alone can't catch runtime drift.
 
 1. **Prerequisites:**
-   - `claude` CLI on PATH (headless mode: `claude --print`)
+   - `claude` CLI on PATH for Claude runs (headless mode: `claude --print`)
+   - `codex` CLI on PATH for Codex runs (headless mode: `codex exec --json`)
    - clauth daemon unlocked (`curl -s http://127.0.0.1:52437/ping`)
    - Supabase MCP reachable (runner creates a throwaway test branch)
    - Clean git tree in `rdc-skills` (worktrees are added under `.rdc/sandbox/<run-id>/`)
@@ -100,12 +101,13 @@ Tier 2 runs each skill end-to-end in an isolated sandbox and asserts on observed
    node scripts/self-test.mjs --tier2 --parallel 3       # up to 3 skills in parallel
    node scripts/self-test.mjs --tier2 --quick            # skip long-running assertions
    node scripts/acceptance.mjs --skill rdc:build         # build acceptance with JSONL/tool-call evidence
+   node scripts/acceptance.mjs --engine codex --skill rdc:build
    ```
 
 3. **What it does:**
    - Runs Tier 1 as a pre-gate (fails fast if static lint fails)
    - Creates one Supabase test branch for the run
-   - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes `claude --print` with the skill prompt, waits for exit
+   - For each skill: `git worktree add` into `.rdc/sandbox/<run-id>/<skill>/`, sets `RDC_TEST=1`, invokes the selected headless engine with the skill prompt, waits for exit
    - Asserts per the skill's manifest: exit code, files touched, commits made, stdout patterns
    - Build acceptance writes JSONL evidence and extracts tool calls from the engine stream
    - Cleans up worktrees + deletes the Supabase branch at the end (even on failure)

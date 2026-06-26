@@ -17,11 +17,11 @@ description: "Usage `rdc:help` — Show all MCP skills with usage, requirements,
    - `{PLUGIN_ROOT}/.claude-plugin/plugin.json`  ← preferred when running from the published plugin
    - `C:/Dev/rdc-skills/.claude-plugin/plugin.json` ← source-checkout fallback
    - `~/.claude/plugins/cache/rdc-skills/rdc-skills/latest/.claude-plugin/plugin.json` ← installed cache
-2. Read it. Parse JSON. Read `skills_meta`.
+2. Read it. Parse JSON. Read `skills_meta`. Accept either the current object map shape (`skills_meta.<name>`) or an older array shape (`skills_meta[]`); normalize to entries before rendering.
 3. Group entries by `category` in this order: `planning, build, deploy, release, dev-loop, reporting, tooling, infra`.
 4. For each entry render one row: `{slash}  —  {usage}  —  needs: {requires.join(',')}  —  cf: {codeflow_required ? 'yes' : 'no'}`.
 5. Print a Decision Tree at the end that maps natural-language phrases to skills, derived from each entry's `triggers[]`.
-6. Print the Direct MCP / curl Access block so non-Claude callers have the same entry point.
+6. Print the Direct MCP / curl Access block exactly as shown in the required output format. Do not summarize, compress, relabel, or omit the curl examples. This block is the public direct-caller contract for MCP/API/curl users.
 7. Hard rules section at the bottom (see below — verbatim).
 
 ## Required output format
@@ -127,6 +127,8 @@ RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
     -H 'Content-Type: application/json' \
     -H 'Accept: application/json, text/event-stream' \
     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli","format":"json"}}}'
+
+  REQUIRED EXACT TOKEN: "format":"json"
 
 ## Hard rules
 

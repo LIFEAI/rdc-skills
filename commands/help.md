@@ -20,7 +20,9 @@ Resolve the manifest in this order and use the first existing file:
 2. `C:/Dev/rdc-skills/.claude-plugin/plugin.json`
 3. `~/.claude/plugins/cache/rdc-skills/rdc-skills/latest/.claude-plugin/plugin.json`
 
-Read `skills_meta` from the manifest. Group entries by `category` in this order:
+Read `skills_meta` from the manifest. Accept either the current object map shape
+(`skills_meta.<name>`) or an older array shape (`skills_meta[]`); normalize to
+entries before rendering. Group entries by `category` in this order:
 `planning`, `build`, `deploy`, `release`, `dev-loop`, `reporting`, `tooling`,
 `infra`.
 
@@ -38,7 +40,8 @@ static fallback table from `skills/help/SKILL.md`.
 ## Direct MCP / curl Access
 
 Show this block after the command table so non-Claude callers have the same
-entry point:
+entry point. Do not summarize, compress, relabel, or omit the curl examples;
+this block is the public direct-caller contract for MCP/API/curl users.
 
 ```text
 MCP endpoint: https://rdc-skills.regendevcorp.com/mcp
@@ -79,6 +82,8 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"rdc:build","variant":"cli","format":"json"}}}'
 ```
+
+Required exact token for tests and direct callers: `"format":"json"`
 
 ## Hard Rules
 

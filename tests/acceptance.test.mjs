@@ -21,12 +21,13 @@ const missing = spawnSync(process.execPath, [script, '--skill', 'rdc:not-a-real-
 assert.equal(missing.status, 1);
 assert.match(missing.stderr, /missing acceptance manifest/);
 
-const codex = spawnSync(process.execPath, [script, '--engine', 'codex', '--skill', 'rdc:plan'], {
+const codex = spawnSync(process.execPath, [script, '--engine', 'codex', '--skill', 'rdc:not-a-real-skill'], {
   cwd: REPO_ROOT,
   encoding: 'utf8',
 });
-assert.equal(codex.status, 2);
-assert.match(codex.stderr, /Codex JSONL/);
+assert.equal(codex.status, 1);
+assert.doesNotMatch(codex.stderr, /not wired/i);
+assert.match(codex.stderr, /missing acceptance manifest/);
 
 const emptyProject = mkdtempSync(join(tmpdir(), 'rdc-acceptance-empty-'));
 try {

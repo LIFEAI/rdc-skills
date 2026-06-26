@@ -132,6 +132,16 @@ function claudeToolCalls(stdout) {
 }
 
 function assistantText(engine, stdout) {
+  if (engine === 'codex') {
+    const chunks = [];
+    for (const event of parseJsonLines(stdout)) {
+      if (event?.type === 'item.completed' && event.item?.type === 'agent_message' && typeof event.item.text === 'string') {
+        chunks.push(event.item.text);
+      }
+      if (event?.type === 'message' && typeof event.text === 'string') chunks.push(event.text);
+    }
+    return chunks.join('\n\n').trim() || String(stdout || '').trim();
+  }
   if (engine !== 'claude') return String(stdout || '').trim();
   const resultEvents = parseJsonLines(stdout).filter((event) => event.type === 'result' && typeof event.result === 'string');
   if (resultEvents.length > 0) return resultEvents.at(-1).result.trim();
@@ -333,10 +343,6 @@ async function main() {
     console.error(`unsupported --engine ${ENGINE}; expected claude or codex`);
     process.exit(2);
   }
-  if (ENGINE === 'codex') {
-    console.error('codex acceptance adapter can parse Codex JSONL, but live Codex agent spawning is not wired in this repo yet.');
-    process.exit(2);
-  }
 
   mkdirSync(REPORTS_DIR, { recursive: true });
   const startedAt = new Date().toISOString();
@@ -379,6 +385,7 @@ async function main() {
     const result = await runManifest(manifest, {
       runId: RUN_ID,
       projectCwd: PROJECT_CWD,
+      engine: ENGINE,
     });
     const toolCalls = result.observed ? extractToolCalls(ENGINE, result.observed) : [];
     const safeSkill = manifest.skill.replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '');

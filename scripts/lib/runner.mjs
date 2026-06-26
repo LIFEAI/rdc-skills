@@ -1,14 +1,16 @@
 // runner.mjs — Tier 2 per-skill test orchestration.
 //
 // Public API:
-//   runManifest(manifest, { runId, supabaseBranchRef?, timeout?, claudeBin? })
+//   runManifest(manifest, { runId, supabaseBranchRef?, timeout?, engine?, claudeBin?, codexBin? })
 //     → { skill, pass, duration_ms, observed?, failures?, error? }
 //
 // Flow per manifest:
 //   1. Create a worktree at .rdc-sandbox/<runId>/<skill-slug>/
 //   2. Write precondition_files into the worktree
 //   3. Snapshot HEAD sha + work_items rowcount (via Supabase branch if given)
-//   4. Spawn `claude --print "<prompt>" --output-format stream-json`
+//   4. Spawn the selected engine in headless JSONL mode:
+//      - claude: `claude --print "<prompt>" --output-format stream-json`
+//      - codex:  `codex exec --json "<prompt>"`
 //      - cwd = worktree
 //      - env = { ...process.env, ...fixture.env, RDC_TEST: "1" }
 //      - timeout kills the child on overrun
@@ -85,25 +87,19 @@ function writePreconditionFiles(worktreePath, files) {
   }
 }
 
-/** Spawn `claude --print ...` with a hard timeout. Resolves to {exit, stdout, stderr, timedOut}. */
-function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
+function spawnHiddenShell(command, args, { cwd, env, timeoutMs }) {
   return new Promise((resolve) => {
     let settled = false;
     let stdout = "";
     let stderr = "";
     let child;
     try {
-      // shell: true is required on Windows so `.cmd`/`.bat` shims (npm global
+      // shell: true is required on Windows so `.cmd`/`.bat`/`.ps1` shims (npm global
       // wrappers like `claude`) resolve. On Unix shell: true routes through sh,
-      // which is harmless here. Because the shell interprets args, we wrap the
-      // prompt with JSON.stringify so spaces/quotes/metacharacters in the
-      // fixture prompt become a single shell-quoted token.
-      const safePrompt = JSON.stringify(prompt ?? "");
-      child = spawn(
-        claudeBin,
-        ["--print", safePrompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"],
-        { cwd, env, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
-      );
+      // which is harmless here. Quote each arg so the shell preserves prompts
+      // with spaces/metacharacters as single argv tokens.
+      const safeArgs = args.map((arg) => JSON.stringify(String(arg)));
+      child = spawn(command, safeArgs, { cwd, env, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     } catch (e) {
       resolve({ exit: -1, stdout: "", stderr: `spawn failed: ${e.message}`, timedOut: false });
       return;
@@ -129,6 +125,35 @@ function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
       resolve({ exit: code == null ? -1 : code, stdout, stderr, timedOut: false });
     });
   });
+}
+
+/** Spawn `claude --print ...` with a hard timeout. Resolves to {exit, stdout, stderr, timedOut}. */
+function spawnClaude({ claudeBin, prompt, cwd, env, timeoutMs }) {
+  return spawnHiddenShell(
+    claudeBin,
+    ["--print", prompt ?? "", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"],
+    { cwd, env, timeoutMs },
+  );
+}
+
+/** Spawn `codex exec --json ...` with a hard timeout. Resolves to {exit, stdout, stderr, timedOut}. */
+function spawnCodex({ codexBin, prompt, cwd, env, timeoutMs }) {
+  return spawnHiddenShell(
+    codexBin,
+    [
+      "exec",
+      "--json",
+      "--cd",
+      cwd,
+      "--sandbox",
+      "danger-full-access",
+      "--dangerously-bypass-approvals-and-sandbox",
+      "--dangerously-bypass-hook-trust",
+      "--ephemeral",
+      prompt ?? "",
+    ],
+    { cwd, env, timeoutMs },
+  );
 }
 
 // ─── work_items fetch (live) ────────────────────────────────────────────────
@@ -237,7 +262,9 @@ export async function runManifest(manifest, opts = {}) {
     runId,
     supabaseBranchRef = null,
     timeout = manifest?.timeout_ms || DEFAULT_TIMEOUT_MS,
+    engine = process.env.RDC_ACCEPTANCE_ENGINE || "claude",
     claudeBin = process.env.CLAUDE_BIN || "claude",
+    codexBin = process.env.CODEX_BIN || "codex",
     // projectCwd: the repo claude --print will commit to (regen-root).
     // Worktrees are created FROM this repo so git state tracking is correct.
     // claude runs inside the worktree (not projectCwd directly) so each skill
@@ -283,33 +310,41 @@ export async function runManifest(manifest, opts = {}) {
   const headBefore = snapshotHead(worktree.path);
   const wiCountBefore = await fetchWorkItemsCount(supabaseBranchRef);
 
-  // Start from process.env but scrub any inherited CLAUDE_* vars — the child
-  // claude process should not see parent session context. Then set RDC_TEST
+  const selectedEngine = String(engine || "claude").toLowerCase();
+  if (!["claude", "codex"].includes(selectedEngine)) {
+    return { skill, pass: false, duration_ms: nowMs() - started, error: `unsupported engine: ${selectedEngine}` };
+  }
+
+  // Start from process.env but scrub inherited engine session vars — the child
+  // process should not see parent session context. Then set RDC_TEST
   // and overlay fixture env.
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (key.startsWith("CLAUDE_")) delete env[key];
+    if (key.startsWith("CODEX_") && key !== "CODEX_HOME") delete env[key];
   }
   env.RDC_TEST = "1";
   Object.assign(env, manifest.fixture?.env || {});
 
-  // Run claude inside the worktree — commits land there, git tracking is correct,
+  // Run the agent inside the worktree — commits land there, git tracking is correct,
   // and parallel skills each get their own isolated branch with no file conflicts.
   let spawnRes;
   try {
-    spawnRes = await spawnClaude({
-      claudeBin,
+    const spawnArgs = {
       prompt: manifest.fixture?.prompt || "",
       cwd: worktree.path,
       env,
       timeoutMs: timeout,
-    });
+    };
+    spawnRes = selectedEngine === "codex"
+      ? await spawnCodex({ ...spawnArgs, codexBin })
+      : await spawnClaude({ ...spawnArgs, claudeBin });
   } catch (e) {
     return {
       skill,
       pass: false,
       duration_ms: nowMs() - started,
-      error: `spawn claude: ${e.message}`,
+      error: `spawn ${selectedEngine}: ${e.message}`,
     };
   }
 
@@ -321,6 +356,7 @@ export async function runManifest(manifest, opts = {}) {
     exit_code: spawnRes.exit,
     stdout: spawnRes.stdout,
     stderr: spawnRes.stderr,
+    engine: selectedEngine,
     files_modified,
     commits,
     work_items_delta,
