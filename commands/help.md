@@ -59,7 +59,12 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
 curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rdc_skill_search","arguments":{"query":"turn this article into social posts"}}}'
+
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rdc_skill_get","arguments":{"name":"build","variant":"cli"}}}'
 ```
 
 ## Hard Rules

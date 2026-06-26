@@ -21,7 +21,9 @@ for (const [name, text] of Object.entries(docs)) {
   assert.match(text, /https:\/\/rdc-skills\.regendevcorp\.com\/mcp/, `${name} must expose production MCP endpoint`);
   assert.match(text, /Accept: application\/json, text\/event-stream/, `${name} must show Streamable HTTP Accept header`);
   assert.match(text, /rdc_skill_list/, `${name} must mention rdc_skill_list`);
+  assert.match(text, /rdc_skill_search/, `${name} must mention rdc_skill_search`);
   assert.match(text, /rdc_skill_get/, `${name} must mention rdc_skill_get`);
+  assert.match(text, /turn this article into social posts/, `${name} must include a natural-language search example`);
   assert.doesNotMatch(text, /https:\/\/rdc-skills\.dev\.regendevcorp\.com\/mcp/, `${name} must not point callers at dev MCP`);
 }
 
