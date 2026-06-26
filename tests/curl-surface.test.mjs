@@ -226,6 +226,26 @@ async function main() {
     check('rdc_skill_get format=json returns skill metadata', getJsonBody.skill?.slash === 'rdc:build' && getJsonBody.skill?.codeflow_required === true);
     check('rdc_skill_get format=json returns rendered body', /rdc:build/i.test(getJsonBody.body || ''));
 
+    const getJsonUnknown = postMcp({
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'tools/call',
+      params: {
+        name: 'rdc_skill_get',
+        arguments: { name: 'rdc:not-real', format: 'json' },
+      },
+    }, 'rdc_skill_get_json_unknown');
+    check('rdc_skill_get unknown format=json curl exits 0', getJsonUnknown.status === 0, getJsonUnknown.stderr);
+    let getJsonUnknownBody = {};
+    const getJsonUnknownText = resultText(latestEnvelope(getJsonUnknown.stdout));
+    try {
+      getJsonUnknownBody = JSON.parse(getJsonUnknownText);
+    } catch {
+      check('rdc_skill_get unknown format=json returns parseable JSON', false, getJsonUnknownText || getJsonUnknown.stdout.slice(0, 500));
+    }
+    check('rdc_skill_get unknown format=json returns machine error', getJsonUnknownBody.error === 'unknown_skill');
+    check('rdc_skill_get unknown format=json returns alternatives', getJsonUnknownBody.valid_count >= 29 && getJsonUnknownBody.valid?.some((s) => s.slash === 'rdc:help'));
+
     const getMcp = curlWithStatus([
       '-s',
       `${TARGET}/mcp`,

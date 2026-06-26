@@ -11,5 +11,18 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["PASS", "strict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Tier 1",
+      "Tier 2",
+      "29 manifests",
+      "JSONL",
+      "tool calls"
+    ],
+    "output_not_contains": [
+      "skip findings by relaxing the linter",
+      "raw runner dumps"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

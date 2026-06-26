@@ -195,6 +195,10 @@ async function sweep(url, label, { compareSource }) {
   // error path
   const unk = await mcp(url, { jsonrpc: '2.0', id: 20, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: '___nope___' } } });
   check(`${label}: unknown skill returns helpful error`, /unknown skill/i.test(callText(unk.json)));
+  const unkJson = await mcp(url, { jsonrpc: '2.0', id: 24, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: '___nope___', format: 'json' } } });
+  let unkJsonBody; try { unkJsonBody = JSON.parse(callText(unkJson.json)); } catch { unkJsonBody = {}; }
+  check(`${label}: unknown skill format=json returns machine-readable error`, unkJsonBody.error === 'unknown_skill');
+  check(`${label}: unknown skill format=json includes valid alternatives`, unkJsonBody.valid_count === names.length && Array.isArray(unkJsonBody.valid) && unkJsonBody.valid.some((s) => s.slash === 'rdc:help'));
 
   // Alias path: callers naturally copy the slash form from rdc_skill_list.
   const aliasGet = await mcp(url, { jsonrpc: '2.0', id: 22, method: 'tools/call', params: { name: 'rdc_skill_get', arguments: { name: 'rdc:brochurify', variant: 'cli' } } });

@@ -11,5 +11,19 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "dry-run",
+      "Tests/self-test",
+      "CI/publish",
+      "Installed/runtime version",
+      "Smoke test"
+    ],
+    "output_not_contains": [
+      "git push --force",
+      "bypass hooks",
+      "raw git/npm/CI dumps"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

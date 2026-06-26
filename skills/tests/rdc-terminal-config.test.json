@@ -11,5 +11,19 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["hidden-window", "No settings written"]
   },
+  "acceptance": {
+    "output_contains": [
+      "hidden-window",
+      "No settings written",
+      "read before edit",
+      "JSON/TOML syntax"
+    ],
+    "output_not_contains": [
+      "SetForegroundWindow",
+      "ShowWindow",
+      "collapse all windows",
+      "restore all windows"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

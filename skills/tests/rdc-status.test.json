@@ -11,5 +11,19 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Recommended Next"]
   },
+  "acceptance": {
+    "output_contains": [
+      "Recommended Next",
+      "read-only",
+      "work items",
+      "health"
+    ],
+    "output_not_contains": [
+      "raw MCP",
+      "UUID",
+      "UPDATE work_items",
+      "INSERT"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }

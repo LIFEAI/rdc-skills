@@ -11,5 +11,20 @@
     "commits_made": { "min": 0 },
     "stdout_contains": ["Verdict"]
   },
+  "acceptance": {
+    "output_contains": [
+      "diagnose",
+      "read-only",
+      "Registry",
+      "health",
+      "Verdict"
+    ],
+    "output_not_contains": [
+      "Deploy triggered",
+      "Cloudflare cache purged",
+      "PR/admin-merge to main",
+      "DNS write"
+    ]
+  },
   "teardown": { "reset_branch": true }
 }
