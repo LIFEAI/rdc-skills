@@ -106,9 +106,19 @@ function deadWrapperPluginRoot(home) {
 function gatherFacts({ home = os.homedir(), repoRoot = REPO_ROOT, hooksDir = HOOKS_DIR } = {}) {
   const exitGatePath = path.join(hooksDir, 'work-item-exit-gate.js');
   const truthGatePath = path.join(repoRoot, '.claude', 'hooks', 'truth-gate.mjs');
-  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
-  const settings = readJsonSafe(settingsPath);
-  const commandText = settingsCommandText(settings);
+  // Claude Code enforces the MERGED user+project hook set. A gate registered in
+  // EITHER ~/.claude/settings.json (user) OR <repo>/.claude/settings.json (project)
+  // is live. Reading only the project file false-positives on user-registered
+  // gates — e.g. work-item-exit-gate.js is registered in user settings, so a
+  // project-only read wrongly reported it "unregistered" every session.
+  const projectSettingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  const userSettingsPath = path.join(home, '.claude', 'settings.json');
+  const projectSettings = readJsonSafe(projectSettingsPath);
+  const userSettings = readJsonSafe(userSettingsPath);
+  const commandText = [settingsCommandText(userSettings), settingsCommandText(projectSettings)]
+    .filter(Boolean)
+    .join('\n');
+  const settingsPath = projectSettingsPath; // retained for banner/log compatibility
 
   const liveHookifyManifest = findLiveHookifyManifest(home);
   const deadRoot = deadWrapperPluginRoot(home);
@@ -188,10 +198,12 @@ function renderBanner(findings) {
     'The Truth Gate enforcement chain is INCOMPLETE for this session. A disabled\n' +
     'or unregistered gate is the ultimate closure bypass. Findings:\n\n' +
     lines + '\n\n' +
-    'Repair before trusting any work-item closure this session:\n' +
-    '  node C:/Dev/rdc-skills/scripts/install-rdc-skills.js   (reinstall the hooks)\n' +
-    '  then verify .claude/settings.json registers truth-gate.mjs on Stop+SubagentStop\n' +
-    '  and work-item-exit-gate.js on PreToolUse.\n' +
+    'This watchdog evaluates the MERGED user+project hook set; a gate registered in\n' +
+    '~/.claude/settings.json (user) counts as registered. Repair by gate:\n' +
+    '  - work-item-exit-gate.js (user-level, installer-managed):\n' +
+    '      node C:/Dev/rdc-skills/scripts/install-rdc-skills.js   (reinstalls user hooks)\n' +
+    '  - truth-gate.mjs (repo-local, NOT installer-managed): register it on Stop+SubagentStop\n' +
+    '      in <repo>/.claude/settings.json by hand — the installer does not wire this hook.\n' +
     '════════════════════════════════════════════════════════════════════════\n'
   );
 }
