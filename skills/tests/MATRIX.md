@@ -32,7 +32,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Report status block, counts, next recommendation, and dump/push negative checks |
 | `rdc:review` | `rdc-review.test.json` | Unattended review gate | `exit_code`, `stdout_contains` | Code-review, verify, fresh-evidence, tsc, and forbidden-build negative checks |
 | `rdc:rpms-filemap` | `rdc-rpms-filemap.test.json` | Canonical location lookup | `commits_made`, `exit_code`, `stdout_contains` | Rule #1, context door, one-home rules, and no-hand-edit/second-home negative checks |
-| `rdc:self-test` | `rdc-self-test.test.json` | Strict self-test prompt | `commits_made`, `exit_code`, `stdout_contains` | Tier/evidence output checks and no-relaxed-linter negative check |
+| `rdc:self-test` | `rdc-self-test.test.json` | Strict self-test prompt | `commits_made`, `exit_code`, `stdout_contains` | Strict validation evidence, hook/guide checks, and no-relaxed-linter negative check |
 | `rdc:status` | `rdc-status.test.json` | Read-only status snapshot | `commits_made`, `exit_code`, `stdout_contains` | Read-only status output and raw-MCP/write negative checks |
 | `rdc:terminal-config` | `rdc-terminal-config.test.json` | Hidden-window launch policy audit | `commits_made`, `exit_code`, `stdout_contains` | Hidden-window output and focus/collapse API negative checks |
 | `rdc:watch` | `rdc-watch.test.json` | Watcher initialization prompt | `exit_code`, `stdout_contains` | Test-mode no-open output, tool-call routing, and focus-event negative checks |

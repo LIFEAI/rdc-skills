@@ -9,7 +9,7 @@
   "assertions": {
     "exit_code": 0,
     "commits_made": { "min": 0 },
-    "stdout_contains": ["rdc:help", "Decision tree"]
+    "stdout_contains": ["rdc:help", "Decision Tree"]
   },
   "acceptance": {
     "output_contains": [

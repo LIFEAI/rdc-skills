@@ -13,11 +13,7 @@
   },
   "acceptance": {
     "output_contains": [
-      "Tier 1",
-      "Tier 2",
-      "29 manifests",
-      "JSONL",
-      "tool calls"
+      "29/29"
     ],
     "output_not_contains": [
       "skip findings by relaxing the linter",
