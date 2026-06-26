@@ -88,7 +88,10 @@ function unitTests() {
   check('unit: catalog non-empty', cat.length >= 20, `got ${cat.length}`);
   check('unit: every entry has name+slash+category+summary field',
     cat.every((s) => s.name && s.slash && s.category && 'summary' in s));
-  check('unit: every slash is rdc:<name> shape', cat.every((s) => /^rdc:/.test(s.slash)));
+  check('unit: every slash is explicit caller-facing shape',
+    cat.every((s) => /^rdc:/.test(s.slash) || s.slash === s.name));
+  check('unit: no synthesized duplicate rdc prefixes',
+    cat.every((s) => !/^rdc:rdc-/.test(s.slash) && !/^rdc:lifeai-/.test(s.slash)));
   check('unit: getSkill(deploy) resolves', !!getSkill('deploy'));
   check('unit: getSkill(nonexistent) is null', getSkill('___nope___') === null);
   check('unit: search ranks exact name first', searchSkills('deploy')[0]?.name === 'deploy');

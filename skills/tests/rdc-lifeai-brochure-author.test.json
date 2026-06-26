@@ -1,9 +1,9 @@
 {
   "manifest_version": 1,
-  "skill": "rdc:lifeai-brochure-author",
+  "skill": "lifeai-brochure-author",
   "description": "LifeAI brochure author contract rejects raw HTML and returns brochure-kit component guidance.",
   "fixture": {
-    "prompt": "rdc:lifeai-brochure-author review this JSX fixture for brochure-kit compliance: docs/source/brochure-author-fixture.tsx",
+    "prompt": "lifeai-brochure-author review this JSX fixture for brochure-kit compliance: docs/source/brochure-author-fixture.tsx",
     "precondition_files": [
       {
         "path": "docs/source/brochure-author-fixture.tsx",

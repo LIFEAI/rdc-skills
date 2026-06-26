@@ -158,6 +158,89 @@
       "enabled_default": true,
       "codeflow_required": false
     },
+    "rdc-brochurify": {
+      "name": "rdc-brochurify",
+      "slash": "rdc:brochurify",
+      "category": "tooling",
+      "usage": "rdc:brochurify <source|job-payload>",
+      "args": {
+        "positional": [
+          {
+            "name": "source",
+            "required": true,
+            "description": "URL, HTML, DOCX, Markdown, JSX, corpus query, or broker job payload to turn into a brochure PDF.",
+            "accepts": "path|url|json|string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "agent-dispatch"
+      ],
+      "produces": [
+        "pdf_artifact",
+        ".rdc/reports/"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "rdc:brochurify",
+        "brochurify this",
+        "make a brochure from",
+        "convert this to a brochure PDF",
+        "generate brochure from",
+        "monkey_dispatch payload with skill=\"brochurify\""
+      ],
+      "follows": [
+        "channel-formatter",
+        "convert",
+        "lifeai-brochure-author"
+      ],
+      "leads_to": [],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "lifeai-brochure-author": {
+      "name": "lifeai-brochure-author",
+      "slash": "lifeai-brochure-author",
+      "category": "tooling",
+      "usage": "lifeai-brochure-author <brochure-jsx-task>",
+      "args": {
+        "positional": [
+          {
+            "name": "brochure-jsx-task",
+            "required": true,
+            "description": "Brief, source content, or JSX verification task for @lifeai/brochure-kit output.",
+            "accepts": "string|path"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [
+        "brochure_jsx_guidance"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "write a brochure",
+        "make a one-pager",
+        "draft a PDF report",
+        "design a brochure",
+        "create an investor doc",
+        "generate a fact sheet",
+        "brochurify",
+        "@lifeai/brochure-kit"
+      ],
+      "follows": [],
+      "leads_to": [
+        "rdc-brochurify"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
     "build": {
       "name": "build",
       "slash": "rdc:build",
@@ -814,6 +897,75 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true
+    },
+    "rdc-extract-verifier-rules": {
+      "name": "rdc-extract-verifier-rules",
+      "slash": "rdc:extract-verifier-rules",
+      "category": "tooling",
+      "usage": "rdc:extract-verifier-rules [enhancement-log]",
+      "args": {
+        "positional": [
+          {
+            "name": "enhancement-log",
+            "required": false,
+            "description": "Optional path or description of enhancement-log entries to cluster into verifier-rule candidates.",
+            "accepts": "path|string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "git"
+      ],
+      "produces": [
+        ".rdc/reports/",
+        "git_commits"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "rdc:extract-verifier-rules",
+        "extract verifier rules",
+        "promote enhancement log",
+        "what new rules should we add",
+        "verifier corpus update",
+        "nightly cron at 3:00 AM PT"
+      ],
+      "follows": [
+        "rdc-brochurify"
+      ],
+      "leads_to": [
+        "review"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "rpms-filemap": {
+      "name": "rpms-filemap",
+      "slash": "rdc:rpms-filemap",
+      "category": "tooling",
+      "usage": "rdc:rpms-filemap",
+      "args": {
+        "positional": [],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "haiku",
+      "triggers": [
+        "rpms file map",
+        "rule #1",
+        "context export",
+        "where does this file belong",
+        "where should pm artifacts go"
+      ],
+      "follows": [],
+      "leads_to": [],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
     },
     "release": {
       "name": "release",

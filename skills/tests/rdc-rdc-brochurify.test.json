@@ -1,9 +1,9 @@
 {
   "manifest_version": 1,
-  "skill": "rdc:rdc-brochurify",
+  "skill": "rdc:brochurify",
   "description": "Brochurify orchestrator accepts a markdown source fixture and reports sandboxed orchestration state.",
   "fixture": {
-    "prompt": "rdc:rdc-brochurify docs/source/brochurify-fixture.md --mode read-only --theme editorial-neutral",
+    "prompt": "rdc:brochurify docs/source/brochurify-fixture.md --mode read-only --theme editorial-neutral",
     "precondition_files": [
       {
         "path": "docs/source/brochurify-fixture.md",
