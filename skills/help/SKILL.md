@@ -94,6 +94,14 @@ RDC SKILLS — manifest: .claude-plugin/plugin.json @ v{version}
   Header:       Accept: application/json, text/event-stream
   Tools:        rdc_skill_list, rdc_skill_search, rdc_skill_get
   Variants:     cli for Claude Code/Codex/local terminal; cloud for claude.ai
+  Response:     SSE `data:` line contains the JSON-RPC envelope; tool text is result.content[0].text
+
+  Extract the JSON-RPC envelope:
+  curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":0,"method":"tools/list"}' \
+    | sed -n 's/^data: //p'
 
   List skills:
   curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \

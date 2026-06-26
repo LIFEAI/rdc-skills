@@ -90,6 +90,19 @@ curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
 ```
 
+Responses come back as Server-Sent Events. For plain curl usage, extract the
+JSON-RPC envelope from the `data:` line:
+
+```bash
+curl -s -X POST https://rdc-skills.regendevcorp.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  | sed -n 's/^data: //p'
+```
+
+Tool results put the human-readable payload in `result.content[0].text`.
+
 List tools:
 
 ```bash

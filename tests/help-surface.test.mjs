@@ -20,6 +20,9 @@ const docs = Object.fromEntries(
 for (const [name, text] of Object.entries(docs)) {
   assert.match(text, /https:\/\/rdc-skills\.regendevcorp\.com\/mcp/, `${name} must expose production MCP endpoint`);
   assert.match(text, /Accept: application\/json, text\/event-stream/, `${name} must show Streamable HTTP Accept header`);
+  assert.match(text, /data:/, `${name} must explain Streamable HTTP SSE data lines`);
+  assert.match(text, /result\.content\[0\]\.text/, `${name} must explain where tool text lives`);
+  assert.match(text, /sed -n 's\/\^data: \/\/p'/, `${name} must include a plain curl SSE extraction example`);
   assert.match(text, /rdc_skill_list/, `${name} must mention rdc_skill_list`);
   assert.match(text, /rdc_skill_search/, `${name} must mention rdc_skill_search`);
   assert.match(text, /rdc_skill_get/, `${name} must mention rdc_skill_get`);
