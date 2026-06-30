@@ -34,19 +34,56 @@ description: "Usage `rdc:edit <site|brand|route|file>` — open the local websit
 - `test`, `studio_test`, and `studio-test` resolve to `brandSlug=test` and `appSlug=studio_test`.
 - If the target is a local file or route and the brand/app is unclear, ask one concise question.
 
-### 3. Start or reuse the editor host
-- The editor host lives at `http://localhost:3015`.
-- Launch the host if needed:
+Resolve the **target dev server** (package + port) so the preview iframe has
+something live to load. Read the brand app's `package.json` `name` and its
+`dev` script port — never hard-code a stale port:
+
+| Target | App dir | Package (`name`) | Dev port | `targetUrl` |
+|--------|---------|------------------|----------|-------------|
+| `prt` / `prtrust.fund` | `apps/prt` | `@regen/prt-portal` | `3006` | `http://localhost:3006` |
+| `test` / `studio_test` | (bundled) | — (editor host serves it) | `3015` | auto (`/editor/local-test-target`) |
+
+For any other brand, derive the package name and port by reading
+`apps/<app>/package.json` (`name` field and the `--port` in the `dev` script).
+`brandSlug=test` needs no target server — the editor host serves the fixture
+on its own origin.
+
+### 3. Start or reuse BOTH servers (edit starts everything)
+`rdc:edit` must bring up everything the preview needs — the editor host AND the
+target brand's dev server. Start-or-reuse each: probe the port first, only
+launch if it is dead.
+
+**3a. Editor host (`http://localhost:3015`)**
+- Probe: `curl -s -o /dev/null -w "%{http_code}" http://localhost:3015/` — any
+  non-`000` means it is already up; reuse it.
+- Launch only if down (background, do not block the session):
   ```powershell
   pnpm --filter @regen/editor-host dev
   ```
-- Open the editor page for the resolved target:
+
+**3b. Target brand dev server (skip for `brandSlug=test`)**
+- Probe the resolved dev port (e.g. `http://localhost:3006/`). Non-`000` =
+  already running; reuse it. `EADDRINUSE` on launch also means reuse — not an error.
+- Launch only if down (background), then health-wait on the port before opening:
+  ```powershell
+  pnpm --filter <package> dev
+  ```
+  Bounded health-wait only (no `for`/`seq`/`sleep` polling loops):
+  ```bash
+  until curl -s -o /dev/null http://localhost:<port>/; do sleep 2; done
+  ```
+- Open the editor page for the resolved target once BOTH report a live code:
   ```txt
-  http://localhost:3015/editor/local/<brandSlug>?targetUrl=<targetUrl>
+  http://localhost:3015/editor/local/<brandSlug>?appSlug=<appSlug>&targetUrl=<targetUrl>
   ```
 
 ### 4. Open the page
 - Normal use: open the URL in the browser and confirm the editor loaded.
+  Open via PowerShell `Start-Process`, NOT `cmd start` — `cmd` treats the `&`
+  between query params as a command separator and truncates the URL:
+  ```powershell
+  Start-Process 'http://localhost:3015/editor/local/<brandSlug>?appSlug=<appSlug>&targetUrl=<targetUrl>'
+  ```
 - `RDC_TEST=1`: do not force a foreground browser action; report the exact editor URL and whether the target was resolved.
 
 ### 5. Report the result
