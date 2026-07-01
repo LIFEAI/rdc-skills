@@ -43,6 +43,7 @@
     "test:curl-surface:remote": "node tests/curl-surface.test.mjs --remote",
     "test:channel-formatter": "node tests/channel-formatter.contract.test.mjs",
     "test:channel-formatter:remote": "node tests/channel-formatter.contract.test.mjs --remote",
+    "test:brochure": "node tests/rdc-brochure.test.mjs",
     "mcp": "node bin/rdc-skills-mcp.mjs",
     "rebuild-mcp": "node scripts/rebuild-mcp.mjs",
     "prepack": "node scripts/prepack.mjs"

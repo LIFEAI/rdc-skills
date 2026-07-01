@@ -126,6 +126,7 @@ async function loadPuppeteer() {
 // If the lib cannot be resolved or installed, fall back to a platform-native
 // extractor: `unzip` on POSIX, PowerShell `Expand-Archive` on win32.
 function loadAdmZip() {
+  if (process.env.RDC_BROCHURE_DISABLE_ADM_ZIP === '1') return null;
   try { return createRequire(import.meta.url)('adm-zip'); } catch {}
   // Reuse the puppeteer on-demand cache dir for an isolated local install.
   const cacheDir = join(homedir(), '.cache', 'rdc-brochure');
@@ -275,6 +276,16 @@ function listTemplates() {
     .sort();
 }
 
+function stripLeadingYamlFrontMatter(md) {
+  const text = md.replace(/\r\n/g, '\n');
+  if (!text.startsWith('---\n')) return text;
+  const lines = text.split('\n');
+  for (let i = 1; i < lines.length; i++) {
+    if (/^---\s*$/.test(lines[i])) return lines.slice(i + 1).join('\n');
+  }
+  return text;
+}
+
 async function composeFromFolder(root, file) {
   const tpl = join(TEMPLATES_DIR, `brochure-${opts.template}.html`);
   if (!existsSync(tpl)) {
@@ -298,12 +309,13 @@ async function composeFromFolder(root, file) {
 
   const sections = mdFiles.map((p) => {
     const md = readFileSync(p, 'utf8');
+    const bodyMd = stripLeadingYamlFrontMatter(md);
     // Only prepend the filename heading when the markdown has no leading ATX heading
     // of its own. Avoids a redundant <h2>filename</h2> stacked above a "# Title".
-    const firstNonEmpty = md.replace(/\r\n/g, '\n').split('\n').find((l) => l.trim() !== '') || '';
+    const firstNonEmpty = bodyMd.replace(/\r\n/g, '\n').split('\n').find((l) => l.trim() !== '') || '';
     const hasLeadingHeading = /^#{1,6}\s+\S/.test(firstNonEmpty.trim());
     const heading = hasLeadingHeading ? '' : `<h2>${escapeHtml(basename(p, extname(p)))}</h2>`;
-    return `<section class="brochure-section">${heading}${mdToHtml(md, dirname(p))}</section>`;
+    return `<section class="brochure-section">${heading}${mdToHtml(bodyMd, dirname(p))}</section>`;
   }).join('\n');
 
   html = html.replace(/\{\{TITLE\}\}/g, escapeHtml(title)).replace(/\{\{SECTIONS\}\}/g, sections);
@@ -445,6 +457,12 @@ function defaultOutPath() {
       log('no html found — composing from markdown');
       htmlSource = await composeFromFolder(staged.stageDir);
     }
+  }
+
+  if (process.env.RDC_BROCHURE_COMPOSE_ONLY === '1') {
+    console.log(`HTML:   ${htmlSource}`);
+    console.log(`Source: ${input} → ${htmlSource.startsWith('http') ? htmlSource : relative(process.cwd(), htmlSource)}`);
+    return;
   }
 
   const outPath = await render(htmlSource);
