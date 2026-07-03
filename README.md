@@ -214,7 +214,7 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 - rdc:brochure — HTML/folder/zip/URL/Markdown to print-quality PDF
 - rdc:brochurify — Brochurify orchestration for polished PDF jobs
 - lifeai-brochure-author — JSX authoring contract for Brochurify inputs
-- rdc:convert — Office/Markdown conversion via build-corpus
+- rdc:convert — Office/Markdown conversion via build-corpus (work in Markdown, materialize `.docx`/`.pptx` at the end; round-trips losslessly — see build-corpus `AGENTS.md`)
 - rdc:fs-mcp — File System MCP bridge guidance for live repo reads/writes
 - rdc:extract-verifier-rules — verifier-rule extraction from enhancement logs
 - rdc:rpms-filemap — generated RPMS file-map guidance
