@@ -6,6 +6,12 @@
  * Queries app_deployments (active rows), checks PUBLISH.md presence + schema
  * for each registered deployable target.
  *
+ * 2026-07-05: DEPLOY-block enforcement (Approved: Dave, port-from-registry).
+ *   - Every deployable MUST carry a valid <!-- DEPLOY --> block (hard FAIL if absent).
+ *   - `port` MUST be the literal `registry` — a hardcoded integer is a FAIL.
+ *   - `port: registry` MUST resolve: if the app has a PM2 dev row, it MUST have pm2_port.
+ *   - slug→dir resolves via apps.monorepo_path (fixes slug≠dir apps like zoen, rapha).
+ *
  * Usage:
  *   node scripts/validate-publish-manifests.js [--mode warn|fail] [--slug <name>] [--json] [--strict]
  *
@@ -83,6 +89,10 @@ const SUPABASE_PROJECT_HOST = 'uvojezuorjgqzmhhgluu.supabase.co';
 
 const results = [];
 let hasHardFail = false;
+
+// Populated in main() from the registry (apps + app_deployments).
+const dirBySlug = new Map();   // slug -> monorepo_path (root-relative)
+const rowsBySlug = new Map();  // slug -> [app_deployments rows]
 
 function emit(level, slug, message, detail) {
   const entry = { level, slug, message, detail: detail || null };
@@ -237,8 +247,15 @@ function parseSurfaceWatchPaths(content, surfaceId) {
  * Returns null if no directory found (standalone or unknown).
  */
 function resolveAppRoot(slug) {
-  for (const dir of MONOREPO_SEARCH_DIRS) {
-    const candidate = path.join(MONOREPO_ROOT, dir, slug);
+  // Authoritative: apps.monorepo_path (fixes slug≠dir apps like zoen→apps/zoen-web).
+  const dir = dirBySlug.get(slug);
+  if (dir) {
+    const candidate = path.join(MONOREPO_ROOT, dir);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  // Fallback: probe by slug name.
+  for (const d of MONOREPO_SEARCH_DIRS) {
+    const candidate = path.join(MONOREPO_ROOT, d, slug);
     if (fs.existsSync(candidate)) return candidate;
   }
   return null;
@@ -336,11 +353,54 @@ function validateApp(slug) {
     }
   }
 
+  // DEPLOY block — mandatory as of 2026-07-05. Always a hard FAIL (not mode-gated).
+  if (!validateDeployBlock(slug, content, publishPath)) ok = false;
+
   if (ok) {
     emit('PASS', slug, 'PUBLISH.md valid', `${surfaceIds.length} surface(s): ${surfaceIds.join(', ')}`);
   }
 
   return { fm, surfaceIds, publishPath };
+}
+
+/**
+ * Validate the <!-- DEPLOY --> block. Returns true iff valid.
+ * Contract: .claude/rules/app-deploy-manifest.md (port-from-registry, Approved 2026-07-05).
+ */
+function validateDeployBlock(slug, content, publishPath) {
+  const m = content.match(/<!-- DEPLOY -->([\s\S]*?)<!-- \/DEPLOY -->/);
+  if (!m) {
+    emit('FAIL', slug, 'PUBLISH.md has no <!-- DEPLOY --> block (mandatory)', publishPath);
+    return false;
+  }
+  const body = m[1];
+  let ok = true;
+
+  for (const field of ['runtime', 'port', 'health_path']) {
+    if (!new RegExp(`^${field}:`, 'm').test(body)) {
+      emit('FAIL', slug, `DEPLOY block missing required field: ${field}`, publishPath);
+      ok = false;
+    }
+  }
+
+  const portLine = body.match(/^port:\s*([^\s#]+)/m);
+  if (portLine) {
+    const val = portLine[1].trim();
+    if (!/^registry$/i.test(val)) {
+      emit('FAIL', slug, `DEPLOY block port must be the literal 'registry', not '${val}' (port lives in app_deployments.pm2_port)`, publishPath);
+      ok = false;
+    } else {
+      // Resolvability: an app WITH a PM2 dev row must have a pm2_port.
+      const rows = rowsBySlug.get(slug) || [];
+      const pm2 = rows.find((r) => r.host_type === 'pm2' && r.environment === 'dev');
+      if (pm2 && !pm2.pm2_port) {
+        emit('FAIL', slug, "DEPLOY block port: registry but the PM2 dev row has no pm2_port to resolve", publishPath);
+        ok = false;
+      }
+    }
+  }
+
+  return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -362,10 +422,11 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Query app_deployments for active rows
+  // 2. Query app_deployments for active rows (include host_type + pm2_port for
+  //    port: registry resolvability).
   let rows;
   try {
-    let qpath = '/rest/v1/app_deployments?status=eq.active&select=app_slug,environment,url&order=app_slug.asc';
+    let qpath = '/rest/v1/app_deployments?status=eq.active&select=app_slug,environment,url,host_type,pm2_port&order=app_slug.asc';
     if (slugFilter) {
       qpath += `&app_slug=eq.${encodeURIComponent(slugFilter)}`;
     }
@@ -373,6 +434,23 @@ async function main() {
   } catch (err) {
     console.error(`ERROR: Supabase query failed — ${err.message}`);
     process.exit(1);
+  }
+
+  // 2b. Query apps for monorepo_path (authoritative slug→dir; fixes slug≠dir).
+  try {
+    const apps = await supabaseGet(anonKey, '/rest/v1/apps?select=slug,monorepo_path');
+    for (const a of apps) {
+      if (a.monorepo_path) dirBySlug.set(a.slug, a.monorepo_path);
+    }
+  } catch (err) {
+    // Non-fatal: fall back to slug-name probing in resolveAppRoot.
+    if (!jsonOutput) console.log(`(note: apps monorepo_path lookup failed — ${err.message}; using slug-name fallback)`);
+  }
+
+  // Index all deployment rows by slug for port resolvability checks.
+  for (const r of rows) {
+    if (!rowsBySlug.has(r.app_slug)) rowsBySlug.set(r.app_slug, []);
+    rowsBySlug.get(r.app_slug).push(r);
   }
 
   if (!Array.isArray(rows) || rows.length === 0) {
