@@ -230,8 +230,17 @@ rdc:deploy promote: <slug> → <prod-domain>
 [ ] Gate: TLS valid
 [ ] Gate: metadata audit (see § Metadata Audit below) — BLOCK promote on any missing required item
 [ ] Cloudflare cache purged (if proxied)
+[ ] Back-merge to develop (MANDATORY — a hotfix ALWAYS lands on BOTH branches):
+      Assert `origin/develop` already carries the promoted change at content level
+      (`git show <sha>` strings present in `origin/develop`, or `git cherry origin/develop <sha>` prints `-`).
+      In the normal promote path the change is sourced FROM develop, so this is a no-op verify.
+      If it does NOT (a `--hotfix <sha>` authored directly for prod): land the SAME change on
+      develop NOW — clean worktree off `origin/develop` → apply the identical diff
+      (`git cherry-pick <sha>` or `git checkout <sha> -- <app-paths>`) → commit → `node scripts/land.mjs`
+      (never `git push origin develop` from a lane). Re-assert before finishing.
+      A promote that leaves develop without the change is INCOMPLETE — this is the anti-drift guarantee.
 [ ] deployment_registry updated (last_deploy_at, last_deploy_commit, status)
-✅ rdc:deploy promote: <slug> live in prod — <changed-string> verified
+✅ rdc:deploy promote: <slug> live in prod + backfilled to develop — <changed-string> verified
 ```
 
 **The explicit Coolify trigger (the whole point — do not skip):**
@@ -248,6 +257,7 @@ curl -s -H "Authorization: Bearer $_COOLIFY" \
 - Coolify auto-deploy was **ON** for the app yet the merge did **not** auto-deploy — a webhook-delivery flake. A promote must ALWAYS trigger the deploy explicitly and verify; never hope the webhook fired.
 - `develop` was 87 commits ahead of `main` (unrelated apps' WIP). Promoting must be surgical (this app's paths / one sha), never a develop→main merge.
 - HTTP 200 was returned by the stale origin the whole time — only a content-level assertion (`curl … | grep '<new string>'`) proves the promote landed.
+- **Drift audit 2026-07-11:** ~30 prod-only commits had accumulated on `main` because prod-authored hotfixes (login gates, coming-soon, Dockerfiles) were PR-merged to `main` and never back-merged to `develop`. Per-file reconciliation found zero genuinely-orphaned content (develop was ahead or the fixes were legacy assets develop dropped), but the accounting cost hours. The mandatory back-merge step above makes that drift structurally impossible: every promote/hotfix now lands on develop too, or the run is incomplete.
 
 ### Mode 6 — convert <slug> (prod runtime static→Next, in place)
 
