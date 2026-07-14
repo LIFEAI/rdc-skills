@@ -1,7 +1,7 @@
 ---
 name: rdc:fixit
 description: >-
-  Usage `rdc:fixit <description>` — sanctioned bypass for quick fixes under 5 files / 30 min. Creates minimal work item, makes fix, commits, closes. The ONLY alternative to rdc:build. For typos, config patches, hotfixes, dep bumps.
+  Usage `rdc:fixit <description>` — sanctioned bypass for quick fixes under 5 files / 30 min. Creates minimal work item, makes fix, commits, DELIVERS it to where it is consumed (publish/deploy/land) and verifies, then closes. The ONLY alternative to rdc:build. For typos, config patches, hotfixes, dep bumps.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -87,7 +87,31 @@ else
 fi
 ```
 
+### 5.5 Deliver to done (MANDATORY — a fixit is not done until the change is LIVE)
+
+⛔ **"Committed and pushed" is NOT done.** Editing code and walking away is the exact
+failure this step exists to prevent. Carry the change to where it is consumed and verify it:
+
+| Target shape | "Done" = delivered means | How + structural proof |
+|---|---|---|
+| Published package (npm / PyPI) | new version live on the registry | `npm publish --access public` (or repo release path); verify `npm view <pkg> version` == new version |
+| Deployed app (`apps/*`, sites) | change live on the running host | `/rdc:deploy <slug>` (dev) / `promote` (prod); verify HTTP 200 + content probe |
+| Shared lib consumed in-repo | landed on the integration branch | `node scripts/land.mjs`; verify branch contains the SHA |
+| Standalone repo | its own release ritual completed | repo release script/tag; verify the artifact/tag exists |
+| Pure doc / internal-only change, NO consumer | committed + landed | no deploy; the ONLY case where commit == done |
+
+- **A version bump obligates a release.** A bumped-but-unshipped version is an unfinished fixit.
+- **Verify structurally** (registry version, HTTP status, tag presence), never by assumption.
+- **If delivery can't complete in-session** (missing OTP/secret, human approval, denied
+  command, manual prod promotion): set the work item `blocked` with the exact remaining
+  command + reason and tell the user the one step to run — do NOT mark `done`.
+
+Under `RDC_TEST=1`: echo `[RDC_TEST] skipping delivery (publish/deploy)` and proceed.
+
 ### 6. Report, review, close, and clean up
+
+**Precondition: Step 5.5 delivery is verified.** If delivery is blocked, set `blocked` (not
+`done`) with the remaining step — never mark an undelivered change `done`.
 
 ```sql
 SELECT submit_implementation_report('<id>'::uuid,
@@ -122,3 +146,5 @@ Report: what was fixed, file(s) changed, commit hash. One sentence.
 - Never run `pnpm build` — not needed for a fixit
 - If scope expands mid-fix: stop, escalate to rdc:build, don't finish under fixit
 - Marker file must be cleaned up whether fix succeeds or escalates
+- **Done = delivered, not committed.** Live where consumed (published/deployed/landed) +
+  verified. A version bump obligates a publish. Can't deliver in-session → `blocked`, never `done`.
