@@ -126,12 +126,36 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - Visual work: each named screenshot and visual checkpoint gets its own row.
    - Cross-system workflows: each handoff boundary gets its own row.
 
-   Minimum row-count heuristics:
-   - UI route: at least 4 rows.
-   - CRUD surface: at least 6 rows.
-   - API route: at least 3 rows.
-   - DB work package: at least 5 rows.
-   - Local editor/sidebar workflow: at least 5 rows.
+   Per-surface completeness floors — ATTESTED BY SURFACE AREA (not a flat minimum):
+   A checklist MUST carry at minimum one attested `decomp-*` row for EACH applicable item
+   below. This is a COMPLETENESS requirement measured against the surfaces the WP touches —
+   decompose the whole surface area; do not stop at a token few rows.
+   - UI screen (per screen the WP renders): a row for EACH applicable state — loaded, empty,
+     loading, error, detail — plus mobile and auth-gate where applicable. Floor: >= 6 rows PER screen.
+   - UI actions (per interactive surface): one row for EACH action that exists — open, search,
+     filter, select, create, edit, duplicate, save, assign, activate, archive, delete, import,
+     apply, cancel.
+   - API route (per route): success-read, success-write, validation-failure (4xx),
+     unauthorized/forbidden, and side-effect verification. Floor: >= 4 rows per route.
+   - DB / migration: ONE row per database object — per table, per non-trivial column-group, per
+     index, per RLS policy, per trigger, per function/RPC, per FK/guard — plus rollback/smoke and
+     type-exposure. A 10-table WP therefore carries ~15-20 rows, not 5.
+   - CLI / sidebar / local tool: start, attach, enqueue, poll, reply, timeout/not-found,
+     live-refresh. Floor: >= 6 rows.
+   - Visual: one row per named screenshot/checkpoint. Cross-system: one row per handoff boundary.
+
+   HARD FLOORS — reject the checklist (do NOT create work items) if any is violated:
+   - Every implementation task carries >= 10 attested `decomp-*`/`test-*` rows.
+   - A MULTI-SURFACE WP (two or more of screen/api/db/tool) carries the SUM of its per-surface
+     floors — typically 12-20 rows. A flat 5-6-row checklist for a real feature WP is a REJECT,
+     not a pass.
+   - COVERAGE: the checklist covers EVERY surface the WP declares. A WP touching screen+api+db
+     that lists only db rows FAILS the coverage gate.
+   - ATTESTATION: every row names its surface + ONE concrete verification artifact (test name,
+     route probe, Playwright screenshot, SQL query, migration proof, CLI transcript). A row with
+     no attestation artifact is a REJECT.
+   - If a WP genuinely has < 10 observable behaviors, SPLIT it or justify the low count explicitly
+     in the Quality Gate `deferred:` note — never silently ship a thin checklist.
 
    Reject these checklist items as too coarse:
    - "theme management works"
@@ -146,11 +170,18 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - `decomp-api-import-validation: POST /api/tools/theme-import rejects missing source URL with 400 JSON error; evidence: route probe`
 
    Add a `## Checklist Quality Gate` section with:
-   - `verdict: PASS` only when every row passes the rubric.
-   - `failures:` list any coarse, missing, duplicate, or unverifiable rows.
-   - `deferred:` list any explicit out-of-scope rows.
+   - `verdict: PASS` only when EVERY row passes the rubric AND every WP meets the per-surface
+     completeness floors above (each declared surface covered; >= 10 attested rows; multi-surface =
+     sum of surface floors) AND every row carries a verification artifact.
+   - `per_wp_row_counts:` list each WP and its attested row count so a reviewer sees at a glance
+     that no feature WP is under-decomposed (no 5-6-row feature WP).
+   - `coverage:` per WP, list the surfaces it declares and confirm each is covered by >= its floor.
+   - `failures:` list any coarse, under-decomposed, uncovered-surface, missing, duplicate, or
+     unattested rows.
+   - `deferred:` list any explicit out-of-scope rows (with the reason a low count is justified).
 
-   Do not create build-ready work items unless this gate is `PASS`.
+   Do not create build-ready work items unless this gate is `PASS`. A `PASS` with any feature WP
+   under 10 attested rows, or any declared surface left uncovered, is invalid.
 
 5. **Write a test plan for each work package (MANDATORY):**
 

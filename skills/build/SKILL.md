@@ -101,7 +101,7 @@ Read the task title and description, then:
    | Tasks exist but all have empty `description` fields | → Invoke `rdc:plan` on this epic. Tasks without descriptions cannot be safely dispatched. |
    | Plan doc missing `## Checklist Decomposition Matrix` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Plan doc missing `## Checklist Quality Gate` with `verdict: PASS` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
-   | Any implementation task lacks `decomp-*` checklist items | → Invoke `rdc:plan` on this epic. Coarse checklists cannot be safely dispatched. |
+   | Any implementation task lacks `decomp-*` items, has < 10 attested rows, or leaves a declared surface (screen/api/db/tool) uncovered | → Invoke `rdc:plan` on this epic. Coarse/under-decomposed checklists cannot be safely dispatched. |
    | Any `decomp-*` item lacks route/file, action, expected result, or evidence artifact | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Tasks exist and have descriptions | → Continue with build. |
 
@@ -144,6 +144,10 @@ Read the task title and description, then:
    - `verdict: PASS`
 
    Required task checklist shape:
+   - Every implementation work item has >= 10 attested `decomp-*`/`test-*` rows and meets the
+     per-surface completeness floors from rdc:plan (each declared surface covered; a multi-surface
+     WP carries the SUM of its surface floors, typically 12-20). A flat 5-6-row checklist for a
+     feature WP is REJECTED — reopen the epic to rdc:plan for full surface-area decomposition.
    - Every implementation work item has at least one `decomp-*` checklist row and one `test-*` checklist row.
    - Every `decomp-*` row names a concrete route or file path.
    - Every `decomp-*` row names one user/agent action.
@@ -162,6 +166,11 @@ Read the task title and description, then:
    - API route: at least successful read/write, validation failure, and unauthorized/forbidden or documented auth bypass.
    - DB/migration task: at least schema object, relationship/guard, policy/permission, seed/fixture or backfill, and smoke query.
    - Editor/sidebar/CLI workflow: at least start, attach/open, enqueue action, observe result, timeout/error, and live refresh where applicable.
+
+   HARD FLOOR (mirrors rdc:plan): every implementation task carries >= 10 attested rows; a
+   multi-surface WP carries the SUM of its per-surface floors (typically 12-20). A flat 5-6-row
+   feature checklist, or any declared surface (screen/api/db/tool) left uncovered, is a REJECT —
+   reopen to rdc:plan. Every row must name its surface + one verification artifact (attested).
 
    ### ⛔ Deliverable / acceptance check-off table — show BEFORE any implementation
    Before dispatching the first wave, render a deliverable/acceptance table and
@@ -506,7 +515,7 @@ Read the task title and description, then:
     - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
     - Runs vitest for every touched package
     - **Verifies checklist decomposition quality per work item before functional validation:**
-      - Every implementation work item has at least one `decomp-*` item and one `test-*` item
+      - Every implementation work item has >= 10 attested `decomp-*`/`test-*` items, meets the per-surface completeness floors (each declared surface covered), and no feature WP ships a 5-6-row checklist
       - Every `decomp-*` item includes route/file, action, expected result, and evidence artifact
       - Any unchecked `decomp-*` item with `required: true` = work item CANNOT be set to `done`
       - Any coarse or non-falsifiable `decomp-*` item = reopen to `todo` with the specific failure
