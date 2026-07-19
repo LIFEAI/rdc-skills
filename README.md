@@ -202,6 +202,7 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 
 ### Release
 - rdc:release
+- Release contract: [RELEASE.md](RELEASE.md)
 
 ### Dev Loop
 - rdc:fixit, rdc:collab, rdc:co-develop, rdc:edit
