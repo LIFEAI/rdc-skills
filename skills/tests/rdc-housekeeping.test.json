@@ -18,7 +18,11 @@
       "PUBLISH.md",
       "CLAUDE.md",
       "orphan",
-      ".rdc/reports"
+      ".rdc/reports",
+      "resolution audit",
+      "architectural report",
+      "interview",
+      "RDC action register"
     ],
     "output_not_contains": [
       "auto-remediate",
