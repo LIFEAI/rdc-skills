@@ -163,7 +163,7 @@ Write to `.rdc/reports/YYYY-MM-DD-housekeeping.md`:
 
 ## Lessons triage (weekly)
 
-Read all `.rdc/lessons/*.md` with `lesson_status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). Before clustering, normalize a legacy lesson that has `status` but no `lesson_status` by moving its existing value to `lesson_status` and record the migration in the report. This phase is a controlled weekly workflow: audit first, collect every architectural answer, then route approved work through RDC. It must never create a duplicate plan or fixit for a lesson that is already fixed or sufficiently mitigated.
+Before filtering or clustering, normalize every legacy lesson that has `status` but no `lesson_status` by moving its existing value to `lesson_status` and record the migration in the report. Then read all `.rdc/lessons/*.md` with `lesson_status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). This phase is a controlled weekly workflow: audit first, collect every architectural answer, then route approved work through RDC. It must never create a duplicate plan or fixit for a lesson that is already fixed or sufficiently mitigated.
 
 ### 1. Cluster
 
