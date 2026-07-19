@@ -10,6 +10,7 @@ assert.match(release, /npm version patch --no-git-tag-version/);
 assert.match(release, /npm view @lifeaitools\/rdc-skills@<version> version/);
 assert.match(release, /npm pack @lifeaitools\/rdc-skills@<version>/);
 assert.match(release, /npm install -g @lifeaitools\/rdc-skills@<version>/);
+assert.match(release, /rdc-skills-install --profile core/);
 assert.match(release, /rdc-skills-install --profile lifeai/);
 
 console.log('release contract test passed');

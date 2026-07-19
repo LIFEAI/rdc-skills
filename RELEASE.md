@@ -29,7 +29,9 @@ version.
    files are present in the tarball.
 8. Install the published package with
    `npm install -g @lifeaitools/rdc-skills@<version>`.
-9. Reinstall the LifeAI profile with `rdc-skills-install --profile lifeai`.
+9. Reinstall the active profile with `rdc-skills-install --profile core`; on a
+   workstation intentionally configured for the LIFEAI project layout and
+   services, use `rdc-skills-install --profile lifeai`.
 10. Verify the global package version, the active profile copy, and the skill
     smoke check before closing the release work item.
 

@@ -95,6 +95,15 @@ lesson_status: open until the weekly triage audit records the final outcome.>
 
 When unsure, mark `architectural`.
 
+### Legacy status migration
+
+Older lesson files may use `status` instead of `lesson_status`. During weekly
+intake, before filtering or clustering, normalize every lesson that has
+`status` and no `lesson_status` by moving the unchanged value to
+`lesson_status` and removing the legacy key. Record each migration in the
+weekly report. Do not reinterpret a legacy value or create a work item merely
+because it was migrated.
+
 ---
 
 ## When to capture (at skill exit)
@@ -130,7 +139,7 @@ At the end of a long skill run, before the final verdict line:
 
 `rdc:housekeeping` uses this strict order. It prevents duplicate plans and fixits, gathers every architectural answer before changes, and keeps each executable change inside an RDC work item.
 
-1. Read all `.rdc/lessons/*.md` with `lesson_status: open`, then cluster by `area` + root-cause similarity.
+1. Normalize legacy `status` fields as described above, then read all `.rdc/lessons/*.md` with `lesson_status: open` and cluster by `area` + root-cause similarity.
 2. **Resolution audit before routing:** for every cluster, inspect the relevant code, rules, skills, guides, tests, recent commits, linked work items, and existing mitigations. Record what was inspected, the evidence, and one result: `already-fixed`, `sufficiently-mitigated`, or `still-open`. Do not create an `rdc:fixit`, `rdc:plan`, or `rdc:build` item before this audit.
 3. Resolve no-work clusters from the audit: link the prior commit and set `lesson_status: applied` for `already-fixed`; set `lesson_status: wont-fix` for a sufficient mitigation with its remaining-risk reason. Leave partially mitigated clusters open.
 4. **Architectural report and interview:** before any file changes, report every still-open architectural decision with options, tradeoffs, recommendation, risks, and audit evidence. Create the complete interview list, ask each required question in attended mode, and record every question, answer, decision, rationale, and affected cluster. Gather all answers before the first fix. In unattended mode, create deduplicated `human_items` decision records and defer unresolved choices.
