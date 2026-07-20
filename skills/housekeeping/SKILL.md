@@ -163,7 +163,23 @@ Write to `.rdc/reports/YYYY-MM-DD-housekeeping.md`:
 
 ## Lessons triage (weekly)
 
-Before filtering or clustering, normalize every legacy lesson that has `status` but no `lesson_status` by moving its existing value to `lesson_status` and record the migration in the report. Then read all `.rdc/lessons/*.md` with `lesson_status: open` (schema + procedure: `.rdc/guides/lessons-learned-spec.md` § Triage procedure). This phase is a controlled weekly workflow: audit first, collect every architectural answer, then route approved work through RDC. It must never create a duplicate plan or fixit for a lesson that is already fixed or sufficiently mitigated.
+Before filtering or clustering, read every candidate lesson **in full**. Normalize every
+legacy lesson that has `status` but no `lesson_status` by moving its existing value to
+`lesson_status` and record the migration in the report. Validate that each candidate has
+exactly one frontmatter block, canonical `lesson_status`, and the required routing fields
+(`id`, `date`, `skill`, `runtime`, `scope`, `area`, `needs_claude`, `links`); a malformed
+record is itself a triage finding, never an invisible parser omission.
+
+Before asking Dave a single question or routing any fix, write four synthesis artifacts in
+the weekly report: (1) a correlation table accounting for **every** candidate lesson with its
+remediation train, shared root cause, systemic fix, owner/lifecycle, and closure evidence;
+(2) a remediation model that collapses recurring symptoms into the smallest control set and
+execution order; (3) a resolution audit; and (4) one compact architectural-decision table
+with options and a recommendation for each genuine trade-off. Do not make Dave reconstruct
+the model from serial lesson prompts. This phase is a controlled weekly workflow: synthesize
+first, then collect the complete architectural interview, then route approved work through
+RDC. It must never create a duplicate plan or fixit for a lesson that is already fixed or
+sufficiently mitigated.
 
 ### 1. Cluster
 
@@ -183,7 +199,7 @@ The audit must name what was inspected, the evidence found or missing, the concl
 
 ### 3. Architectural report and interview gate
 
-Before any fix begins, write the full architectural report for every `still-open` architectural cluster. For each one include the decision to make, affected systems, options and tradeoffs, recommendation, unresolved risks, and the result of the resolution audit.
+After the synthesis artifacts are complete, write the full architectural report for every `still-open` architectural cluster. For each one include the decision to make, affected systems, options and tradeoffs, recommendation, unresolved risks, and the result of the resolution audit.
 
 Create a complete interview list from that report before changing any file. In attended mode, ask every required architectural question via `AskUserQuestion`, one question at a time, and record the question, answer, decision, rationale, and affected cluster. Do not start simple or architectural fixes until all interview questions have answers or the corresponding cluster is explicitly deferred. Silence is not approval.
 
