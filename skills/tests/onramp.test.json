@@ -1,0 +1,87 @@
+{
+  "skill": "rdc:onramp",
+  "description": "Tier-2 self-test for rdc:onramp enrollment skill",
+  "tier": 2,
+  "sandbox": true,
+  "env": {
+    "RDC_TEST": "1"
+  },
+  "invocation": {
+    "slug": "onramp-selftest",
+    "name": "Onramp Self Test",
+    "flags": ["--archetype", "working-landscapes", "--dry-run"]
+  },
+  "assertions": [
+    {
+      "type": "exit_code",
+      "expect": 0,
+      "description": "Skill exits cleanly under RDC_TEST with --dry-run"
+    },
+    {
+      "type": "stdout_contains",
+      "pattern": "Preflight",
+      "description": "Checklist begins with Preflight step"
+    },
+    {
+      "type": "stdout_contains",
+      "pattern": "Resolve drift",
+      "description": "Drift resolution step is emitted"
+    },
+    {
+      "type": "stdout_contains",
+      "pattern": "\\[RDC_TEST\\]",
+      "description": "Sandbox short-circuit marker present — confirms external calls were skipped"
+    },
+    {
+      "type": "file_absent",
+      "path": "places/onramp-selftest/_context.md",
+      "description": "Scaffolder MUST NOT write _context.md — projection-drift violation gate"
+    }
+  ],
+  "door_contracts": [
+    {
+      "name": "enroll_place_signature",
+      "description": "enroll_place RPC must accept (text, text, jsonb, text) and return jsonb",
+      "type": "rpc_introspection",
+      "project_id": "uvojezuorjgqzmhhgluu",
+      "query": "SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, pg_get_function_result(p.oid) AS returns FROM pg_proc p WHERE p.proname = 'enroll_place';",
+      "expect_args_contains": ["text", "jsonb"],
+      "expect_returns": "jsonb"
+    },
+    {
+      "name": "insert_work_item_accepts_project_node_id",
+      "description": "insert_work_item must accept p_project_node_id parameter",
+      "type": "rpc_introspection",
+      "project_id": "uvojezuorjgqzmhhgluu",
+      "query": "SELECT proname, pg_get_function_identity_arguments(oid) FROM pg_proc WHERE proname = 'insert_work_item';",
+      "expect_args_contains": ["p_project_node_id"]
+    }
+  ],
+  "disk_ahead_test": {
+    "description": "disk-ahead state must STOP and open a reconciliation work item",
+    "setup": "mkdir -p places/disk-ahead-test",
+    "invocation_slug": "disk-ahead-test",
+    "invocation_name": "Disk Ahead Test",
+    "assertions": [
+      {
+        "type": "stdout_contains",
+        "pattern": "disk-ahead",
+        "description": "Skill identifies the disk-ahead state"
+      },
+      {
+        "type": "stdout_contains",
+        "pattern": "STOP",
+        "description": "Skill STOPs on disk-ahead"
+      },
+      {
+        "type": "exit_nonzero",
+        "description": "Skill exits non-zero on disk-ahead (not a clean enrollment)"
+      }
+    ],
+    "teardown": "rmdir places/disk-ahead-test 2>/dev/null || true"
+  },
+  "idempotency_test": {
+    "description": "Running rdc:onramp twice for already-enrolled should produce zero new writes",
+    "note": "Under RDC_TEST=1 this is verified by checking that [RDC_TEST] skipping markers appear (not real insert calls) and the checklist reports already-enrolled"
+  }
+}

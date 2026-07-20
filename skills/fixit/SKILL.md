@@ -1,6 +1,6 @@
 ---
 name: rdc:fixit
-description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, runs a mandatory code-review pass (pr-review-toolkit:code-reviewer), closes. The only sanctioned bypass of rdc:build."
+description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, runs a mandatory code-review pass (pr-review-toolkit:code-reviewer), DELIVERS the change to where it is consumed (publish/deploy/land) and verifies it, then closes. The only sanctioned bypass of rdc:build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -115,9 +115,43 @@ Agent({
 
 Under `RDC_TEST=1`: echo `[RDC_TEST] skipping code-review dispatch` and proceed.
 
+### 5.7 Deliver to done (MANDATORY — a fixit is not done until the change is LIVE)
+
+⛔ **"Committed and pushed" is NOT done.** Editing code and walking away is the exact
+failure this step exists to prevent. A fixit closes only when the change has reached the
+place it is actually consumed, verified with a structural probe.
+
+Identify the target's delivery mechanism from its registry/manifest/`package.json` and
+complete it:
+
+| Target shape | "Done" = delivered means | How + structural proof |
+|---|---|---|
+| Published package (npm / PyPI) | new version live on the registry | run the repo's release/publish path (e.g. `npm publish --access public`); verify `npm view <pkg> version` == new version |
+| Deployed app (`apps/*`, sites) | change live on the running host | `/rdc:deploy <slug>` (dev) / `promote` (prod); verify HTTP 200 + content probe |
+| Shared lib consumed in-repo | landed on the integration branch | `node scripts/land.mjs` (or repo equivalent); verify branch contains the SHA |
+| Standalone repo | its own release ritual completed | follow the repo's release script/tag; verify the artifact/tag exists |
+| Pure doc / internal-only change, NO downstream consumer | committed + landed | no deploy; this is the ONLY case where commit == done |
+
+Hard rules for this gate:
+- **A version bump obligates a release.** If you bumped `package.json` / `__version__` /
+  a lockfile version, you MUST publish/deploy it — a bumped-but-unshipped version is an
+  unfinished fixit, not a done one.
+- **Verify with a structural probe**, never an assumption: registry version string, HTTP
+  status, tag/commit presence.
+- **If delivery cannot complete in-session** (needs an OTP/secret you lack, a human
+  approval, a denied command, or a manual prod promotion): DO NOT close `done`. Set the
+  work item `blocked` with the exact remaining command + reason, and tell the user the one
+  step to run (offer it as `! <command>` so it runs in-session). "Blocked on a named
+  delivery step" is honest; "done" without delivery is the bug we are fixing.
+
+Under `RDC_TEST=1`: echo `[RDC_TEST] skipping delivery (publish/deploy)` and proceed; the
+gate is validated structurally, not executed.
+
 ### 6. Close and clean up
 
-Submit implementation report first, move to review, then close as validator:
+Submit implementation report first, move to review, then close as validator.
+**Precondition: Step 5.7 delivery is verified.** If delivery is blocked, set status
+`blocked` (not `done`) with the remaining step — never mark `done` on an undelivered change:
 
 ```sql
 SELECT submit_implementation_report('<id>'::uuid,
@@ -159,6 +193,10 @@ Report: what was fixed, file(s) changed, commit hash. One sentence.
 - Never run `pnpm build` — not needed for a fixit
 - If scope expands mid-fix: stop, escalate to rdc:build, don't finish under fixit
 - Marker file must be cleaned up whether fix succeeds or escalates
+- **Done = delivered, not committed.** A fixit is `done` only when the change is live where
+  it is consumed (published / deployed / landed) AND verified structurally. A version bump
+  obligates a publish. If delivery can't complete in-session, close `blocked` with the named
+  step — never `done`.
 
 ## Capture lessons (exit step)
 

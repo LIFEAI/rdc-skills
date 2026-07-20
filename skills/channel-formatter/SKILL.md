@@ -130,6 +130,11 @@ skills named in the scope boundary.
 > this skill. The Word/DOCX and PDF sections below describe target structure only; producing
 > the actual `.docx`/`.pdf` artifact is `rdc:convert` / `rdc:brochure`, not channel-formatter.
 >
+> **Work in Markdown, materialize at the end.** Draft and format everything as Markdown
+> ("MD time" — cheap tokens, clean diffs); only hand off to `rdc:convert` to emit the
+> `.docx`/`.pptx` as the last step. build-corpus round-trips losslessly, so this costs
+> no fidelity. See the build-corpus agent primer (`AGENTS.md`).
+>
 > Specialist routing:
 > - Office/Markdown file conversion → `rdc:convert`
 > - HTML/folder/zip/URL to PDF brochure rendering → `rdc:brochure`

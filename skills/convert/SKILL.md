@@ -14,6 +14,33 @@ package, two surfaces. This skill is a **when-to-use + full call/switch referenc
 it does NOT require a local checkout. Any runtime that can reach npm or PyPI can
 fetch and run the tool in its own session (this is how claude.ai uses it).
 
+## Working model — stay in Markdown ("MD time"), materialize at the end
+
+**This is the whole point of the tool. Read it before converting anything.**
+
+Office files (`.docx`/`.pptx`) are large, noisy XML zip packages — 5–20× the tokens
+of the same content in Markdown, and easy to corrupt if hand-edited. So:
+
+> **Convert an existing Office doc DOWN to Markdown → do ALL reading, reasoning, and
+> editing in Markdown ("MD time") → convert UP to `.docx`/`.pptx` only as the final
+> step, when a human needs to read, print, or share it.**
+
+You can do this safely because the conversion **round-trips**: `word → md → word`
+preserves equations, tables, images, and the Word template's styling (via the
+`.wordstyle` sidecar dropped next to the Markdown). You are not trading fidelity for
+token economy — you get both. Never paste `.docx`/`.pptx` XML or base64 into context
+to "read" a doc; convert it to `.md` first. Never hand-author OOXML — if you think you
+need to, you actually need a frontmatter field or a `house_style` key.
+
+Style the eventual Word output **from Markdown frontmatter** (page size, margins,
+`header_left`/`footer_left`, `house_style`) so you never leave MD to control the look.
+When a `.dotx` template AND frontmatter both set header/footer chrome, **frontmatter
+wins per region** and the template fills unset regions (build-corpus ≥ 0.9.2).
+
+**Full agent primer** (WHY + HOW, one page, portable to claude.ai/Codex/CLI):
+[`AGENTS.md`](https://github.com/LIFEAI/build-corpus/blob/main/AGENTS.md) in the
+build-corpus repo (`C:/Dev/build-corpus/AGENTS.md` locally).
+
 ## When to Use
 - Convert `.docx`, `.pptx`, or `.ppt` → Markdown, preserving Word OMML equations
   (as KaTeX-readable TeX), tables, images, headings, and lists.
