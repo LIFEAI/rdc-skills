@@ -63,9 +63,16 @@ Phase 2: Research + Document Integration
   [ ] PLACE.md compiled from findings
   [ ] corpus/INDEX.md updated with all sources (web + document)
   [ ] DOCUMENT GATE: every incoming doc read and referenced — no unread documents allowed
+Phase 2b: People, Organizations & Place Enrichment
+  [ ] Extract all named people from project documents
+  [ ] Extract all named organizations (partners, contractors, First Nations)
+  [ ] RocketReach lookup on each person — verify existence, title, LinkedIn
+  [ ] RocketReach company lookup on each org — verify existence, size, domain
+  [ ] Write verified entities to tracker/STAKEHOLDERS.md
+  [ ] Flag unverified entities in RECONCILIATION.md
 Phase 3: Conflict Resolution
   [ ] All facts reviewed for tier conflicts (web vs document)
-  [ ] RECONCILIATION.md written
+  [ ] RECONCILIATION.md written (includes unverified entities)
   [ ] All facts verified | resolved | held — zero conflicted/unverified
 Phase 4: Brand Book + Imagery
   [ ] Search online for existing project imagery (previous names, partner sites, location photos)
@@ -87,6 +94,32 @@ Phase 7: Deploy Dev
   [ ] Register in apps + app_deployments (allocate next free port)
   [ ] Regenerate PM2 ecosystem config on Vultr (--write flag)
   [ ] PM2 start + HTTP 200 at <slug>.dev.place.fund
+  [ ] INTAKE-LOG.md — all phase timestamps recorded, intake # assigned
+```
+
+**Prod promotion is NOT part of onramp.** Once Phase 7 completes, the pipeline
+is done. To promote to production later: `rdc:deploy <slug> promote`.
+
+---
+
+## INTAKE-LOG.md — Transaction Log
+
+Every onramp run writes a timestamped transaction log at `places/<slug>/INTAKE-LOG.md`.
+Each phase records its timestamp, operator, session ID, and notes. Intake #2+ appends
+rows — the skill detects a prior intake and runs as an update (re-reads documents,
+re-scores, rebuilds changed content).
+
+```markdown
+| # | Phase | Timestamp | Operator | Session | Notes |
+|---|-------|-----------|----------|---------|-------|
+| 1 | Enrollment | 2026-07-20T07:11Z | claude-5 | abc123 | fresh state |
+| 1 | Research | 2026-07-20T07:20Z | claude-5 | abc123 | 14 web + 18 docs |
+| 1 | People/Org | ... | ... | ... | N verified |
+| 1 | Conflicts | ... | ... | ... | 2 resolved |
+| 1 | Brand | ... | ... | ... | palette derived |
+| 1 | Score | ... | ... | ... | composite 67 |
+| 1 | Build | ... | ... | ... | tsc 0, build 0 |
+| 1 | Deploy Dev | ... | ... | ... | HTTP 200 |
 ```
 
 ---
@@ -223,6 +256,26 @@ DOCUMENT GATE:
 ```
 
 If any incoming document was NOT read: **STOP and report which ones were skipped and why** (e.g. file format not supported, file too large). Never proceed with unread documents.
+
+---
+
+## Phase 2b: People, Organizations & Place Enrichment
+
+After research, before conflict analysis. Enrich and verify all named entities.
+
+### Procedure
+
+1. **Extract** all named people from project documents (team, partners, advisors, stakeholders, First Nations contacts)
+2. **Extract** all named organizations (partners, contractors, First Nations, government bodies, technology providers)
+3. **RocketReach person lookup** on each person — verify existence, current title, LinkedIn, email. Use `mcp__claude_ai_RocketReach__rocketreach_lookup_person` or `rocketreach_search_people`.
+4. **RocketReach company lookup** on each org — verify existence, size, domain. Use `mcp__claude_ai_RocketReach__rocketreach_lookup_company`.
+5. **Write** verified entity data to `places/<slug>/tracker/STAKEHOLDERS.md`:
+   - People: name, title, org, LinkedIn, verification status
+   - Orgs: name, domain, size, relationship to project, verification status
+6. **Flag** unverified entities (RocketReach returned nothing) in RECONCILIATION.md
+7. **Record** entity count in INTAKE-LOG.md
+
+Under `RDC_TEST=1`: skip RocketReach lookups; write placeholder STAKEHOLDERS.md.
 
 ---
 
