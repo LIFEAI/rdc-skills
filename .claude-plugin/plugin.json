@@ -1436,7 +1436,7 @@
       "name": "onramp",
       "slash": "rdc:onramp",
       "category": "infra",
-      "usage": "rdc:onramp <slug> --name \"<Display Name>\" [--location <json>] [--archetype <archetype>] [--owner place-fund|rdc|jv|client] [--history] [--dry-run]",
+      "usage": "rdc:onramp <slug> --name \"<Display Name>\" [--location <json>] [--archetype <archetype>] [--owner place-fund|rdc|jv|client] [--history] [--skip-to <phase>] [--no-gate] [--dry-run]",
       "args": {
         "positional": [
           {
@@ -1494,7 +1494,10 @@
       ],
       "produces": [
         "work_items",
-        "supabase_writes"
+        "supabase_writes",
+        "git_commits",
+        "git_pushes",
+        "deploys"
       ],
       "default_model": "opus",
       "triggers": [
@@ -1503,12 +1506,12 @@
         "lay the infra for",
         "enroll this project",
         "start a new place fund project",
-        "run enrollment for"
+        "run enrollment for",
+        "run the full pipeline for",
+        "build a place from scratch"
       ],
       "follows": [],
-      "leads_to": [
-        "design"
-      ],
+      "leads_to": [],
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
