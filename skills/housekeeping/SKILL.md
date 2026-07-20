@@ -163,7 +163,7 @@ Write to `.rdc/reports/YYYY-MM-DD-housekeeping.md`:
 
 ## Lessons triage (weekly)
 
-Before filtering or clustering, read every candidate lesson **in full**. Normalize every
+Before filtering or clustering, run `node <installed-rdc-skills>/scripts/validate-lessons.mjs --root <project-root> --json` and read every candidate lesson **in full**. The validator must report `invalid_count: 0` before clustering; use `--allow-invalid` only to produce the migration inventory, never as a pass. Normalize every
 legacy lesson that has `status` but no `lesson_status` by moving its existing value to
 `lesson_status` and record the migration in the report. Validate that each candidate has
 exactly one frontmatter block, canonical `lesson_status`, and the required routing fields

@@ -17,11 +17,16 @@ assert.match(guide, /Legacy status migration/);
 assert.match(guide, /`status` and no `lesson_status`/);
 
 const housekeeping = readFileSync(join(root, 'skills', 'housekeeping', 'SKILL.md'), 'utf8');
+const validator = readFileSync(join(root, 'scripts', 'validate-lessons.mjs'), 'utf8');
 assert.match(housekeeping, /When invoked with `--lessons`, skip every non-lessons maintenance section/);
 assert.match(housekeeping, /including Directory Structure Verification/);
 const legacyNormalization = housekeeping.search(/normalize every\s+legacy lesson that has `status` but no `lesson_status`/i);
 const clustering = housekeeping.search(/### 1\. Cluster/);
 assert.ok(legacyNormalization >= 0 && clustering > legacyNormalization, 'legacy lessons must be normalized before clustering');
 assert.match(housekeeping, /all answers are collected before the first routed fix starts/i);
+assert.match(housekeeping, /validate-lessons\.mjs/, 'housekeeping must run the deterministic lesson validator before clustering');
+assert.match(validator, /candidate_count/, 'lesson validator must inventory every open candidate');
+assert.match(validator, /invalid_count/, 'lesson validator must fail noncanonical intake');
+assert.match(validator, /lesson_status/, 'lesson validator must enforce the canonical triage field');
 
 console.log('lessons pipeline contract test passed');
