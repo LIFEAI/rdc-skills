@@ -36,7 +36,7 @@ rdc:onramp <slug> --name "<Display Name>" [--location <json>] [--archetype <arch
 | `--location` | no | `{}` | JSON object for `enroll_place p_location` (e.g. `{"state":"BC","country":"Canada"}`). Never guessed — omit if unknown. |
 | `--archetype` | no | `TBD` | Base-arc archetype. See [`corpus/_shared/onramp/ARCHETYPES.md`](file:///C:/Dev/regen-root/corpus/_shared/onramp/ARCHETYPES.md). |
 | `--owner` | no | `place-fund` | `place-fund` \| `rdc` \| `jv` \| `client` |
-| `--history` | no | off | Opt-in: scaffold `places/<slug>/HISTORY.md`. See [`.claude/rules/history-md-convention.md`](file:///C:/Dev/regen-root/.claude/rules/history-md-convention.md). |
+| `--history` | no | off | Opt-in: scaffold `places/<slug>/HISTORY.md`. |
 | `--dry-run` | no | off | Resolve drift + print plan; perform NO writes. |
 | `--skip-to` | no | — | Jump to a specific phase (1–8). Phases before it are assumed complete. |
 | `--no-gate` | no | off | Run all phases without pausing for human approval (prod deploy ALWAYS gates regardless). |
@@ -55,29 +55,28 @@ Phase 1: Enrollment
   [ ] Disk tree — scaffold places/<slug>/
   [ ] _context.md absence gate
 Phase 2: Research
-  [ ] Land identity — legal, parcels, GIS, acreage
-  [ ] Ownership + title chain
-  [ ] Ecological profile — ecoregion, soils, hydrology, vegetation
-  [ ] Cultural + historical significance
-  [ ] Stewardship + vision
-  [ ] Finance + raise model
-  [ ] Regulatory — zoning, water rights, easements, permits
-  [ ] PLACE.md written from findings
+  [ ] Web search — land, ownership, ecology, culture, stewardship, finance, regulatory
+  [ ] Write findings into 6 arc files (01-story through 06-model)
+  [ ] PLACE.md compiled from findings
+  [ ] corpus/INDEX.md updated with all sources
 Phase 3: Conflict Resolution
   [ ] All facts reviewed for tier conflicts
-  [ ] RECONCILIATION.md written (if any conflicts)
+  [ ] RECONCILIATION.md written
   [ ] All facts verified | resolved | held — zero conflicted/unverified
 Phase 4: Brand
-  [ ] DESIGN.md generated from research
+  [ ] DESIGN.md — full brand guide (palette, typography, voice, imagery, content map)
   [ ] Brand review gate (skip if --no-gate)
 Phase 5: Regen Score
   [ ] 5 dimensions scored from evidence
   [ ] Composite computed — GO ≥75 | NEEDS WORK 55-74 | NO-GO <55
   [ ] Score gate: composite ≥75 to proceed (advisory if --no-gate)
 Phase 6: Site Build
-  [ ] rdc:build invoked for <slug>
+  [ ] Create apps/<slug>/ (Next.js App Router, Baru model)
+  [ ] tsc clean, build clean
 Phase 7: Deploy Dev
-  [ ] rdc:deploy <slug> to PM2 dev
+  [ ] Register in apps + app_deployments (allocate next free port)
+  [ ] Regenerate PM2 ecosystem config on Vultr
+  [ ] PM2 start + HTTP 200 at <slug>.dev.place.fund
 Phase 8: Deploy Prod
   [ ] Dave approval (ALWAYS gates)
   [ ] rdc:deploy <slug> promote
@@ -165,41 +164,45 @@ SELECT insert_work_item(
   p_item_type       := 'epic',
   p_priority        := 'high',
   p_source          := 'onramp',
-  p_project_node_id := '<project_node_id>'::uuid
+  p_project_node_id := '<project_node_id>'::uuid,
+  p_labels          := ARRAY['onramp','<archetype>']
 );
 ```
 
 ### 1.4 Disk Tree
 
-If `scripts/onramp-scaffold-place.mjs` exists:
+The scaffolder creates the **6-arc website model** (not 7 research subdirectories):
+
 ```bash
 node scripts/onramp-scaffold-place.mjs --slug <slug> --name "<Display Name>" \
   [--archetype <archetype>] [--owner <owner>] [--history]
 ```
 
-Otherwise, create the tree directly:
+This produces:
 ```
 places/<slug>/
-  PLACE.md          — identity stub (filled in Phase 2)
-  PRODUCT.md        — regenerative model stub
-  DESIGN.md         — brand brief stub (filled in Phase 4)
-  HANDOFF.md        — build handoff stub
-  RECONCILIATION.md — conflict log (filled in Phase 3)
+  PLACE.md              — identity anchor (filled in Phase 2)
+  PRODUCT.md            — route registry + site model
+  DESIGN.md             — brand brief stub (filled in Phase 4)
+  HANDOFF.md            — build handoff stub (filled in Phase 6)
   corpus/
-    INDEX.md        — corpus file index
+    INDEX.md            — source index
   arc/
-    01-land/        — land identity research
-    02-ownership/   — title and stewardship chain
-    03-ecology/     — ecological profile
-    04-culture/     — cultural and historical significance
-    05-stewardship/ — steward vision and community
-    06-finance/     — financial model and raise
-    07-regulatory/  — zoning, water, permits
+    01-story.md         — hero + concept (→ / route)
+    02-place.md         — land, ecology, timeline, stewards (→ /place route)
+    03-foundation.md    — the why, Five Capitals profile (→ /foundation route)
+    04-process-outcomes.md — programs + intended outcomes (→ /regeneration route)
+    05-investors.md     — investment thesis + assets (→ /investors route)
+    06-model.md         — financial architecture + phasing (→ /financial-model route)
   tracker/
-    ROADMAP.md      — project tracker
+    DECISIONS.md
+    DELIVERABLES.md
+    MILESTONES.md
+    RISKS.md
+    STAKEHOLDERS.md
 ```
 
-Each arc directory gets a `README.md` stub with its research scope.
+**The 6 arc files map 1:1 to website routes.** Research findings from all 7 domains (land, ownership, ecology, culture, stewardship, finance, regulatory) are distributed across these 6 files according to which route they serve.
 
 **Post-scaffold gate (HARD):**
 ```bash
@@ -211,213 +214,115 @@ If `_context.md` found: **STOP.** Projection-drift violation.
 
 ## Phase 2: Research
 
-The research phase assembles a source-verified corpus for the place using web search. Dispatch **7 parallel research agents** — one per domain.
+The research phase assembles a source-verified corpus using web search. Run searches directly from the main context (not subagents — the main context can cross-reference findings across domains, which subagents cannot).
 
-### Research Agent Dispatch
+### Research Approach
 
-For each of the 7 research domains, dispatch a subagent:
+Run 4–6 parallel WebSearch calls covering all 7 research domains:
+- Land identity + ownership (parcel data, title, encumbrances)
+- Ecology + environmental (ecoregion, species, hydrology, soils)
+- History + culture (Indigenous territory, heritage listings, community)
+- Regulatory + finance (zoning, permits, water rights, tax assessments)
 
-```
-Agent({
-  description: "Research: <domain> for <slug>",
-  prompt: "You are researching <domain> for the Place Fund project '<Display Name>' (<slug>).
-    Location: <location>.
-    Archetype: <archetype>.
+**Source databases to target:** government databases (county GIS, BLM, SSURGO, USGS, NVC, NHPA, Native Land Digital, state water boards), heritage registers (Canada's Register of Historic Places, NRHP), peer-reviewed studies, independent reports.
 
-    Read C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md first.
+### Writing Findings into Arc Files
 
-    TASK: Use WebSearch and WebFetch to find authoritative, citable sources for:
-    <domain-specific research questions — see below>
+Distribute research findings across the 6 arc files by route relevance:
 
-    OUTPUT FORMAT — write a single markdown file to places/<slug>/arc/<NN>-<domain>/findings.md:
-    ```
-    # <Domain> — <Display Name>
+| Arc File | Research Domains | Route |
+|----------|-----------------|-------|
+| `01-story.md` | Distilled narrative from ALL domains — the hook | `/` |
+| `02-place.md` | Land identity, ecology, timeline, stewardship | `/place` |
+| `03-foundation.md` | Why this place, Five Capitals profile, RCCS potential | `/foundation` |
+| `04-process-outcomes.md` | Programs, intended outcomes, metrics | `/regeneration` |
+| `05-investors.md` | Investment thesis, asset summary, capital structure | `/investors` |
+| `06-model.md` | Revenue streams, cost drivers, phasing | `/financial-model` |
 
-    ## Facts
+Each arc file must include a `## Sources` section listing every source used with its tier rating and a clickable URL.
 
-    - **<claim>**
-      - Tier: <0-4> (<tier label>)
-      - Source: <citation with URL>
-      - Confidence: <0-100>
-      - Status: verified | unverified
+### Post-Research
 
-    [repeat for each fact found]
+1. Compile `places/<slug>/PLACE.md` — the one-paragraph identity distilled from all findings
+2. Update `places/<slug>/corpus/INDEX.md` — table of all sources with tier, type, and verification status
+3. Write `01-story.md` LAST — it is the thesis distilled from the whole
 
-    ## Sources Consulted
-    - [<title>](<url>) — <what it provided>
-
-    ## Gaps
-    - <what could not be found — needs human input>
-    ```
-
-    RULES:
-    - Every fact MUST have a real source URL. No AI-generated claims as sources.
-    - Use source tiers: 0=Recorded legal, 1=Government/official, 2=Independent 3rd-party, 3=Project upload, 4=Stakeholder claim
-    - Prefer government databases (county GIS, BLM, SSURGO, USGS, NVC, NHPA).
-    - If nothing is found for a question, report it as a Gap — do not fabricate.
-    - Write the file using the Write tool. Use relative paths from the repo root.
-    - All URLs and file paths must be clickable markdown hyperlinks."
-})
-```
-
-### Domain-Specific Research Questions
-
-**01-land** — Land Identity:
-- Legal description and parcel APN
-- County GIS boundary data
-- Total acreage (cross-reference sources)
-- Topography, elevation range
-- Access roads, easement access
-
-**02-ownership** — Ownership + Title Chain:
-- Current titleholder (county recorder)
-- Title chain from original patent/deed
-- Active encumbrances, liens, mortgages
-- Conservation easements on title
-
-**03-ecology** — Ecological Profile:
-- EPA Level III/IV ecoregion classification
-- SSURGO soil types and capabilities
-- Hydrology: watersheds, streams, wetlands (NHD)
-- Vegetation communities (USFS NVC / NatureServe)
-- Listed species (USFWS IPaC, state databases)
-- Fire history and risk (MTBS, Wildfire Risk to Communities)
-
-**04-culture** — Cultural + Historical:
-- Indigenous ancestral territory (Native Land Digital)
-- NHPA/NRHP listed structures or sites
-- Local historical significance
-- Community cultural values
-
-**05-stewardship** — Stewardship + Vision:
-- Steward profile (if public information available)
-- Stated regenerative intent
-- Community relationships
-- FPIC status with indigenous communities (if applicable)
-
-**06-finance** — Finance + Raise:
-- Property tax assessments (county assessor)
-- Comparable sales / market value indicators
-- Existing conservation easement valuations
-- Known financial encumbrances
-
-**07-regulatory** — Regulatory:
-- Zoning classification (county planning)
-- Water rights (state water board)
-- Active permits
-- Tax classification (agricultural, conservation, etc.)
-- Wetland delineation requirements (Army Corps)
-
-### Post-Research: Write PLACE.md
-
-After all 7 agents return, read their findings files and compile `places/<slug>/PLACE.md`:
-
-```markdown
-# <Display Name>
-
-> Generated by rdc:onramp Phase 2 research. Source-cited.
-
-## Identity
-<from 01-land findings: location, acreage, legal description>
-
-## Ecology
-<from 03-ecology findings: ecoregion, soils, hydrology, vegetation>
-
-## History + Culture
-<from 04-culture findings>
-
-## Stewardship
-<from 05-stewardship findings>
-
-## Regenerative Vision
-<from PRODUCT.md stub + stewardship intent>
-```
-
-Also update `places/<slug>/corpus/INDEX.md` with links to all findings files.
-
-Under `RDC_TEST=1`: skip web searches; write stub findings files with `[RDC_TEST] placeholder` content.
+Under `RDC_TEST=1`: skip web searches; write stub content with `[RDC_TEST] placeholder`.
 
 ---
 
 ## Phase 3: Conflict Resolution
 
-Scan all `arc/*/findings.md` files for conflicting facts (same claim, different values or sources).
+Scan all 6 arc files for conflicting facts (same claim, different values or sources).
 
 ### Procedure
 
-1. Read all findings files from Phase 2
+1. Read all arc files from Phase 2
 2. For each pair of conflicting facts:
    - Record both claims with tiers and provenance
    - The higher-tier source governs
    - Write the resolution to `places/<slug>/RECONCILIATION.md`
-3. Update fact statuses in findings files:
+3. Update fact statuses:
    - Winning claim → `status: resolved` (or stays `verified`)
-   - Losing claim → demoted to a note with `status: resolved` and provenance
+   - Losing claim → demoted to a note
    - Unresolvable → `status: held` with reason
 4. **Gate:** all facts must be `verified`, `resolved`, or `held`. Zero `conflicted` or `unverified` facts may remain.
 
-If zero conflicts found: write `places/<slug>/RECONCILIATION.md` with "No conflicts detected."
+If zero conflicts found: write RECONCILIATION.md with "No conflicts detected."
 
-**COLLISION RULE:** If two conflicting PLACE identities are found (slug refers to two different physical locations), **STOP immediately** — this is a disk-ahead-class collision.
+**COLLISION RULE:** If two conflicting PLACE identities are found (slug refers to two different physical locations), **STOP immediately** — disk-ahead-class collision.
 
 ---
 
 ## Phase 4: Brand
 
-### 4.1 Generate DESIGN.md
+### 4.1 Generate Full DESIGN.md (Brand Guide)
 
-Read the compiled PLACE.md and research findings. Write `places/<slug>/DESIGN.md`:
+Read PLACE.md and all arc files. Write a **complete brand guide** to `places/<slug>/DESIGN.md` with ALL of:
 
-```markdown
-# <Display Name> — Design Brief
+- **Story of Place** — one-paragraph narrative distilled from research
+- **Voice** — tone, register, rhythm, prohibitions
+- **Mood** — primary mood, visual register, color temperature
+- **Color Palette** — 10–12 CSS custom property tokens with hex values, roles, and natural source references (e.g. `--sbv-cream: #e8e0d4 — Spirit Bear fur`). Token namespace: `--<slug-prefix>-*`
+- **Typography** — display + body font families, weights, tracking. Cormorant Garamond / Inter is the default pairing.
+- **Imagery Direction** — photography style, image treatment, what to avoid
+- **Materiality** — physical materials (from the place), digital materiality (textures, borders, animation)
+- **Content Map** — table mapping each route to its arc file and hero element
 
-## Story of Place
-<narrative distilled from research — the land's character, history, ecological identity>
+### 4.2 Model: Baru (`apps/baru-website`)
 
-## Archetype
-<archetype> — <one-line why this archetype fits>
+The structural model for every Place Fund project site is Baru:
+- 6+1 route architecture (6 public + /brand-guide dev-only)
+- Section component pattern (Hero, Concept cards, Stats grid, Timeline, Partner CTA)
+- framer-motion animation vocabulary (fade-up, stagger, scroll-parallax)
+- `@regen/ui` shared components (SectionLabel, H2, Body)
 
-## Brand Direction
-- Primary palette suggestion (earth tones derived from ecological character)
-- Typography direction
-- Photography/imagery guidance
-- Tone of voice
+Adapt Baru's structure. Never copy its tokens, imagery, or voice.
 
-## Content Map
-- Homepage hero narrative
-- Key sections: Land, Ecology, Vision, Finance, Team
-- RCCS credit story (if applicable)
-```
-
-### 4.2 Brand Gate
+### 4.3 Brand Gate
 
 If `--no-gate` is NOT set:
 ```
 ⏸️  BRAND GATE — Phase 4 complete.
-   DESIGN.md written to places/<slug>/DESIGN.md
-   Review the design brief and re-invoke to continue:
-   rdc:onramp <slug> --name "<name>" --skip-to 5
+   DESIGN.md written. Review and re-invoke: rdc:onramp <slug> --skip-to 5
 ```
-
-If `--no-gate` IS set: proceed to Phase 5 with the generated design.
+If `--no-gate` IS set: proceed to Phase 5.
 
 ---
 
 ## Phase 5: Regen Score
 
-Score each of the 5 intake-readiness dimensions based on evidence gathered in Phase 2. See [`docs/systems/regenops/BENCHMARKING.md`](file:///C:/Dev/regen-root/docs/systems/regenops/BENCHMARKING.md) for methodology.
+Score each of the 5 intake-readiness dimensions based on evidence in the arc files. See [`docs/systems/regenops/BENCHMARKING.md`](file:///C:/Dev/regen-root/docs/systems/regenops/BENCHMARKING.md).
 
 ### Scoring Procedure
 
-For each dimension, count evidence items and assess quality:
-
 | Dimension | Key | Evidence Sources | Scoring Basis |
 |-----------|-----|-----------------|---------------|
-| Owner / Steward | `owner` | 02-ownership, 05-stewardship | Title clarity, steward alignment, FPIC |
-| Project / Place | `place` | 01-land, 03-ecology | Archetype fit, ecoregion mapped, features verified |
-| Finance Model | `model` | 06-finance | Raise clarity, valuations, encumbrances |
-| Approach | `approach` | 05-stewardship, 03-ecology | Integrative intent, rubric applied, co-governance |
-| Timeline | `timeline` | all findings | Phase targets, corpus completeness, gaps remaining |
+| Owner / Steward | `owner` | 02-place (stewards), 03-foundation | Title clarity, steward alignment, FPIC |
+| Project / Place | `place` | 02-place (ecology, stats) | Archetype fit, ecoregion mapped, features verified |
+| Finance Model | `model` | 05-investors, 06-model | Raise clarity, valuations, encumbrances |
+| Approach | `approach` | 03-foundation, 04-process-outcomes | Integrative intent, rubric applied, co-governance |
+| Timeline | `timeline` | all arc files | Phase targets, corpus completeness, gaps remaining |
 
 **Score formula per dimension:**
 - Base: 20 points (enrolled)
@@ -429,102 +334,127 @@ For each dimension, count evidence items and assess quality:
 
 **Composite:** unweighted mean of all 5, rounded.
 
-```
-readinessSignal(composite):
-  ≥75 → GO       — proceed to build
-  ≥55 → NEEDS WORK — identify weakest dimension
-  <55 → NO-GO    — escalate to Dave
-```
-
-### Score Report
-
-```
-REGEN SCORE: <composite> — <GO|NEEDS WORK|NO-GO>
-
-  Owner / Steward:  <score>  <bar>
-  Project / Place:  <score>  <bar>
-  Finance Model:    <score>  <bar>
-  Approach:         <score>  <bar>
-  Timeline:         <score>  <bar>
-
-  Data confidence: <N>% (<verified+resolved> / <total facts>)
-```
-
 ### Score Gate
 
 - **GO (≥75):** proceed to Phase 6.
-- **NEEDS WORK (55-74):** report weakest dimension and what's needed. If `--no-gate`: proceed anyway (dev build is iterative). If gated: stop and report.
-- **NO-GO (<55):** always stop and escalate. Report fundamental gaps.
+- **NEEDS WORK (55-74):** report weakest dimension. If `--no-gate`: proceed anyway (dev is iterative). If gated: stop.
+- **NO-GO (<55):** always stop and escalate.
 
 ---
 
 ## Phase 6: Site Build
 
-Invoke `rdc:build` for the enrollment epic. The build skill reads `places/<slug>/HANDOFF.md` for context.
+Create a Next.js App Router site at `apps/<slug>/` following the Baru model.
 
-### Pre-build: Write HANDOFF.md
-
-Compile the handoff from all prior phases:
-
-```markdown
-# <Display Name> — Build Handoff
-
-## Identity
-slug: <slug>
-archetype: <archetype>
-location: <location>
-project_node_id: <uuid>
-epic_id: <uuid>
-
-## Research Summary
-<one paragraph from PLACE.md>
-
-## Regen Score
-Composite: <score> (<signal>)
-Weakest dimension: <key> (<score>)
-
-## Design Brief
-See places/<slug>/DESIGN.md
-
-## Build Scope
-- Project site at apps/<slug> or sites/<slug>
-- Content from places/<slug>/PLACE.md
-- Design from places/<slug>/DESIGN.md
-- Data from corpus findings
-```
-
-### Invoke Build
+### App Structure
 
 ```
-/rdc:build <epic-id>
+apps/<slug>/
+  package.json           — @regen/<slug>, port from registry
+  next.config.mjs        — transpilePackages: ["@regen/ui"]
+  tailwind.config.ts     — custom token colors from DESIGN.md palette
+  tsconfig.json          — standard Next.js config
+  postcss.config.mjs     — tailwind + autoprefixer
+  src/
+    app/
+      globals.css        — :root CSS custom properties from DESIGN.md
+      layout.tsx         — fonts, metadata, Nav + Footer
+      page.tsx           — homepage (Hero + Concept + Partner)
+      place/page.tsx     — Origin + PlaceStats + Ecology + Timeline
+      foundation/page.tsx
+      regeneration/page.tsx — Programs
+      investors/page.tsx  — InvestorHero + AssetTable
+      financial-model/page.tsx — ModelOverview
+      brand-guide/page.tsx — BrandGuide (DEV-ONLY)
+      sitemap.ts
+    components/
+      nav.tsx            — fixed header with route links
+      footer.tsx         — site map + PRT framework link + version
+      sections/          — one component per page section
 ```
 
-The build skill handles TSC gate, component assembly, and dev deployment.
+### Build Process
 
-If `rdc:build` is not available in this context (e.g. running from claude.ai), report:
-```
-⏸️  BUILD GATE — invoke from CLI:
-   /rdc:build <epic-id>
-```
+1. Create all files (adapt from Baru, never copy tokens/content)
+2. `pnpm --filter @regen/<slug> install`
+3. `npx tsc --noEmit` — must pass
+4. `pnpm --filter @regen/<slug> build` — must produce all routes
+5. Update HANDOFF.md with epic id, project_node_id, Regen Score, and build scope
+6. Commit: **infra (pnpm-lock.yaml) first**, then product files — the scope guard requires split commits
 
-Under `RDC_TEST=1`: skip build invocation.
+### Commit Discipline
+
+The monorepo's scope guard blocks commits that mix infrastructure files (pnpm-lock.yaml) with product files. For a new app:
+1. Commit lockfile first: `chore(infra): add @regen/<slug> to pnpm lockfile` with `RDC-Bypass: new app lockfile importer`
+2. Commit product files: `feat(<slug>): Next.js site — ...` with `Work-Item: <epic-id>`
 
 ---
 
 ## Phase 7: Deploy Dev
 
-After successful build, deploy to PM2 dev.
+### 7.1 Registry Setup
 
-```
-/rdc:deploy <slug>
+Register the app in Supabase (both tables, in order):
+
+```sql
+-- 1. apps table (parent)
+INSERT INTO apps (slug, display_name, description, monorepo_path, github_org,
+  github_repo, runtime, owner_slug, status, pnpm_filter)
+VALUES ('<slug>', '<Display Name>', '<description>',
+  'apps/<slug>', 'LIFEAI', 'regen-root', 'next', '<owner>',
+  'active', '@regen/<slug>');
+
+-- 2. app_deployments table (child — FK on app_slug)
+-- IMPORTANT: environment enum is 'dev' not 'development'
+-- IMPORTANT: allocate next free port — query first:
+SELECT pm2_port FROM app_deployments
+WHERE host_type = 'pm2' AND pm2_port IS NOT NULL
+ORDER BY pm2_port DESC LIMIT 1;
+-- Use max + 1 as the new port
+
+INSERT INTO app_deployments (app_slug, environment, host_type, url,
+  pm2_name, pm2_port, branch, build_command, status, notes)
+VALUES ('<slug>', 'dev', 'pm2', '<slug>.dev.place.fund',
+  '<slug>', <next_port>, 'develop',
+  'pnpm --filter @regen/<slug> build', 'active', '<notes>');
 ```
 
-If the build skill already deployed (rdc:build deploys to dev by default per AGENTS.md), verify instead:
+Update package.json dev/start scripts to use the allocated port.
+
+### 7.2 Deploy to Vultr PM2
+
+SSH to Vultr and run:
 ```bash
-curl -s -o /dev/null -w "%{http_code}" https://<slug>.dev.place.fund/
+# 1. Pull latest develop
+git fetch -q origin develop && git reset -q --hard origin/develop
+
+# 2. Install + build (CI=true required for non-TTY frozen install)
+export CI=true
+pnpm --filter @regen/<slug> install --frozen-lockfile
+pnpm --filter @regen/<slug> build
+
+# 3. Regenerate ecosystem config (--write flag required!)
+node scripts/generate-dev-configs.mjs --write
+
+# 4. Start via PM2 (file is .js not .cjs, at /srv/regen/ecosystem.config.js)
+pm2 start /srv/regen/ecosystem.config.js --only <slug>
 ```
 
-Under `RDC_TEST=1`: skip deploy.
+### 7.3 Verify
+
+```bash
+# Local on Vultr
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:<port>/
+# → must be 200
+
+# Public through Traefik (wildcard *.dev.place.fund already routes)
+curl -s -o /dev/null -w "%{http_code}" https://<slug>.dev.place.fund/
+# → must be 200
+
+# Content check
+curl -s https://<slug>.dev.place.fund/ | grep -oE '<title>[^<]+</title>'
+# → must contain the place name
+```
 
 ---
 
@@ -533,12 +463,11 @@ Under `RDC_TEST=1`: skip deploy.
 **ALWAYS gates for Dave's approval, regardless of --no-gate.**
 
 ```
-⏸️  PROD GATE — dev verified. To promote to production:
-   Provide explicit approval, then:
-   /rdc:deploy <slug> promote
+⏸️  PROD GATE — dev verified at <slug>.dev.place.fund
+   To promote: provide explicit approval, then: rdc:deploy <slug> promote
 ```
 
-Production deployment requires Dave's explicit approval in the session. No agent may promote without it.
+Production deployment requires Dave's explicit approval in the session.
 
 ---
 
@@ -549,15 +478,15 @@ Every phase checks whether its outputs already exist before running:
 | Phase | Skip condition |
 |-------|---------------|
 | 1 — Enrollment | `places` DB row exists AND disk tree exists AND epic exists |
-| 2 — Research | All 7 `arc/*/findings.md` files exist and are non-empty |
-| 3 — Conflicts | `RECONCILIATION.md` exists and all facts are verified/resolved/held |
-| 4 — Brand | `DESIGN.md` has substantive content (not just the stub) |
-| 5 — Score | Score ≥75 and evidence hasn't changed since last score |
-| 6 — Build | App exists and builds cleanly |
-| 7 — Deploy Dev | Dev URL returns HTTP 200 with expected content |
+| 2 — Research | All 6 arc files have substantive content (not just TODO stubs) |
+| 3 — Conflicts | RECONCILIATION.md exists and all facts are verified/resolved/held |
+| 4 — Brand | DESIGN.md has full palette + typography + voice (not just the stub) |
+| 5 — Score | Score computed and recorded in HANDOFF.md |
+| 6 — Build | `apps/<slug>/` exists and `pnpm --filter @regen/<slug> build` succeeds |
+| 7 — Deploy Dev | `<slug>.dev.place.fund` returns HTTP 200 with correct `<title>` |
 | 8 — Deploy Prod | Prod URL returns HTTP 200 |
 
-Re-invoking `rdc:onramp <slug>` skips completed phases and resumes from the first incomplete one. Use `--skip-to <phase>` to force a jump.
+Re-invoking `rdc:onramp <slug>` skips completed phases. Use `--skip-to <phase>` to force a jump.
 
 ---
 
@@ -573,6 +502,7 @@ Re-invoking `rdc:onramp <slug>` skips completed phases and resumes from the firs
 - Tier 4 claims tagged `(Illustrative)` on all public surfaces
 - Corpus → arc is append-only: never delete arc entries
 - Prod deploy ALWAYS gates for Dave regardless of --no-gate
+- Split infra (lockfile) and product commits — scope guard enforces this
 - Under `RDC_TEST=1`: DB writes, web searches, builds, and deploys short-circuit; drift resolution, scoring, and file validation run normally
 
 ## Capture Lessons
