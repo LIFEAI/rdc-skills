@@ -77,10 +77,10 @@ Phase 7: Deploy Dev
   [ ] Register in apps + app_deployments (allocate next free port)
   [ ] Regenerate PM2 ecosystem config on Vultr
   [ ] PM2 start + HTTP 200 at <slug>.dev.place.fund
-Phase 8: Deploy Prod
-  [ ] Dave approval (ALWAYS gates)
-  [ ] rdc:deploy <slug> promote
 ```
+
+**Prod promotion is NOT part of onramp.** Once Phase 7 completes, the pipeline
+is done. To promote to production later: `rdc:deploy <slug> promote`.
 
 ---
 
@@ -458,19 +458,6 @@ curl -s https://<slug>.dev.place.fund/ | grep -oE '<title>[^<]+</title>'
 
 ---
 
-## Phase 8: Deploy Prod
-
-**ALWAYS gates for Dave's approval, regardless of --no-gate.**
-
-```
-⏸️  PROD GATE — dev verified at <slug>.dev.place.fund
-   To promote: provide explicit approval, then: rdc:deploy <slug> promote
-```
-
-Production deployment requires Dave's explicit approval in the session.
-
----
-
 ## Resumability
 
 Every phase checks whether its outputs already exist before running:
@@ -484,7 +471,6 @@ Every phase checks whether its outputs already exist before running:
 | 5 — Score | Score computed and recorded in HANDOFF.md |
 | 6 — Build | `apps/<slug>/` exists and `pnpm --filter @regen/<slug> build` succeeds |
 | 7 — Deploy Dev | `<slug>.dev.place.fund` returns HTTP 200 with correct `<title>` |
-| 8 — Deploy Prod | Prod URL returns HTTP 200 |
 
 Re-invoking `rdc:onramp <slug>` skips completed phases. Use `--skip-to <phase>` to force a jump.
 
