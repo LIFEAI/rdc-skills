@@ -111,6 +111,14 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
    Apply `guides/engineering-behavior.md` while reviewing: flag unnecessary abstraction, drive-by refactors, missing assumptions, hidden uncertainty, out-of-scope edits, and prose-only verification.
    **Iron Law: no CLEAN verdict without fresh evidence.** Quote the checklist decomposition verdict, vitest output, and tsc output in the report.
    The verify agent must reject any work item that lacks passed `decomp-*` checklist rows, whose rows are too coarse to prove one observable behavior at a time, OR whose checklist falls below the per-surface completeness floor (a feature WP with 5-6 rows where its surfaces demand 12-20 attested rows is a REJECT).
+   **Durable workflow hard gate:** If the diff adds or changes a queue/job,
+   background worker, storage hand-off, retry/lease, webhook, or async
+   cross-process path, require a committed E2E harness and a fresh receipt from
+   a deploy-equivalent container plus real disposable dependencies (or isolated
+   mirror). It must invoke public ingress, prove the complete state transition,
+   verify every persisted output, and prove `finally` cleanup. Unit tests,
+   mocks, migrations, Docker construction, and route-health probes are not
+   substitutes; missing evidence means `HAS_ISSUES`, never `CLEAN`.
    If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.
 
 10. **Fix issues found:**

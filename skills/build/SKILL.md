@@ -425,6 +425,17 @@ Read the task title and description, then:
      and run it green before the item leaves `review`. Agent prompt line: *"This
      task is not done until a committed test in the same commit exercises every
      surface; for collections, loop all items and assert output == source."*
+  - **Durable workflow E2E gate (hard):** A task that creates a queue/job,
+    background worker, storage hand-off, retry/lease, webhook, or other async
+    cross-process workflow MUST ship a committed `test:e2e` (or equivalent)
+    harness. Before the task leaves `review`, run it against the deploy-equivalent
+    container plus real disposable dependencies (or an isolated mirror) and
+    retain its receipt. The harness MUST exercise the public ingress, assert the
+    full state transition, assert every persisted output, and clean up fixture
+    rows/objects in `finally`; unit tests, mocks, a migration check, Docker
+    construction, or a `/health` probe cannot substitute. If no safe disposable
+    environment exists, create one within the work package; do not waive this
+    gate or mark the item reviewable.
 
 8. **Post-wave test gate (mandatory):**
    After all agents in a wave complete, before proceeding:
@@ -514,6 +525,10 @@ Read the task title and description, then:
     - Runs `npx tsc --noEmit` for every touched app/package
     - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
     - Runs vitest for every touched package
+    - For every durable workflow, runs the committed E2E harness and rejects the
+      item unless its receipt proves public ingress -> queued/running -> terminal
+      state, persisted outputs, and fixture cleanup on the deploy-equivalent
+      runtime; an absent harness is a hard rejection.
     - **Verifies checklist decomposition quality per work item before functional validation:**
       - Every implementation work item has >= 10 attested `decomp-*`/`test-*` items, meets the per-surface completeness floors (each declared surface covered), and no feature WP ships a 5-6-row checklist
       - Every `decomp-*` item includes route/file, action, expected result, and evidence artifact
