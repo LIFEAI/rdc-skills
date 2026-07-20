@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.24.36",
+  "version": "0.25.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -533,6 +533,71 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true
+    },
+    "regen-media": {
+      "name": "regen-media",
+      "slash": "rdc:regen-media",
+      "category": "tooling",
+      "usage": "rdc:regen-media <generate|edit|upscale|upload> <brief-or-path>",
+      "args": {
+        "positional": [
+          {
+            "name": "action",
+            "required": true,
+            "description": "Image workflow action",
+            "accepts": "generate | edit | upscale | upload"
+          },
+          {
+            "name": "brief-or-path",
+            "required": true,
+            "description": "Prompt text for generation/editing, or an image path for upload/upscale",
+            "accepts": "string|path"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--size",
+            "type": "string",
+            "default": "2048x1152",
+            "description": "Target gpt-image-2 size such as 2048x1152, 2048x2048, 3840x2160, or auto"
+          },
+          {
+            "name": "--upload",
+            "type": "bool",
+            "default": false,
+            "description": "Upload finished local artifact to Regen Media after generation"
+          }
+        ]
+      },
+      "requires": [
+        "clauth"
+      ],
+      "produces": [
+        "image_artifact",
+        "media_asset"
+      ],
+      "default_model": "inherit",
+      "triggers": [
+        "generate an image",
+        "make an image",
+        "create a hero image",
+        "gpt-image-2",
+        "built-in image_gen",
+        "codex image generation",
+        "upscale this image",
+        "edit this image",
+        "upload to regen media",
+        "regen-media image"
+      ],
+      "follows": [],
+      "leads_to": [
+        "design",
+        "deploy"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
     },
     "edit": {
       "name": "edit",
@@ -1366,6 +1431,88 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
+    },
+    "onramp": {
+      "name": "onramp",
+      "slash": "rdc:onramp",
+      "category": "infra",
+      "usage": "rdc:onramp <slug> --name \"<Display Name>\" [--location <json>] [--archetype <archetype>] [--owner place-fund|rdc|jv|client] [--history] [--dry-run]",
+      "args": {
+        "positional": [
+          {
+            "name": "slug",
+            "required": true,
+            "description": "kebab-case place identifier (e.g. spirit-bear-village). Validated against ^[a-z0-9]+(-[a-z0-9]+)*$.",
+            "accepts": "string"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--name",
+            "type": "string",
+            "default": null,
+            "description": "Human display name. Required. Passed verbatim to enroll_place and the scaffolder."
+          },
+          {
+            "name": "--location",
+            "type": "json",
+            "default": "{}",
+            "description": "JSON object for enroll_place p_location (e.g. {\"state\":\"BC\",\"country\":\"Canada\"}). Never guessed — omit if unknown."
+          },
+          {
+            "name": "--archetype",
+            "type": "string",
+            "default": "TBD",
+            "description": "Base-arc archetype slug. See corpus/_shared/onramp/ARCHETYPES.md."
+          },
+          {
+            "name": "--owner",
+            "type": "string",
+            "default": "place-fund",
+            "description": "place-fund | rdc | jv | client"
+          },
+          {
+            "name": "--history",
+            "type": "boolean",
+            "default": false,
+            "description": "Opt-in: also scaffold places/<slug>/HISTORY.md (see rdc-onramp-skill.md §D4)."
+          },
+          {
+            "name": "--dry-run",
+            "type": "boolean",
+            "default": false,
+            "description": "Resolve drift state + print plan; perform NO writes (no RPC, no work item, no scaffolder)."
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "work_items",
+        "supabase_writes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "onramp a place",
+        "enroll a new place",
+        "lay the infra for",
+        "enroll this project",
+        "start a new place fund project",
+        "run enrollment for"
+      ],
+      "follows": [],
+      "leads_to": [
+        "design"
+      ],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
     }
   }
 }
