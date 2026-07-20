@@ -19,8 +19,9 @@ assert.match(guide, /`status` and no `lesson_status`/);
 const housekeeping = readFileSync(join(root, 'skills', 'housekeeping', 'SKILL.md'), 'utf8');
 assert.match(housekeeping, /When invoked with `--lessons`, skip every non-lessons maintenance section/);
 assert.match(housekeeping, /including Directory Structure Verification/);
-const legacyNormalization = housekeeping.indexOf('normalize every legacy lesson that has `status` but no `lesson_status`');
-const openFilter = housekeeping.indexOf('Then read all `.rdc/lessons/*.md` with `lesson_status: open`');
-assert.ok(legacyNormalization >= 0 && openFilter > legacyNormalization, 'legacy lessons must be normalized before the open-status filter');
+const legacyNormalization = housekeeping.search(/normalize every\s+legacy lesson that has `status` but no `lesson_status`/i);
+const clustering = housekeeping.search(/### 1\. Cluster/);
+assert.ok(legacyNormalization >= 0 && clustering > legacyNormalization, 'legacy lessons must be normalized before clustering');
+assert.match(housekeeping, /all answers are collected before the first routed fix starts/i);
 
 console.log('lessons pipeline contract test passed');

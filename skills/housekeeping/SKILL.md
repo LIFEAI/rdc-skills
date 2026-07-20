@@ -199,15 +199,15 @@ The audit must name what was inspected, the evidence found or missing, the concl
 
 ### 3. Architectural report and interview gate
 
-After the synthesis artifacts are complete, write the full architectural report for every `still-open` architectural cluster. For each one include the decision to make, affected systems, options and tradeoffs, recommendation, unresolved risks, and the result of the resolution audit. This produces the complete decision table, but does **not** interrupt the simple remediation batch.
+After the synthesis artifacts are complete, write the full architectural report for every `still-open` architectural cluster. For each one include the decision to make, affected systems, options and tradeoffs, recommendation, unresolved risks, and the result of the resolution audit. This produces the complete decision table and is the required gate before every routed fix.
 
-Create a complete interview list from that report before changing any architectural file. In attended mode, execute and verify the correlated simple batches first, then ask every required architectural question via `AskUserQuestion`, one question at a time, and record the question, answer, decision, rationale, and affected cluster. Do not start architectural fixes until all interview questions have answers or the corresponding cluster is explicitly deferred. Silence is not approval.
+Create a complete interview list from that report before changing any file. In attended mode, ask every required architectural question via `AskUserQuestion`, one question at a time, and record the question, answer, decision, rationale, and affected cluster. Do not start simple or architectural fixes until all interview questions have answers or the corresponding cluster is explicitly deferred. Silence is not approval.
 
 If there are no architectural decisions, record `Architectural interview: none required` in the report before continuing. In unattended mode, do not guess: create the equivalent `human_items` decision records for every unresolved architectural question, link a work item, and defer those clusters.
 
-### 4. Route only still-open work through RDC
+### 4. Route only still-open, approved work through RDC
 
-After the resolution audit, route every simple executable cluster through an RDC lifecycle with a complete work item, required checklist evidence, implementation report, review status, validator closure, commit, and push. Direct edits outside an RDC work item are forbidden. Route architectural clusters only after the complete architectural interview.
+After the resolution audit and the complete architectural interview, route every approved executable cluster through an RDC lifecycle with a complete work item, required checklist evidence, implementation report, review status, validator closure, commit, and push. Direct edits outside an RDC work item are forbidden.
 
 - `scope: simple` — invoke `rdc:fixit` when the change is genuinely under five files and thirty minutes; `rdc:fixit` creates and completes the sole work item. Include the cluster and lesson ids in its description and action-register entry. Otherwise use `rdc:plan` followed by `rdc:build`.
 - `scope: architectural` — use `rdc:plan` followed by `rdc:build` unless the approved change is genuinely within the `rdc:fixit` threshold. The plan must contain the approved interview decision and acceptance checks.
@@ -227,7 +227,7 @@ Add a `## Weekly Lessons Triage` section to `.rdc/reports/YYYY-MM-DD-housekeepin
 
 ### Attended mode (default — a human is present)
 
-The attended run follows sections 1, 2, and 4 for all simple clusters first, then section 3 for the complete architectural interview, then section 4 for approved architectural work, and finally section 5. Set `lesson_status: applied` only after the routed work item has passed review, the commit is pushed, required dev deployment evidence is recorded, and the commit is linked.
+The attended run follows sections 1 through 5 in order. The full interview list and all answers are collected before the first routed fix starts; then batch approved fixes by lifecycle and target. Set `lesson_status: applied` only after the routed work item has passed review, the commit is pushed, required dev deployment evidence is recorded, and the commit is linked.
 
 ### Unattended mode (no human — overnight / cron / `rdc:overnight`)
 

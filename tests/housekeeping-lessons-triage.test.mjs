@@ -18,7 +18,7 @@ function mustAppearInOrder(text, fragments, name) {
   }
 }
 
-assert.match(skill, /lesson_status: open/, 'housekeeping must read the current lesson status field');
+assert.match(skill, /canonical `lesson_status`/, 'housekeeping must normalize to the current lesson status field');
 assert.doesNotMatch(skill, /(?:set|mark) `status: (?:open|triaged|applied|wont-fix)/, 'housekeeping must use lesson_status for triage outcomes');
 assert.match(skill, /do not create new work/i, 'the audit must prevent duplicate work');
 assert.doesNotMatch(skill, /scope: simple.*apply the fix directly/s, 'simple lessons cannot bypass RDC routing');
