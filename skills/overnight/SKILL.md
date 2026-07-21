@@ -93,7 +93,7 @@ Determine which epics to work:
   - `status IN ('todo', 'in_progress')`
   - Order: urgent first, then high, then by `created_at`
 
-Log the epic queue at the start of `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/reports/overnight-<YYYY-MM-DD>.md` if `.rdc/` does not exist).
+Log the epic queue at the start of `.rdc/overnights/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/overnights/overnight-<YYYY-MM-DD>.md` if `.rdc/` does not exist).
 
 ## Phase 3 — Epic Loop
 
@@ -172,7 +172,7 @@ After all epics are processed:
 
 1. Run `rdc:report --unattended`
 
-2. Write session summary to `.rdc/reports/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/reports/overnight-<YYYY-MM-DD>.md`):
+2. Write session summary to `.rdc/overnights/overnight-<YYYY-MM-DD>.md` (fallback: `.rdc/overnights/overnight-<YYYY-MM-DD>.md`):
    ```markdown
    # Overnight Session — YYYY-MM-DD
 
