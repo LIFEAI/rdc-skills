@@ -1287,7 +1287,21 @@ before deploy. Use `scripts/gen-deploy-blocks.mjs` or write manually.
 3. `pnpm --filter @regen/<slug> build` — must produce all routes
 4. Commit: infra (lockfile) first with `RDC-Bypass:`, then product with `Work-Item:`
 
-### 6.5 Route Content Verification
+### 6.5 Cross-File Route Consistency
+
+After route creation, verify route names are consistent across ALL project files —
+not just PRODUCT.md vs the app. Grep `places/<slug>/` for every route path and
+fix any stale references:
+
+- `DESIGN.md` content map → must reference current route names
+- `arc/*.md` route headers → must reference current route names
+- `ONRAMP-REPORT.md` route listings → must reference current route names
+- `IMAGERY-PROMPTS.md` slot routes → must reference current route names
+
+**This is a rubric FAIL if any file references a route that no longer exists.**
+The skill renamed routes but left stale references → that is the defect this step prevents.
+
+### 6.7 Route Content Verification
 
 After build, verify each route renders REAL content:
 - No placeholder text ("Lorem ipsum", "Coming soon", "TODO")
@@ -1295,7 +1309,7 @@ After build, verify each route renders REAL content:
 - Team/partner data matches tracker/STAKEHOLDERS.md
 - All `<Image>` src imports resolve — no broken images
 
-### 6.6 Phase 6 Rubric Gate
+### 6.8 Phase 6 Rubric Gate
 
 ```
 PHASE 6 RUBRIC — <slug>
@@ -1303,14 +1317,15 @@ PHASE 6 RUBRIC — <slug>
 |---|--------------------------------|---------------------------------------|--------|------|
 | 1 | apps/<slug>/ exists            | Next.js App Router                    | ?      |      |
 | 2 | Routes match PRODUCT.md        | all declared routes present           | ?      |      |
-| 3 | tsc --noEmit                   | exit 0                                | ?      |      |
-| 4 | pnpm build                     | all routes built                      | ?      |      |
-| 5 | Route content verification     | no placeholders, real arc content     | ?      |      |
-| 6 | Financial figures match arc    | 05/06 cited figures rendered on site  | ?      |      |
-| 7 | Image imports resolve          | no broken <Image> src                 | ?      |      |
-| 8 | HISTORY route                  | own route, sourced from HISTORY.md    | ?      |      |
-| 9 | PUBLISH.md + DEPLOY block      | exists, port: registry                | ?      |      |
-| 10| RegenOps screens               | report present/missing (advisory)     | ?      |      |
+| 3 | Cross-file route consistency   | 0 stale route refs in DESIGN/arc/report| ?     |      |
+| 4 | tsc --noEmit                   | exit 0                                | ?      |      |
+| 5 | pnpm build                     | all routes built                      | ?      |      |
+| 6 | Route content verification     | no placeholders, real arc content     | ?      |      |
+| 7 | Financial figures match arc    | 05/06 cited figures rendered on site  | ?      |      |
+| 8 | Image imports resolve          | no broken <Image> src                 | ?      |      |
+| 9 | HISTORY route                  | own route, sourced from HISTORY.md    | ?      |      |
+| 10| PUBLISH.md + DEPLOY block      | exists, port: registry                | ?      |      |
+| 11| RegenOps screens               | report present/missing (advisory)     | ?      |      |
 ```
 
 Append Phase 6 results to ONRAMP-REPORT.md + INTAKE-LOG.md.
