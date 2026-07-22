@@ -898,12 +898,32 @@ which produces the full brand system.
 | `programs-activity` | 1:1 | /stewardship or /regeneration | AI OK |
 | `og-image` | 1200x630 | Social share | Composite |
 
-**Generation pipeline:**
-- AI imagery: generate via regen-media MCP (`mcp__regen-media__generate_flux` or
-  `generate_midjourney`) or OpenAI local (`gpt-image-2` via Codex built-in `image_gen`)
+**Generation pipeline — three-stage flow:**
+
+```
+Stage 1: Generate → output/imagegen/<slug>/
+  └ AI: regen-media MCP (generate_flux / generate_midjourney)
+        OR Codex image_gen (gpt-image-2, --enable image_generation)
+        OR OpenAI API direct
+  └ Each image: <slot-name>.png (e.g. hero-main.png, ecology-salmon.png)
+  └ REPORT.md in the same dir: slot, prompt used, model, dimensions, date
+
+Stage 2: Review → $CORPUS_ROOT/TPF/<slug>/artifacts/images/
+  └ After task review, move approved images to the corpus artifacts dir
+  └ This is the durable home (One Home Per Fact — images are artifacts)
+  └ Rejected images stay in output/imagegen/<slug>/ with _rejected suffix
+
+Stage 3: Wire → apps/<slug>/public/images/
+  └ Copy from corpus artifacts into the app's public dir
+  └ Wire imagery.ts (or equivalent) to reference the images
+  └ Verify all <Image> src imports resolve after build
+```
+
 - Video placeholders: declare slots in IMAGERY-PROMPTS.md even if content isn't ready
-- Place images in `apps/<slug>/public/images/` + wire `imagery.ts`
-- Verify all `<Image>` src imports resolve after build
+- The `output/imagegen/<slug>/` directory is the generation landing zone — always
+  project-organized, never flat
+- IMAGERY-PROMPTS.md is the manifest: it declares what to generate, and REPORT.md
+  in the output dir records what was actually generated
 
 ### 4.5 Brand Gate
 
