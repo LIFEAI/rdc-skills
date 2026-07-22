@@ -76,7 +76,9 @@ Phase 2: Research — Full Regenerative Regional Deep Research
 Phase 2b: People, Organizations & Place Enrichment
   [ ] Extract all named people + organizations from project documents
   [ ] RocketReach lookup on each person + org — verify existence
-  [ ] Write verified entities to tracker/STAKEHOLDERS.md (>10 lines floor)
+  [ ] Web research on orgs — website, news, track record, regional presence
+  [ ] Government registry verification for key entities
+  [ ] Write verified entities to tracker/STAKEHOLDERS.md (>20 lines floor)
   [ ] Flag unverified entities in RECONCILIATION.md
 Phase 3: Conflict Resolution
   [ ] Build fact inventory — extract every factual claim from all 6 arc files
@@ -101,20 +103,21 @@ Phase 4: Brand Book + Imagery — Full rdc:design Integration
   [ ] Place images in apps/<slug>/public/images/ + wire imagery.ts
   [ ] Brand review gate (skip if --no-gate)
   [ ] Phase 4 rubric gate — 9-row pass/fail + ONRAMP-REPORT.md appended
-Phase 5: Regen Score — Fit Function + Per-Model Benchmarks
-  [ ] Load archetype benchmark set from corpus/_shared/onramp/benchmarks/
-  [ ] Regional comparable research — first pass (similar projects, economics, regulatory)
-  [ ] Score dimension: Owner/Steward (0-100, evidence-cited)
-  [ ] Score dimension: Project/Place (0-100, evidence-cited)
-  [ ] Score dimension: Finance Model (0-100, evidence-cited, regional correlation)
-  [ ] Score dimension: Approach (0-100, evidence-cited)
-  [ ] Score dimension: Timeline (0-100, evidence-cited, regulatory realism)
-  [ ] Regional correlation — second pass (gap-fill research on weak dimensions)
-  [ ] Composite score + verdict (GO/NEEDS WORK/NO-GO)
-  [ ] Process-state gate cross-check — no CORE state missing
-  [ ] Tier 4 inflation check — illustrative figures not inflating scores
-  [ ] SCREENING.md written — full score card with evidence
-  [ ] Phase 5 rubric gate — 13-row pass/fail + ONRAMP-REPORT.md appended
+Phase 5: Regen Score — Model-Driven Rubric Assessment
+  [ ] Load model specification (VLAS 01 + 03 + archetype benchmarks)
+  [ ] Regional comparable research — iterative gap fill
+  [ ] SCARF×4Ps lattice assessment — 20 cells with evidence
+  [ ] Five Capitals per-capital scoring with evidence citation
+  [ ] Coverage spread gate — max-min <= 40
+  [ ] Annihilator check — 8 binary pass/fail (any BLOCKED → NO-GO)
+  [ ] Recognition formula readiness — 7 terms assessed
+  [ ] Process state completion audit — required states per archetype
+  [ ] Pathway ladder position — current + target rung
+  [ ] Honesty audit — Tier 4 tagged, precedent tiers set
+  [ ] Compose Regen Score from model rubric
+  [ ] Score gate decision — GO/NEEDS WORK/NO-GO
+  [ ] SCREENING.md written — lattice + score card + evidence
+  [ ] Phase 5 rubric gate — 15-row pass/fail + ONRAMP-REPORT.md appended
 Phase 6: Site Build — Archetype Routes + RegenOps Integration
   [ ] Create apps/<slug>/ — archetype-specific routes from PRODUCT.md
   [ ] HISTORY as its own route (sourced from HISTORY.md, not folded into arc)
@@ -602,7 +605,32 @@ mcp__claude_ai_RocketReach__rocketreach_lookup_company
 Record: domain, employee_count, industry, location, verification_status.
 Cross-check claimed relationship against actual org profile.
 
-### 2b.6 Government Registry Verification
+### 2b.6 Web Research on Organizations
+
+RocketReach gives you the company card. **Web research gives you the story.** For each
+significant org (core-team, partner, investor, indigenous-rights-holder), run targeted
+web research:
+
+1. **Website analysis:** find the org's website, read their about/mission/team pages.
+   Does the org's stated mission align with the project's claims about them?
+2. **News search:** search for recent news about the org. Any red flags (lawsuits,
+   regulatory actions, financial trouble, controversy)?
+3. **Social/community presence:** does the org have a real presence in the region?
+   LinkedIn company page, social media, community references?
+4. **Track record:** has this org done similar projects before? What was the outcome?
+   Search for their name + the project type (e.g., "org-name conservation" or
+   "org-name eco-tourism").
+5. **Financial standing:** for investor/financial entities, any public filings,
+   annual reports, or regulatory registrations (SEC, provincial securities)?
+
+For each org, record: `org | website | mission_fit | news_flags | regional_presence |
+track_record | verification_status`.
+
+Update arc files with findings — especially arc/03-foundation.md (partner orgs) and
+arc/05-investors.md (financial entities). **A partner org with no web presence is a
+yellow flag; an investor entity with no regulatory registration is a red flag.**
+
+### 2b.7 Government Registry Verification
 
 For key entities (project company, First Nations band, conservation trust):
 - Check government business registries (state/provincial)
@@ -610,7 +638,7 @@ For key entities (project company, First Nations band, conservation trust):
 - Confirm non-profit/charity status where claimed
 - Record registration numbers where available
 
-### 2b.7 Cross-Reference Against Arc Files
+### 2b.8 Cross-Reference Against Arc Files
 
 Verify consistency between entity claims and arc file content:
 - Team bios in arc/03-foundation.md match RocketReach profiles
@@ -618,7 +646,7 @@ Verify consistency between entity claims and arc file content:
 - Investor entities in arc/05-investors.md are real institutions
 - Flag any entity mentioned in arc files but NOT in the raw extraction (missed entity)
 
-### 2b.8 Map Stakeholder Network
+### 2b.9 Map Stakeholder Network
 
 Build a relationship map: who connects to whom, through what mechanism.
 - Direct relationships (employment, partnership, advisory)
@@ -626,7 +654,7 @@ Build a relationship map: who connects to whom, through what mechanism.
 - FPIC chain: which indigenous rights-holders must consent, and who is the contact
 - Governance chain: project → trust → community → rights-holder
 
-### 2b.9 Write STAKEHOLDERS.md
+### 2b.10 Write STAKEHOLDERS.md
 
 Write verified entities to `places/<slug>/tracker/STAKEHOLDERS.md`:
 - **People section:** name, title, org, LinkedIn, verification status, relationship category
@@ -637,21 +665,21 @@ Write verified entities to `places/<slug>/tracker/STAKEHOLDERS.md`:
 **Content floor:** STAKEHOLDERS.md must have >20 lines of substantive content.
 If fewer than 20 lines after enrichment, the rubric FAILs.
 
-### 2b.10 Flag Unverified Entities
+### 2b.11 Flag Unverified Entities
 
 Write ALL unverified entities to RECONCILIATION.md under a `## Unverified Entities` section:
 - Person: name, claimed role, what was searched, why no match
 - Org: name, claimed relationship, what was searched, why no match
 - Each flagged entity gets an escalation path: "verify via [specific next step]"
 
-### 2b.11 Update Arc Files with Verified Data
+### 2b.12 Update Arc Files with Verified Data
 
 Where RocketReach returned richer data than the arc files contain:
 - Update arc/03-foundation.md with verified titles and org affiliations
 - Update arc/05-investors.md with verified investor entity details
 - Tag each update: `(Verified via RocketReach <date>)`
 
-### 2b.12 Phase 2b Rubric Gate
+### 2b.13 Phase 2b Rubric Gate
 
 ```
 PHASE 2b RUBRIC — <slug>
@@ -662,13 +690,14 @@ PHASE 2b RUBRIC — <slug>
 | 3 | Entities categorized           | relationship type assigned each       | ?      |      |
 | 4 | RocketReach person lookups     | run on all non-historical people      | ?      |      |
 | 5 | RocketReach company lookups    | run on all orgs                       | ?      |      |
-| 6 | Government registry checks     | key entities verified                 | ?      |      |
-| 7 | Arc file cross-reference       | no missed entities                    | ?      |      |
-| 8 | Stakeholder network mapped     | relationships documented              | ?      |      |
-| 9 | STAKEHOLDERS.md                | >20 lines substantive content         | ?      |      |
-| 10| FPIC counterparties identified | listed even if unverified             | ?      |      |
-| 11| Unverified entities flagged    | in RECONCILIATION.md with next steps  | ?      |      |
-| 12| Arc files updated              | verified data written back            | ?      |      |
+| 6 | Web research on orgs           | website + news + track record checked | ?      |      |
+| 7 | Government registry checks     | key entities verified                 | ?      |      |
+| 8 | Arc file cross-reference       | no missed entities                    | ?      |      |
+| 9 | Stakeholder network mapped     | relationships documented              | ?      |      |
+| 10| STAKEHOLDERS.md                | >20 lines substantive content         | ?      |      |
+| 11| FPIC counterparties identified | listed even if unverified             | ?      |      |
+| 12| Unverified entities flagged    | in RECONCILIATION.md with next steps  | ?      |      |
+| 13| Arc files updated              | verified data written back            | ?      |      |
 ```
 
 Under `RDC_TEST=1`: skip RocketReach + registry lookups; write placeholder STAKEHOLDERS.md.
@@ -901,24 +930,31 @@ Append Phase 4 results to ONRAMP-REPORT.md + INTAKE-LOG.md.
 
 ---
 
-## Phase 5: Regen Score — Fit Function + Per-Model Benchmarks
+## Phase 5: Regen Score — Model-Driven Rubric Assessment
+
+The Regen Score is **driven by the VLAS model specification** (corpus 01), not a standalone
+scoring system. The archetype assigned in Phase 1 determines which model rubric applies,
+which process states are required (corpus 03 §5), which Five Capitals are emphasized,
+and which annihilators must be checked. **The model IS the rubric.**
 
 Scoring is NOT a one-pass read-and-number exercise. Each dimension requires regional
 research correlation — you look at the region, discover what comparables exist, check
 how this place fits the regional pattern, and circle back for deeper evidence where the
 first pass left gaps. Multiple research passes per dimension are expected.
 
-### 5.1 Load Archetype Benchmark Set
+### 5.1 Load Model Specification
 
-Each archetype has its own benchmark set at `corpus/_shared/onramp/benchmarks/<archetype>.md`
-or wired to the benchmarking system (`docs/systems/regenops/BENCHMARKING.md`).
+Load the model's scoring context from the VLAS corpus and archetype templates:
+- Read `$CORPUS_ROOT/VLAS/plans/01-model-spec.md` — the universal template (§6 SCARF×4Ps,
+  §7 Five Capitals, §8 the arc, §12 recognition formula + annihilators)
+- Read `$CORPUS_ROOT/VLAS/plans/03-process-states.md` — state library + §5 land-type
+  selection matrix (Data Center / Land Regen / Urban Renewal)
+- Read `corpus/_shared/onramp/benchmarks/<archetype>.md` — archetype-specific benchmarks
+- Read `places/<slug>/PROCESS-ARC.md` — this place's state selection (from Phase 1)
 
-Each benchmark: dimension, metric, threshold, weight, source.
-The fit function: takes the place's evidence, scores each benchmark, computes composite.
-Links to the VLAS benchmark registry (epic `4e6e6084`) when available.
-
-If the benchmark set does not exist for this archetype, the skill writes a default
-based on the 5-dimension scoring table below and flags it for later enrichment.
+The model spec defines **what gets scored and how**. If the archetype benchmark set does
+not exist, the skill writes a default from the model spec §7 (Five Capitals) + §6
+(SCARF×4Ps lattice) and flags it for review.
 
 ### 5.2 Regional Comparable Research — First Pass
 
@@ -936,161 +972,241 @@ Before scoring, establish the regional context this place sits within:
 This is research — use WebSearch, web-research MCP, or existing corpus. Log all
 new sources in corpus/INDEX.md with tier assignments.
 
-### 5.3 Score Dimension: Owner / Steward
+### 5.3 SCARF×4Ps Lattice Assessment
 
-| Key | `owner` |
-|-----|---------|
-| Scoring Basis | Title clarity, team credentials, FPIC status, governance structure |
-| Evidence required | arc/03 + STAKEHOLDERS.md + source tier |
+Fill the 5×4 grid from model spec §6 for this place. Each cell is a question the
+model answers for a real project:
 
-Score 0-100 considering:
-- Title chain clear and verified (Tier 0-1 sources)? (+20-30)
-- Team has relevant experience (RocketReach-verified credentials)? (+15-25)
-- FPIC counterparties identified and engagement documented? (+15-25)
-- Governance structure defined (trust, co-governance, community board)? (+10-20)
-- Stewardship succession plan exists? (+5-10)
+```
+| SCARF \ 4P     | Place            | People           | Purpose          | Process          |
+|----------------|------------------|------------------|------------------|------------------|
+| Source          | ?                | ?                | ?                | ?                |
+| Condition       | ?                | ?                | ?                | ?                |
+| Appropriateness | ?                | ?                | ?                | ?                |
+| Resilience      | ?                | ?                | ?                | ?                |
+| Feedback        | ?                | ?                | ?                | ?                |
+```
 
-Cite each sub-score: `arc file | source | tier | evidence fragment | points`.
+For each cell:
+- Fill with evidence from arc files (cite arc file + source tier)
+- Mark as **gate-generating** (produces a hard gate), **filter-generating** (produces
+  a soft filter), or **neither**
+- Cells that are gate-generating feed directly into the annihilator check (5.7)
+- Empty cells are scoring gaps — flag for additional research or mark as
+  `declared absence (reason)` (doc 01 §0.3: *a declared absence is an artifact*)
 
-### 5.4 Score Dimension: Project / Place
+Write the filled lattice to `places/<slug>/SCREENING.md`.
 
-| Key | `place` |
-|-----|---------|
-| Scoring Basis | Archetype fit, ecology verified, heritage context, regional correlation |
-| Evidence required | arc/02 + corpus/INDEX.md + HISTORY.md + source tier |
+### 5.4 Five Capitals Per-Capital Scoring
 
-Score 0-100 considering:
-- Archetype fit: does the place match its declared archetype? (+15-25)
-  Compare against regional comparables from 5.2 — is this a realistic fit?
-- Ecological baseline verified from Tier 0-2 sources (SSURGO, NVC, watershed data)? (+15-25)
-- Heritage/cultural significance documented and verified? (+10-20)
-- HISTORY.md has substantive land lineage (not a stub)? (+10-15)
-- Regional correlation: how does this place's ecology, location, and resources
-  compare to successful projects in the same region? (+10-15)
+Score each capital per model spec §7 — canonical definitions, never redefined.
+Each capital has: **definition** → **what it means for this archetype** → **patterns
+that build it** (doc 04) → **indicators** → **evidence citation**.
 
-### 5.5 Score Dimension: Finance Model
+| Capital   | Unit | Score 0-100 | Evidence | Source Tier | Arc File(s) |
+|-----------|------|-------------|----------|-------------|-------------|
+| Natural   | NCU  | ?           | ?        | ?           | arc/02      |
+| Human     | HCU  | ?           | ?        | ?           | arc/03      |
+| Social    | SCU  | ?           | ?        | ?           | arc/03, 04  |
+| Built     | MCU  | ?           | ?        | ?           | arc/04      |
+| Financial | FCU  | ?           | ?        | ?           | arc/05, 06  |
 
-| Key | `model` |
-|-----|---------|
-| Scoring Basis | CapEx defined, revenue streams documented, pro forma, regional comparables |
-| Evidence required | arc/05 + arc/06 + source tier + regional research |
+**Financial is a translation layer** — it captures monetized value from gains in the
+other four (doc 01 §7). Score on whether the financial model supports the other capitals,
+not as an independent measure of profitability.
 
-Score 0-100 considering:
-- CapEx defined with line items (not just a lump sum)? (+15-20)
-- Revenue streams identified with basis (comparable projects, market research)? (+15-20)
-- Pro forma internally consistent (verified in Phase 3)? (+10-15)
-- Financial assumptions validated against regional comparables from 5.2? (+10-15)
-  (e.g., claimed nightly rate vs actual hospitality rates in the region)
-- Phased investment structure with realistic timeline? (+5-10)
-- Tier 4 illustrative figures clearly tagged and not over-weighted? (+5-10)
+**Coverage rule (doc 01 §5):** a plan that maxes one capital and starves another is
+**visibly lopsided and fails.** No capital may score below 40 while another scores
+above 80 (the coverage spread gate). Whole-place or nothing.
 
-**Regional correlation step:** if the financial model claims revenue or costs that
-differ >30% from regional comparables, flag as `needs-justification` and research
-further — look for specific evidence that justifies the deviation (unique amenity,
-premium positioning, infrastructure advantage).
+**Weighting honesty:** any weighting used is **pedagogical, not measured.** Label it
+`Illustrative`. Measured outcomes come from verification (S20), never the planner.
 
-### 5.6 Score Dimension: Approach
+Each per-capital score MUST cite: which arc file, which source (tier), what evidence
+justifies the number. No bare scores. Tier 4 figures that are the SOLE evidence for a
+sub-score → cap that sub-score at 50.
 
-| Key | `approach` |
-|-----|---------|
-| Scoring Basis | Integrative intent, partner LOIs, governance model, process-state coverage |
-| Evidence required | arc/04 + PROCESS-ARC.md + STAKEHOLDERS.md + source tier |
+### 5.5 Annihilator Check — Binary Pass/Fail
 
-Score 0-100 considering:
-- Integrative design intent documented (not just extractive development)? (+15-25)
-- Partner LOIs or MOUs exist (verified in Phase 2b)? (+10-20)
-- Governance model includes community voice (co-governance pathway)? (+10-20)
-- Process states from PROCESS-ARC.md appropriately selected for archetype? (+10-15)
-- Stewardship enterprise model aligns with the 14 enterprise types (doc 04 §7)? (+5-10)
-- Approach is regionally appropriate — does it account for the jurisdiction's
-  regulatory and cultural context? (+5-10)
+The recognition formula is a **product** — any zeroed term collapses everything.
+Gates are **annihilators, not low scores** (doc 01 §12.2, doc 03 §2).
 
-### 5.7 Score Dimension: Timeline
+Check each annihilator and record binary status:
 
-| Key | `timeline` |
-|-----|---------|
-| Scoring Basis | Phases with dates, milestones defined, corpus completeness, regulatory realism |
-| Evidence required | PRODUCT.md + tracker/* + PROCESS-ARC.md + source tier |
+| Annihilator | State | Check | Status | Evidence |
+|-------------|-------|-------|--------|----------|
+| FPIC        | S04   | Consent counterparties identified + pathway | ? | STAKEHOLDERS.md |
+| Readiness   | S13   | Place ecology can hold development | ? | arc/02 |
+| Baseline    | S08   | Five Capitals baseline captured or plan exists | ? | arc files |
+| Covenant    | S14   | Legal pathway identified | ? | arc/05, tracker/ |
+| Permanence  | S20   | π_legal × π_ecology both non-zero pathway | ? | HISTORY.md, arc/02 |
+| Verification| S20   | Measurement plan for ΔI exists | ? | PROCESS-ARC.md |
+| Offtake     | S21   | Revenue/offtake pathway identified | ? | arc/06 |
+| Dividend    | S22   | ≥10% community, before investor allocation | ? | arc/05 |
 
-Score 0-100 considering:
-- Project phases defined with date ranges (not just "Phase 1, Phase 2")? (+15-25)
-- Milestones in tracker/MILESTONES.md are specific and measurable? (+10-20)
-- Regulatory timeline is realistic for the jurisdiction? (+10-15)
-  Cross-check against 5.2 regional research — how long do similar permits take?
-- Corpus completeness: are enough sources gathered to support the claimed timeline? (+10-15)
-- Risk register (tracker/RISKS.md) identifies timeline-specific risks? (+5-10)
-- Phasing aligns with financial model investment tranches? (+5-10)
+At enrollment, most annihilators cannot be fully passed — but the **pathway to passing
+them** MUST be identified. A place with no FPIC counterparty identified and no plan to
+identify them is a NO-GO regardless of other scores.
 
-### 5.8 Regional Correlation — Second Pass (Gap Fill)
+Status per annihilator:
+- **CLEAR** — evidence exists or a credible pathway is documented
+- **AT RISK** — gap identified, pathway unclear but not impossible
+- **BLOCKED** — no pathway visible → NO-GO signal
 
-After first-pass scoring, identify dimensions that scored below 75 individually:
-- For each weak dimension, do a targeted regional research pass:
+Any annihilator **BLOCKED** → composite capped at NO-GO (<55) regardless of capital scores.
+
+### 5.6 Recognition Formula Readiness
+
+Assess each term of the normative issuance kernel (doc 01 §12, doc 09 §2):
+
+`Q = A_cap × ΔI_c × P × S × v^α × a^β × (1-U)`
+
+At enrollment, this is a **readiness assessment**, not a computed Q:
+
+| Term | Question | Evidence | Readiness |
+|------|----------|----------|-----------|
+| A_cap (scale) | Area/asset quantified? | Survey, title, GIS | ? |
+| ΔI (integrity uplift) | Baseline plan + measurement methodology? | PROCESS-ARC.md | ? |
+| P (permanence) | Legal + ecological durability pathway? | arc/05, HISTORY.md | ? |
+| S (stewardship/FPIC) | Consent + governance quality? | STAKEHOLDERS.md | ? |
+| v (velocity) | Time-series plan for improvement rate? | tracker/MILESTONES.md | ? |
+| a (acceleration) | Sustained care plan beyond initial cycle? | arc/04 | ? |
+| (1-U) (uncertainty) | Source quality + measurement confidence? | corpus/INDEX.md tiers | ? |
+
+Each term: **Ready** / **Partially ready** / **Not ready** / **N/A (with reason)**.
+
+### 5.7 Process State Completion Audit
+
+Read `places/<slug>/PROCESS-ARC.md` (Phase 1) and check which states have evidence
+of completion vs which are still required.
+
+For each state S00–S24 marked `required`:
+1. What evidence exists that this state has been addressed?
+2. Is the evidence sufficient to pass the state's exit gate?
+3. Which states are CORE vs CONDITIONAL for this archetype?
+
+Cross-reference against the land-type selection matrix (doc 03 §5):
+- Data Center: S05b site control, S11 N/A, S15 N/A
+- Land Regen / Conservation: S05a LRLT, S11 core, S15 core
+- Urban Renewal: S05c no land trust, S11 optional, S15 project-dependent
+- Eco-hospitality / Coastal-watershed: map to closest column + archetype-specific overrides
+
+**A composite ≥75 with a CORE state missing is invalid.**
+
+ANNIHILATOR states (S04 FPIC, S08 Baseline, S13 Readiness, S14 Covenant, S20 Verification,
+S21 Recognition, S22 Return Flow) with no evidence → composite invalid regardless of number.
+
+### 5.8 Pathway Ladder Position
+
+Determine current and target rung (doc 01 §9 — five rungs, ascending):
+1. Where does this place sit today? (current rung, with evidence)
+2. What is the target rung? (from PROCESS-ARC.md or project vision)
+3. Is an operating example at the target rung known? If not, say so honestly.
+4. What is the rising floor — the regulatory trajectory in this jurisdiction?
+5. Is the project building above or at the current floor?
+
+The aspirational rule: if no operating example exists at the top, **say so.** Building
+to the current floor is building to be obsolete.
+
+### 5.9 Regional Correlation — Second Pass (Gap Fill)
+
+After first-pass scoring, identify capitals that scored below 75 individually:
+- For each weak capital, do a targeted regional research pass:
   - What specific evidence is missing?
   - Can it be found via web research in the region?
   - Are there comparable projects whose public data fills the gap?
+  - Correlate: does new regional data change the picture for other capitals too?
 - Update arc files with newly found evidence
-- Re-score the weak dimension with new evidence
-- Log the research cycle in ONRAMP-REPORT.md: "Dimension X: first pass N, gap=[...],
-  second pass research=[...], revised score M"
+- Re-score the weak capital with new evidence
+- Log the research cycle in ONRAMP-REPORT.md
 
-This is not score inflation — it's due diligence. A gap that CANNOT be filled after
-targeted research stays as-is and contributes to the NEEDS WORK or NO-GO verdict.
+This may require **multiple rounds** — you discover the region's shape, correlate what
+matters for this place in this region, then circle back for deeper digs on topics that
+emerged. Research is iterative. A gap that CANNOT be filled after targeted research
+stays as-is and contributes to the NEEDS WORK or NO-GO verdict.
 
-### 5.9 Composite Score + Verdict
+### 5.10 Honesty Audit
 
-Compute composite: unweighted mean of all 5 dimensions, rounded to nearest integer.
+Verify all claims meet the honesty standard (doc 01 §11):
+- Every Tier 4 figure tagged `(Illustrative)` — no unverified figure scored as fact
+- Tier 4 figures that are the SOLE evidence for a capital score → cap at 50
+- Every pattern, instrument, and rung carries a precedent tier
+  (Operating · Pilot · Proposal · Standard · Regulatory)
+- `announced-not-operating` flags on any case study cited
+- Financial Verified Mode: no unsourced figure ships as fact
+- The `[I]` register is identified — what is illustrative vs verified
+- Log: "N of M scoring evidence points are Tier 4 — ceiling applied to [capitals]"
+
+### 5.11 Compose Regen Score from Model Rubric
+
+Aggregate all scoring components — NOT a simple 5-dimension mean. The model rubric
+drives the structure:
+
+```
+REGEN SCORE — <slug> — <archetype>
+Model: <archetype> (loaded from $CORPUS_ROOT/VLAS/plans/ + archetype benchmarks)
+
+SCARF×4Ps Lattice: NN/20 cells filled with evidence (gate-generating: N)
+
+Five Capitals (per-capital, evidence-cited):
+  Natural:   __/100  [arc/02, Tier _]
+  Human:     __/100  [arc/03, Tier _]
+  Social:    __/100  [arc/03-04, Tier _]
+  Built:     __/100  [arc/04, Tier _]
+  Financial: __/100  [arc/05-06, Tier _]
+  Coverage spread: PASS/FAIL (max-min <= 40)
+
+Annihilators (binary — any BLOCKED → NO-GO):
+  FPIC:        CLEAR / AT RISK / BLOCKED
+  Readiness:   CLEAR / AT RISK / BLOCKED
+  Baseline:    CLEAR / AT RISK / BLOCKED
+  Permanence:  CLEAR / AT RISK / BLOCKED
+  Offtake:     CLEAR / AT RISK / BLOCKED
+  Dividend:    CLEAR / AT RISK / BLOCKED
+
+Recognition Formula: __/7 terms ready
+Process States: __/__ required states addressed
+Pathway: Rung __/5 current → Rung __/5 target
+Research Passes: N rounds (gaps identified + re-researched)
+
+Composite: __ — GO ≥75 | NEEDS WORK 55-74 | NO-GO <55
+```
+
+Write the full score card to `places/<slug>/SCREENING.md` (appending to the lattice
+from 5.3). This is the durable scoring artifact.
+
+### 5.12 Score Gate Decision
 
 | Composite | Verdict | Action |
 |-----------|---------|--------|
 | ≥ 75 | **GO** | Proceed to Phase 6 (Build) |
-| 55-74 | **NEEDS WORK** | List specific gaps per dimension; skill STOPS. Re-invoke after gaps addressed. |
-| < 55 | **NO-GO** | Project does not meet minimum threshold. Skill STOPS. Escalate to Dave. |
+| 55-74 | **NEEDS WORK** | List specific gaps; skill STOPS. Re-invoke after addressed. |
+| < 55 | **NO-GO** | Project does not meet threshold. Skill STOPS. Escalate to Dave. |
 
-Write the full score card to `places/<slug>/SCREENING.md`:
-- Per-dimension score with evidence citations
-- Regional comparables used
-- Research cycles performed (how many passes, what was found)
-- Composite and verdict
-- If NEEDS WORK: specific actionable gaps per dimension
+If NEEDS WORK: list exactly what would move the score to GO — which capital needs
+evidence, which annihilator needs a pathway, which process state needs attention.
+A NO-GO is a success of the model if the place genuinely isn't ready.
 
-### 5.10 Process-State Gate Cross-Check
-
-The score gate also verifies which process states (from PROCESS-ARC.md) have been
-completed vs required. **A composite ≥75 with a CORE state missing is invalid.**
-
-Cross-check:
-- List all states marked `required` in PROCESS-ARC.md
-- For each: is there evidence in the arc files that this state has been addressed?
-- ANNIHILATOR states (e.g., FPIC) with no evidence → composite is invalid regardless of number
-- Missing CORE states → list each with what evidence would satisfy it
-
-### 5.11 Tier 4 Inflation Check
-
-Dedicated pass to ensure illustrative (Tier 4) figures are not inflating scores:
-- Every financial figure used in the model dimension score: is it Tier 0-3 or Tier 4?
-- Tier 4 figures that are the SOLE evidence for a sub-score → cap that sub-score at 50
-- Tier 4 stakeholder claims (unverified team bios) → cap owner sub-score contribution
-- Log: "N of M scoring evidence points are Tier 4 — score ceiling applied to [dimensions]"
-
-### 5.12 Write Score Card to ONRAMP-REPORT.md
-
-Append the full scoring narrative:
+Append the full scoring narrative to ONRAMP-REPORT.md:
 ```markdown
 ## Phase 5: Regen Score — <date>
-### Regional Comparables: [N projects found in region, M used for benchmarking]
-### Research Passes: [first pass → gap identification → second pass on N dimensions]
-### Per-Dimension Scores:
-| Dimension | Score | Evidence count | Tier 4 count | Ceiling applied | Key citation |
-|-----------|-------|---------------|--------------|-----------------|-------------|
-| Owner     | NN    | X             | Y            | yes/no          | arc/03:L42  |
-| Place     | NN    | X             | Y            | yes/no          | arc/02:L18  |
-| Model     | NN    | X             | Y            | yes/no          | arc/06:L7   |
-| Approach  | NN    | X             | Y            | yes/no          | arc/04:L31  |
-| Timeline  | NN    | X             | Y            | yes/no          | MILESTONES  |
+### Model: <archetype> (benchmark set: loaded/generated)
+### SCARF×4Ps: NN/20 cells filled (N gate-generating)
+### Five Capitals:
+| Capital   | Score | Evidence | Tier 4 count | Ceiling | Key citation |
+|-----------|-------|----------|--------------|---------|-------------|
+| Natural   | NN    | X        | Y            | yes/no  | arc/02:LNN  |
+| Human     | NN    | X        | Y            | yes/no  | arc/03:LNN  |
+| Social    | NN    | X        | Y            | yes/no  | arc/04:LNN  |
+| Built     | NN    | X        | Y            | yes/no  | arc/04:LNN  |
+| Financial | NN    | X        | Y            | yes/no  | arc/06:LNN  |
+### Coverage spread: PASS/FAIL
+### Annihilators: [list each with status]
+### Recognition Formula Readiness: __/7 terms
+### Process States: __/__ required addressed
+### Pathway: Rung __→__ | Rising floor: [jurisdiction context]
 ### Composite: NN — [GO / NEEDS WORK / NO-GO]
-### Process-State Cross-Check: [N/M required states satisfied]
-### ANNIHILATOR states: [list any missing]
-### Gaps (if NEEDS WORK): [specific actionable items per dimension]
+### Gaps (if NEEDS WORK): [specific actionable items per capital]
 ```
 
 ### 5.13 Phase 5 Rubric Gate
@@ -1099,19 +1215,21 @@ Append the full scoring narrative:
 PHASE 5 RUBRIC — <slug>
 | # | Check                          | Expected                              | Actual | Pass |
 |---|--------------------------------|---------------------------------------|--------|------|
-| 1 | Regional comparables researched| >= 2 comparable projects found        | ?      |      |
-| 2 | All 5 dimensions scored        | 0-100 each with evidence citation     | ?      |      |
-| 3 | Per-dimension evidence cited    | arc file + source tier for each       | ?      |      |
-| 4 | Model benchmarks applied       | archetype-specific benchmark set      | ?      |      |
-| 5 | Regional correlation done      | scores checked against comparables    | ?      |      |
-| 6 | Gap-fill research pass         | weak dimensions re-researched         | ?      |      |
-| 7 | Composite computed             | GO >= 75                              | ?      |      |
-| 8 | Process-state cross-check      | no CORE state missing                 | ?      |      |
-| 9 | ANNIHILATOR states checked     | no unaddressed annihilators           | ?      |      |
-| 10| Tier 4 inflation check         | illustrative figs not scored as verified | ?   |      |
-| 11| SCREENING.md written           | full score card with evidence         | ?      |      |
-| 12| Score card in ONRAMP-REPORT    | Phase 5 section appended              | ?      |      |
-| 13| Score gate verdict             | GO to proceed, else STOP              | ?      |      |
+| 1 | Model spec loaded              | VLAS 01 + 03 + archetype benchmarks   | ?      |      |
+| 2 | Regional comparables researched| >= 2 comparable projects found        | ?      |      |
+| 3 | SCARF×4Ps lattice filled       | 20 cells answered with evidence       | ?      |      |
+| 4 | All 5 capitals scored          | 0-100 each with evidence citation     | ?      |      |
+| 5 | Coverage spread gate           | max-min <= 40                         | ?      |      |
+| 6 | Annihilators checked           | all 8 binary pass/fail recorded       | ?      |      |
+| 7 | No BLOCKED annihilator         | all CLEAR or AT RISK                  | ?      |      |
+| 8 | Recognition formula assessed   | all 7 terms readiness recorded        | ?      |      |
+| 9 | Process states audited         | required states checked per archetype | ?      |      |
+| 10| Pathway ladder position set    | current + target rung with evidence   | ?      |      |
+| 11| Regional gap-fill pass done    | weak capitals re-researched           | ?      |      |
+| 12| Honesty audit passed           | Tier 4 tagged, precedent tiers set    | ?      |      |
+| 13| Composite >= 75                | GO                                    | ?      |      |
+| 14| SCREENING.md written           | lattice + score card + evidence       | ?      |      |
+| 15| Score in ONRAMP-REPORT.md      | Phase 5 section appended              | ?      |      |
 ```
 
 Append Phase 5 results to ONRAMP-REPORT.md + INTAKE-LOG.md.
