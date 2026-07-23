@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.25.0 — rdc:onramp Phase-1 enrollment skill
+
+### Added
+- `rdc:onramp` — Phase-1 enrollment infrastructure orchestrator for new Place
+  Fund projects. It gates the existing `enroll_place` RPC, `insert_work_item`
+  enrollment epic, and `onramp-scaffold-place.mjs` disk scaffolder in strict
+  order, with fresh/already-enrolled/spine-ahead/disk-ahead drift handling.
+- Tier-2 onramp test manifest coverage for the `_context.md` absence invariant,
+  deterministic door contracts, and four-state drift behavior.
+
+---
+
 ## v0.21.0 — channel-formatter skill
 
 ### Added
