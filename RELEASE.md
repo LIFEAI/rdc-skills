@@ -23,15 +23,11 @@ git push origin master --tags
 # 4. Publish to npm
 npm publish
 
-# 5. Install globally + restart PM2 MCP
-pm2 stop rdc-skills-mcp
+# 5. Install globally (serves both Claude Code CLI + MCP server)
 npm install -g @lifeaitools/rdc-skills@latest
-pm2 start rdc-skills-mcp
-pm2 save
 
 # 6. Verify
 npm list -g @lifeaitools/rdc-skills --depth=0
-pm2 list | grep rdc-skills
 ```
 
 ## Automated via rdc:release
