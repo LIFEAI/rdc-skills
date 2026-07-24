@@ -281,19 +281,19 @@ Read the task title and description, then:
 
    | Task character | Model | When to pick it |
    |---|---|---|
-   | Updates, edits, mechanical refactors, small fixes, content tweaks, config patches, doc/copy edits, straightforward API wiring | `claude-sonnet-4-6` | Default for `frontend.md`/`content.md`/`infrastructure.md` work whose checklist is mostly "change X to Y" or "wire up endpoint Z". Budget-safe for parallel dispatch. |
-   | Harder coding tasks — non-trivial algorithm, migration with backfill, schema reshape, multi-file refactor with subtle invariants, performance-sensitive code, anything where correctness is the bar | `claude-opus-4-6` | Default for `backend.md`/`data.md` work and any `frontend.md` task that involves state machines, race conditions, or cross-package contracts. |
-   | Design or innovative thought — new component design, brand/UX work, CS 2.0 paradigm work (HAIL/Quad Pixel/AEMG/Virtue), grammar evolution, architecture-first design, anything where the *shape* of the solution is the deliverable rather than the implementation | `claude-opus-4-8` | Default for `design.md`/`cs2.md` work. Also use for `backend.md`/`data.md` tasks tagged with `architecture` or `design-decision` in work item labels. |
+   | Updates, edits, mechanical refactors, small fixes, content tweaks, config patches, doc/copy edits, straightforward API wiring | `claude-sonnet-5` | Default for `frontend.md`/`content.md`/`infrastructure.md` work whose checklist is mostly "change X to Y" or "wire up endpoint Z". Budget-safe for parallel dispatch. |
+   | Harder coding tasks — non-trivial algorithm, migration with backfill, schema reshape, multi-file refactor with subtle invariants, performance-sensitive code, anything where correctness is the bar | `claude-opus-5` | Default for `backend.md`/`data.md` work and any `frontend.md` task that involves state machines, race conditions, or cross-package contracts. |
+   | Design or innovative thought — new component design, brand/UX work, CS 2.0 paradigm work (HAIL/Quad Pixel/AEMG/Virtue), grammar evolution, architecture-first design, anything where the *shape* of the solution is the deliverable rather than the implementation | `claude-opus-5` | Default for `design.md`/`cs2.md` work. Also use for `backend.md`/`data.md` tasks tagged with `architecture` or `design-decision` in work item labels. |
 
    **How to choose when the task straddles categories:**
-   - If the task's checklist contains the word "design", "decide", "propose", "evaluate alternatives", "novel", or any CS 2.0 primitive → **Opus 4.8**.
-   - If the task touches `packages/cs2*`, `packages/hail`, `packages/quad-pixel`, `packages/virtue-engine`, `packages/aemg`, `packages/planetary-ontology`, or `packages/being-state-processor` → **Opus 4.8** (CS 2.0 paradigm requires innovative thought, not transcription).
-   - If the task is a Supabase migration that drops/renames/reshapes anything, or a refactor across ≥5 files → **Opus 4.6**.
-   - Otherwise → **Sonnet 4.6**.
+   - If the task's checklist contains the word "design", "decide", "propose", "evaluate alternatives", "novel", or any CS 2.0 primitive → **Opus 5**.
+   - If the task touches `packages/cs2*`, `packages/hail`, `packages/quad-pixel`, `packages/virtue-engine`, `packages/aemg`, `packages/planetary-ontology`, or `packages/being-state-processor` → **Opus 5** (CS 2.0 paradigm requires innovative thought, not transcription).
+   - If the task is a Supabase migration that drops/renames/reshapes anything, or a refactor across ≥5 files → **Opus 5**.
+   - Otherwise → **Sonnet 5**.
 
    **State the choice in the wave plan.** Before dispatching a wave, the supervisor must log one line per agent in the form `[wave-N agent-K] role=<role> task=<id> model=<chosen> reason=<one phrase>`. This keeps routing decisions reviewable in the transcript and lets `rdc:report` summarize the fleet mix.
 
-   **Cost guardrail.** If a single wave would dispatch more than 3 Opus 4.8 agents in parallel, downshift the lowest-priority Opus-4.8 tasks to Opus 4.6 unless their work items are tagged `priority=urgent`. Opus 4.8 fast-mode is cheap individually but still ~5× a Sonnet agent at scale.
+   **Cost guardrail.** If a single wave would dispatch more than 3 Opus 5 agents in parallel, downshift the lowest-priority Opus 5 tasks to Sonnet 5 unless their work items are tagged `priority=urgent`. Opus 5 is cheap individually but still ~2× a Sonnet 5 agent at scale.
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
@@ -570,7 +570,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. `isolation` is per the dispatch-mode rule in Step 7: NON-isolated (omit `isolation`) for doc-only and single-committer waves; `isolation: "worktree"` ONLY for true parallel MULTI-committer waves, and only after the HARD GATE (worktree base == develop HEAD) passes — a stale-base isolated wave is a build failure. Model is chosen per task per the routing table in Step 7: Sonnet 4.6 for updates/edits, Opus 4.6 for harder coding, Opus 4.8 for design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 always omits isolation; validator model stays `claude-sonnet-4-6` (verification, not generation).
+- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. `isolation` is per the dispatch-mode rule in Step 7: NON-isolated (omit `isolation`) for doc-only and single-committer waves; `isolation: "worktree"` ONLY for true parallel MULTI-committer waves, and only after the HARD GATE (worktree base == develop HEAD) passes — a stale-base isolated wave is a build failure. Model is chosen per task per the routing table in Step 7: Sonnet 5 for updates/edits, Opus 5 for harder coding and design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 always omits isolation; validator model stays `claude-sonnet-5` (verification, not generation).
 - Finding an existing file is NOT task completion — verify it satisfies the spec
 
 ## Capture lessons (exit step)
