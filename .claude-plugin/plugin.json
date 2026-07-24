@@ -1334,6 +1334,45 @@
       "enabled_default": true,
       "codeflow_required": false
     },
+    "env": {
+      "name": "env",
+      "slash": "rdc:env",
+      "category": "infra",
+      "usage": "rdc:env [status|install|repair|update]",
+      "args": {
+        "positional": [
+          {
+            "name": "action",
+            "required": false,
+            "default": "status",
+            "values": ["status", "install", "repair", "update"]
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "clauth"
+      ],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "check environment",
+        "install environment",
+        "repair environment",
+        "update environment",
+        "setup env",
+        "fix env",
+        "env status",
+        "after reboot",
+        "GPU crash"
+      ],
+      "follows": [],
+      "leads_to": ["status"],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
     "terminal-config": {
       "name": "terminal-config",
       "slash": "rdc:terminal-config",
