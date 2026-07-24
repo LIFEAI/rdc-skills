@@ -68,8 +68,7 @@ Or read `$PROJECT_ROOT/environment.lock.json` and check each tool:
 | rdc-skills | `npm list -g @lifeai/rdc-skills` | 0.25.0 |
 | gh | `gh --version` | 2.0.0 |
 
-For `install`: install any missing tool using the `install` command from the lock file.
-For `repair`: reinstall any tool that fails its health check.
+For `install` and `repair`: install or upgrade any tool below min_version using the `install` command from the lock file. This includes rdc-skills itself — the environment repo is the orchestrator that keeps all tools current, including its own skill set. A `repair` or `install` that bumps rdc-skills will also restart the rdc-skills-mcp PM2 process so the new version is live immediately.
 
 ### Step 3: Service health
 
