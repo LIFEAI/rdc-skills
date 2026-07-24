@@ -13,7 +13,7 @@ From any Claude Code session:
 /plugin install rdc-skills
 ```
 
-The full catalog is available through the MCP as 30 skills. Nineteen common
+The full catalog is available through the MCP as 31 skills. Nineteen common
 workflows also ship as `/rdc:*` command shorthands. Agent playbooks in
 `guides/agents/` are dispatched internally by `rdc:build` and are not
 user-invocable.
@@ -181,7 +181,7 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-30 MCP skills organized into 8 manifest categories. Nineteen of these also have
+31 MCP skills organized into 8 manifest categories. Nineteen of these also have
 `/rdc:*` command shorthands for Claude Code/plugin callers.
 
 Use `rdc_skill_list` for the authoritative live catalog, including names,
@@ -216,6 +216,7 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 - lifeai-brochure-author — JSX authoring contract for Brochurify inputs
 - rdc:convert — Office/Markdown conversion via build-corpus (work in Markdown, materialize `.docx`/`.pptx` at the end; round-trips losslessly — see build-corpus `AGENTS.md`)
 - rdc:fs-mcp — File System MCP bridge guidance for live repo reads/writes
+- rdc:regen-media — primary image generation and Regen Media upload workflow; defaults to local keyless Codex `gpt-image-2` via built-in `image_gen`
 - rdc:extract-verifier-rules — verifier-rule extraction from enhancement logs
 - rdc:rpms-filemap — generated RPMS file-map guidance
 - rdc:workitems — manual work item CRUD
@@ -313,6 +314,7 @@ skills/
   edit/SKILL.md        (local website editor launcher)
   fixit/SKILL.md       (quick-fix bypass)
   fs-mcp/SKILL.md      (File System MCP bridge guidance)
+  regen-media/SKILL.md (primary image generation + Regen Media upload)
   handoff/SKILL.md     (planning → work items)
   help/SKILL.md        (manifest-driven skill index)
   housekeeping/SKILL.md (weekly maintenance audit)

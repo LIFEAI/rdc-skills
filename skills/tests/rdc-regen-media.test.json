@@ -1,0 +1,29 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:regen-media",
+  "description": "Regen Media uses local keyless Codex gpt-image-2 as the primary image-generation path and avoids live generation under RDC_TEST.",
+  "fixture": {
+    "prompt": "rdc:regen-media generate a 2048x1152 homepage hero image",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["image_gen", "gpt-image-2"]
+  },
+  "acceptance": {
+    "output_contains": [
+      "image_gen",
+      "gpt-image-2",
+      "--enable image_generation",
+      "RDC_TEST"
+    ],
+    "output_not_contains": [
+      "OPENAI_API_KEY=",
+      "generate_gpt_image is the default",
+      "upload completed",
+      "raw MCP"
+    ]
+  },
+  "teardown": { "reset_branch": true }
+}

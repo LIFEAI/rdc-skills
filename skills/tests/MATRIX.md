@@ -1,6 +1,6 @@
 # RDC Skill Test Suite Matrix
 
-Current coverage: 30 manifests for 30 skill directories.
+Current coverage: 31 manifests for 31 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
@@ -30,6 +30,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:brochurify` | `rdc-rdc-brochurify.test.json` | Read-only markdown Brochurify fixture | `exit_code`, `stdout_contains` | Sandbox output and no-follow-up negative checks |
 | `rdc:extract-verifier-rules` | `rdc-rdc-extract-verifier-rules.test.json` | Enhancement-log verifier fixture | `exit_code`, `stdout_contains` | Candidate, false-positive, known-good, recall, and no-auto-merge/PR negative checks |
 | `rdc:release` | `rdc-release.test.json` | Dry-run package release | `commits_made`, `exit_code`, `stdout_contains` | Dry-run release checklist and force/bypass negative checks |
+| `rdc:regen-media` | `rdc-regen-media.test.json` | Image generation path selection | `commits_made`, `exit_code`, `stdout_contains` | Local keyless Codex gpt-image-2 default, test-mode no-generation, and server-side fallback negative checks |
 | `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Report status block, counts, next recommendation, and dump/push negative checks |
 | `rdc:review` | `rdc-review.test.json` | Unattended review gate | `exit_code`, `stdout_contains` | Code-review, verify, fresh-evidence, tsc, and forbidden-build negative checks |
 | `rdc:rpms-filemap` | `rdc-rpms-filemap.test.json` | Canonical location lookup | `commits_made`, `exit_code`, `stdout_contains` | Rule #1, context door, one-home rules, and no-hand-edit/second-home negative checks |

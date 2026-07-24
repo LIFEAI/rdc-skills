@@ -30,6 +30,8 @@ const fs           = require('fs');
 const path         = require('path');
 const os           = require('os');
 const readline     = require('readline');
+const http         = require('http');
+const crypto       = require('crypto');
 const { execSync } = require('child_process');
 
 // ── Args ──────────────────────────────────────────────────────────────────────
@@ -100,6 +102,12 @@ const fail = msg => console.log(`  \x1b[31m✗\x1b[0m ${msg}`);
 
 function run(cmd, options = {}) {
   return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
+}
+
+function shellQuote(s) {
+  const raw = String(s);
+  if (process.platform === 'win32') return `"${raw.replace(/"/g, '\\"')}"`;
+  return `'${raw.replace(/'/g, `'\\''`)}'`;
 }
 
 function updateCodexMcpToml(toml, mcpUrl) {
@@ -322,6 +330,35 @@ function readInstalledPackageVersion(scriptPath) {
   return readJson(path.join(packageRoot, 'package.json'), {}).version || null;
 }
 
+function collectFilesRecursive(baseDir, rel, out) {
+  const full = path.join(baseDir, rel);
+  if (!fs.existsSync(full)) return;
+  const stat = fs.statSync(full);
+  if (stat.isDirectory()) {
+    for (const entry of fs.readdirSync(full).sort()) {
+      collectFilesRecursive(baseDir, path.join(rel, entry), out);
+    }
+    return;
+  }
+  if (stat.isFile()) out.push(rel.replace(/\\/g, '/'));
+}
+
+function hashInstallSurface(root) {
+  if (!root || !fs.existsSync(root)) return null;
+  const rels = [];
+  for (const rel of ['.claude-plugin', 'commands', 'guides', 'skills', 'package.json', 'README.md']) {
+    collectFilesRecursive(root, rel, rels);
+  }
+  const hash = crypto.createHash('sha256');
+  for (const rel of rels.sort()) {
+    hash.update(rel);
+    hash.update('\0');
+    hash.update(fs.readFileSync(path.join(root, rel)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
 function syncGlobalMcpInstall(version) {
   const proc = getPm2Process(MCP_NAME);
   if (!proc) {
@@ -336,18 +373,22 @@ function syncGlobalMcpInstall(version) {
   }
 
   const installedVersion = readInstalledPackageVersion(scriptPath);
-  if (installedVersion === version) {
-    ok(`[2.9] MCP pkg    — global ${NPM_PACKAGE}@${version} already installed`);
+  const packageRoot = packageRootFromMcpScript(scriptPath);
+  const sourceHash = hashInstallSurface(repoRoot);
+  const installedHash = hashInstallSurface(packageRoot);
+  if (installedVersion === version && sourceHash && installedHash && sourceHash === installedHash) {
+    ok(`[2.9] MCP pkg    — global ${NPM_PACKAGE}@${version} already matches source`);
     return;
   }
 
   let stopped = false;
   let installed = false;
   try {
-    info(`[2.9] MCP pkg    — updating global ${NPM_PACKAGE} ${installedVersion || '?'} → ${version}`);
+    const reason = installedVersion === version ? 'same version, source changed' : `${installedVersion || '?'} → ${version}`;
+    info(`[2.9] MCP pkg    — updating global ${NPM_PACKAGE} (${reason}) from local source`);
     run(`pm2 stop ${MCP_NAME}`);
     stopped = true;
-    run(`npm install -g ${NPM_PACKAGE}@${version}`);
+    run(`npm install -g ${shellQuote(repoRoot)}`);
     installed = true;
     ok(`[2.9] MCP pkg    — installed global ${NPM_PACKAGE}@${version}`);
   } catch (e) {
@@ -365,6 +406,71 @@ function syncGlobalMcpInstall(version) {
       }
     }
   }
+}
+
+function callLocalMcpTool(name, args = {}) {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    });
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: Number(MCP_PORT),
+      path: '/mcp',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+      timeout: 10000,
+    }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        try {
+          const dataLine = body.split(/\r?\n/).find((line) => line.startsWith('data: '));
+          const envelope = JSON.parse(dataLine ? dataLine.slice(6) : body);
+          const text = envelope?.result?.content?.[0]?.text;
+          resolve(text ? JSON.parse(text) : envelope);
+        } catch (e) {
+          reject(new Error(`invalid MCP response: ${e.message}`));
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('MCP request timed out')));
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function verifyLiveMcpCatalogFresh() {
+  const proc = getPm2Process(MCP_NAME);
+  if (!proc) {
+    warn('[7.5] MCP catalog — skipped (PM2 process not registered)');
+    return;
+  }
+  const sourceSkills = fs.readdirSync(path.join(repoRoot, 'skills'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(repoRoot, 'skills', entry.name, 'SKILL.md')))
+    .map((entry) => entry.name)
+    .sort();
+  const catalog = await callLocalMcpTool('rdc_skill_list', {});
+  const rows = Array.isArray(catalog)
+    ? catalog
+    : Array.isArray(catalog?.skills) ? catalog.skills
+    : Array.isArray(catalog?.results) ? catalog.results
+    : [];
+  const liveNames = new Set(rows.map((row) => row.name));
+  const missing = sourceSkills.filter((name) => !liveNames.has(name));
+  if (missing.length > 0 || rows.length < sourceSkills.length) {
+    throw new Error(`live MCP catalog stale: source=${sourceSkills.length}, live=${rows.length}, missing=${missing.join(', ') || '(count mismatch)'}`);
+  }
+  ok(`[7.5] MCP catalog — ${rows.length} live skill(s), source catalog fresh`);
 }
 
 // ── User-skills cleanup ───────────────────────────────────────────────────────
@@ -1260,6 +1366,12 @@ async function main() {
   console.log('');
   console.log('  \x1b[36mMCP server:\x1b[0m');
   try { registerMcpServer(); } catch (e) { warn(`[7/7] MCP server — unexpected error (${e.message})`); }
+  try {
+    await verifyLiveMcpCatalogFresh();
+  } catch (e) {
+    fail(`[7.5] MCP catalog — ${e.message}`);
+    process.exit(2);
+  }
 
   // Done
   console.log('');

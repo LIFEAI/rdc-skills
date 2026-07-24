@@ -3,7 +3,7 @@
 **Created:** 2026-04-13  
 **Last updated:** 2026-05-01  
 **Source:** Regen Root project `.claude/skills/user/`  
-**Files:** 18+ skill files, 10 agent guides, command mirrors, and support scripts  
+**Files:** 31 skill files, 10 agent guides, command mirrors, and support scripts  
 **Size:** ~480K  
 
 ## Generic Conversion Summary
@@ -54,6 +54,7 @@ All skills have been converted from project-specific to generic/portable:
     ├── workitems/SKILL.md
     ├── design/SKILL.md       [RDC/Studio design, Palette Library, Rampa CLI]
     ├── help/SKILL.md
+    ├── regen-media/SKILL.md [primary image generation + Regen Media upload]
     ├── deploy/SKILL.md       [Coolify deployment ops]
     ├── release/SKILL.md      [atomic version release]
     ├── self-test/SKILL.md    [static lint + tier2 smoke tests]
@@ -113,6 +114,8 @@ All skills have been converted from project-specific to generic/portable:
 - rdc:channel-formatter — channel-native formatting and content repurposing,
   including article-to-post, social-pack, campaign-pack, exec-pack, and
   launch-pack outputs
+- rdc:regen-media — primary image generation and Regen Media upload workflow,
+  defaulting to local keyless Codex `gpt-image-2` via built-in `image_gen`
 
 ### Bridge (3)
 - rdc:handoff — planning → work items

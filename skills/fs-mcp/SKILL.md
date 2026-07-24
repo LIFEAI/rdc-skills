@@ -123,7 +123,42 @@ fs_import_git_files remote="origin" ref="claude-ai/docs-upload-123" paths=["docs
 
 This tool must fetch only, restore only named paths, optionally commit only those paths, and never push.
 
-### 5. Safety rules
+### 5. `fs_exec` — always use `shell: false` (the default)
+
+`fs_exec` supports an allowlisted set of commands: `git`, `pnpm`, `npx`,
+`node`, `python3`, `rclone`, `bash`, `cat`, `grep`, `find`, `wc`,
+`sha256sum`, `tsc`, `eslint`.
+
+**Always use `shell: false`** (the default). Pass commands as arrays:
+
+```text
+fs_exec command=["git", "add", ".rdc/plans/my-file.md"]
+fs_exec command=["git", "status", "--porcelain"]
+fs_exec command=["git", "diff", "--cached", "--name-only"]
+fs_exec command=["git", "commit", "-m", "docs(plans): add my-file"]
+```
+
+**Never set `shell: true`** unless you specifically need pipes/redirects.
+`shell: true` spawns the host shell (`pwsh.exe` on Windows), which may not
+be resolvable in the FS MCP server's process context (Store-installed
+PowerShell uses a `WindowsApps` shim path that breaks across process
+contexts). `shell: false` spawns the command directly — `git`, `node`, etc.
+are on stable PATH locations and resolve reliably.
+
+**On `fs_exec` failure with `spawn pwsh.exe ENOENT`:** this means the host
+lacks a stable PowerShell 7 install. Fix: install PowerShell 7 via MSI
+(`winget install --id Microsoft.PowerShell --scope machine --force`). But
+the immediate workaround is always `shell: false` — the allowlisted commands
+don't need a shell to execute.
+
+**Before writing governed files** (`.rdc/plans/`, `.claude/rules/`, any path
+with MDK validation hooks): read an existing exemplar in the same directory
+via `fs_read` to learn the required frontmatter schema. Write complete,
+correct content on the FIRST `fs_write`. A two-stage write creates a stale
+index blob; use `fs_exec command=["git", "add", "<path>"]` to re-stage if
+needed.
+
+### 6. Safety rules
 
 - Never run or request `git pull` for the dirty monorepo.
 - Never checkout a whole branch into the local worktree.
@@ -134,7 +169,7 @@ This tool must fetch only, restore only named paths, optionally commit only thos
 - Stage only imported paths when committing.
 - Never push from FS import unless the user explicitly asks for a push-capable workflow.
 
-### 6. Completion report
+### 7. Completion report
 
 Report:
 
