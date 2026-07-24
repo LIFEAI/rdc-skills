@@ -77,14 +77,12 @@ Check each service:
 | Service | Health Check | Repair |
 |---------|-------------|--------|
 | clauth daemon | `curl -s http://127.0.0.1:52437/ping` | `$LIFEAI_ENV/services/restart-clauth.bat` |
-| CodeFlow gateway | `curl -s http://127.0.0.1:3109/health` | `node $PROJECT_ROOT/scripts/codeflow-up.mjs` |
-| CodeFlow brain | `/health` → `health.state` should be `operational` | `node $PROJECT_ROOT/scripts/codeflow-up.mjs --restart` |
-| rdc-skills MCP | `pm2 list` shows rdc-skills-mcp online | `pm2 restart rdc-skills-mcp` |
+| CodeFlow gateway | `curl -s http://127.0.0.1:3109/health` | **PROBE ONLY — never start/restart/recreate.** CodeFlow is blue-green-owned. If down, report `BLOCKED: CodeFlow gateway down — run: node scripts/codeflow-bluegreen.mjs recover` |
+| CodeFlow brain | `/health` → `health.state` | **REPORT ONLY.** `degraded` = freshness drift (normal after pushes). `offline` = remote PM2 brain unreachable. Never start Docker Neo4j or local brain from this skill. |
+| rdc-skills MCP | `pm2 list` shows rdc-skills-mcp online | `npm install -g @lifeaitools/rdc-skills@latest` (reinstall picks up latest) |
 | PM2 daemon | `pm2 ping` | `pm2 resurrect` |
-| Docker | `docker info` | Start Docker Desktop |
-| Neo4j | `docker inspect codeflow-neo4j` | `docker compose -f $LIFEAI_ENV/services/codeflow/docker-compose.yml up -d` |
 
-For `status`: report only. For `repair`: fix each failing service in order (clauth first, then CodeFlow, then MCPs).
+For `status`: report only. For `repair`: fix clauth + rdc-skills only. CodeFlow repair is exclusively through `codeflow-bluegreen.mjs recover` — this skill never touches CodeFlow lifecycle, Docker, or Neo4j.
 
 ### Step 4: MCP server verification
 
