@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.25.5 — MCP catalog release hygiene
+
+### Fixed
+- Synced `.claude-plugin/plugin.json` to the package release version so strict
+  self-test passes before publishing the MCP catalog.
+- Added the missing output-contract banner to `new-model`.
+
+### Changed
+- Updated `rdc:convert` cloud/CLI guidance to prefer npm `regen.mde` for
+  build-corpus instead of stale GitHub-install instructions.
+
+---
+
 ## v0.25.0 — rdc:onramp Phase-1 enrollment skill
 
 ### Added

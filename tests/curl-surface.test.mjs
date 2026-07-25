@@ -12,6 +12,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listSkills } from '../lib/catalog.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -20,6 +21,7 @@ const TEST_PORT = parseInt(process.env.TEST_PORT || '3199', 10);
 const LOCAL = `http://127.0.0.1:${TEST_PORT}`;
 const REMOTE = 'https://rdc-skills.regendevcorp.com';
 const TARGET = process.env.REMOTE || process.argv.includes('--remote') ? REMOTE : LOCAL;
+const EXPECTED_SKILL_COUNT = listSkills().length;
 const REPORT_DIR = path.join(REPO_ROOT, '.rdc', 'reports');
 const REPORT_FILE = path.join(
   REPORT_DIR,
@@ -142,7 +144,7 @@ async function main() {
   try {
     const health = await waitHealth();
     check('health reports ok', health.status === 'ok');
-    check('health reports 30 skills', health.skills === 30, `skills ${health.skills}`);
+    check('health reports catalog skill count', health.skills === EXPECTED_SKILL_COUNT, `skills ${health.skills}`);
 
     const init = postMcp({
       jsonrpc: '2.0',
@@ -168,7 +170,7 @@ async function main() {
     check('rdc_skill_list curl exits 0', list.status === 0, list.stderr);
     check('rdc_skill_list returns SSE data line', /^data:/m.test(list.stdout));
     const listed = JSON.parse(resultText(latestEnvelope(list.stdout)));
-    check('rdc_skill_list exposes 30 skills', listed.count === 30, `count ${listed.count}`);
+    check('rdc_skill_list exposes catalog skill count', listed.count === EXPECTED_SKILL_COUNT, `count ${listed.count}`);
     check('rdc_skill_list includes visible slash name', listed.skills.some((s) => s.slash === 'rdc:build'));
     const buildRow = listed.skills.find((s) => s.name === 'build');
     check('rdc_skill_list exposes aliases for slash callers', buildRow?.aliases?.includes('/rdc:build'));

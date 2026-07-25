@@ -1,15 +1,26 @@
 ---
 name: new-model
+triggers:
+  - rdc:new-model
+  - rdc new model
+  - create model
+  - new reference model
+  - add a model
+  - register model
+  - new model for
+  - model registration check
 description: >
   Register a new Reference Model completely — the yes/no gate that prevents half-registered models.
   A reference model is DEFINED as registered in all four homes: (1) RPMS project_nodes row
   (node_type=reference_model), (2) apps/vlas route group /models/<slug>, (3) apps/vlas
   src/data/models/<slug> definitions, (4) global-corpus Drive directory. If ANY of the four is
   missing, the model does not exist yet — run this skill.
-  TRIGGER: 'rdc:new-model', 'rdc new model', 'create model', 'new reference model', 'add a model',
-  'register model', 'new model for', 'model for conservation easements', 'is this model registered',
-  'model registration check'.
+  Trigger when asked to create, register, or check whether a reference model exists.
 ---
+
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
 # rdc:new-model — Reference Model Registration (complete or not at all)
 

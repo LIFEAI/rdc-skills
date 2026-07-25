@@ -1,6 +1,6 @@
 ---
 name: rdc:convert
-description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI (npm `regen.mde`, or pip from GitHub). Portable: runs in any session that can reach npm or PyPI — Claude Code CLI and claude.ai both fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or 'open the report' in the regen-mde editor (Windows)."
+description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI from npm `regen.mde`. Portable: runs in any session that can reach npm — Claude Code CLI, Codex, and claude.ai can fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or open the report in the regen-mde editor on Windows."
 ---
 
 # rdc:convert — Office ↔ Markdown conversion (build-corpus) + regen-mde editor
@@ -11,7 +11,7 @@ description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--i
 
 `build-corpus` is the conversion CLI; `regen-mde` is the Windows GUI editor. Same
 package, two surfaces. This skill is a **when-to-use + full call/switch reference** —
-it does NOT require a local checkout. Any runtime that can reach npm or PyPI can
+it does NOT require a local checkout. Any runtime that can reach npm can
 fetch and run the tool in its own session (this is how claude.ai uses it).
 
 ## Working model — stay in Markdown ("MD time"), materialize at the end
@@ -58,25 +58,16 @@ build-corpus repo (`C:/Dev/build-corpus/AGENTS.md` locally).
 The command is always `build-corpus <input> [flags]`. Resolve the binary like this:
 
 1. **Already on PATH?** Use it directly: `build-corpus --help`.
-2. **Install straight from GitHub — REQUIRED for current behavior** (native LaTeX→OMML
-   equations, the fidelity report, and the escaped-currency fix; the PyPI/npm packages
-   below currently LAG GitHub):
-   ```bash
-   pip install "git+https://github.com/LIFEAI/build-corpus.git"
-   # (the feat/dual-package-ubuntu branch is kept in sync with main as an alias)
-   ```
-   This installs the `build-corpus` CLI and its deps (latex2mathml, python-docx,
-   Pillow, omml2latex). The MathML→OMML step is an OWNED converter — there is NO
-   `mathml2omml` dependency. On Debian/Ubuntu externally-managed Python, add
-   `--break-system-packages`, use a venv, or `pipx install "git+https://github.com/LIFEAI/build-corpus.git"`.
-3. **npm (only if you do NOT need the latest fixes — lags GitHub; `build-corpus` is
-   NOT on PyPI):** `npx -y -p regen.mde build-corpus <input> [flags]`
+2. **One-off npm run, preferred for claude.ai/sandboxes:** `npx -y -p regen.mde build-corpus <input> [flags]`
+3. **Install npm package when repeated use is expected:** `npm install -g regen.mde`
+   then run `build-corpus <input> [flags]`.
 4. **Legacy `.ppt` input** additionally needs LibreOffice (`soffice`) on PATH
    (`sudo apt install libreoffice`). `.docx`/`.pptx` need nothing extra.
-5. **S3/R2 image upload** needs the extra: append `[s3]` to the package spec.
+5. **S3/R2 image upload** uses the S3/R2 flags or a `--config` file.
 
-claude.ai note: install from GitHub (step 2) into the analysis/session sandbox and run
-`build-corpus` there. GitHub is the source of truth until PyPI/npm are republished.
+claude.ai note: use the npm one-off command in the analysis/session sandbox. Do not
+ask Claude to install build-corpus from Git unless Dave explicitly requests source
+testing.
 
 ## Command Reference
 
@@ -150,7 +141,6 @@ build-corpus report.md --inline-images                         # → report.inli
 build-corpus input.docx --images s3 --config build-corpus.config.json
 
 # portable one-offs when build-corpus is not yet installed:
-pipx run --spec "git+https://github.com/LIFEAI/build-corpus.git" build-corpus input.docx --out out
 npx -y -p regen.mde build-corpus input.docx --out out
 ```
 
@@ -161,7 +151,6 @@ npx -y -p regen.mde build-corpus input.docx --out out
 - The `regen-mde` GUI is Windows-only; do not attempt to launch it on Linux/macOS.
 
 ## Reference
-- Package: npm `regen.mde` (CLI bin `build-corpus`, editor bin `regen-mde`). NOT on
-  PyPI — install the Python CLI from GitHub (step 2). MathML→OMML is an owned converter
-  (no `mathml2omml` dependency).
+- Package: npm `regen.mde` (CLI bin `build-corpus`, editor bin `regen-mde`).
+  MathML→OMML is an owned converter (no `mathml2omml` dependency).
 - Source: `github.com/LIFEAI/build-corpus` (`C:/Dev/build-corpus` locally).

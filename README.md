@@ -13,7 +13,7 @@ From any Claude Code session:
 /plugin install rdc-skills
 ```
 
-The full catalog is available through the MCP as 31 skills. Nineteen common
+The full catalog is available through the MCP as 34 skills. Nineteen common
 workflows also ship as `/rdc:*` command shorthands. Agent playbooks in
 `guides/agents/` are dispatched internally by `rdc:build` and are not
 user-invocable.
@@ -181,7 +181,7 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-31 MCP skills organized into 8 manifest categories. Nineteen of these also have
+34 MCP skills organized into 8 manifest categories. Nineteen of these also have
 `/rdc:*` command shorthands for Claude Code/plugin callers.
 
 Use `rdc_skill_list` for the authoritative live catalog, including names,
@@ -312,6 +312,7 @@ skills/
   deploy/SKILL.md      (Coolify ops: deploy, new, diagnose, audit)
   design/SKILL.md      (RDC/Studio design, Palette Library, Rampa CLI)
   edit/SKILL.md        (local website editor launcher)
+  env/SKILL.md         (environment status, install, repair, update)
   fixit/SKILL.md       (quick-fix bypass)
   fs-mcp/SKILL.md      (File System MCP bridge guidance)
   regen-media/SKILL.md (primary image generation + Regen Media upload)
@@ -319,6 +320,8 @@ skills/
   help/SKILL.md        (manifest-driven skill index)
   housekeeping/SKILL.md (weekly maintenance audit)
   lifeai-brochure-author/SKILL.md (brochure JSX authoring)
+  new-model/SKILL.md   (reference model registration gate)
+  onramp/SKILL.md      (Place Fund phase-1 enrollment)
   overnight/SKILL.md   (unattended multi-epic supervisor)
   plan/SKILL.md        (create architecture + tasks)
   preplan/SKILL.md     (research before planning)

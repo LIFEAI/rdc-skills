@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.25.0",
+  "version": "0.25.5",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -1431,6 +1431,52 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false
+    },
+    "new-model": {
+      "name": "new-model",
+      "slash": "rdc:new-model",
+      "category": "tooling",
+      "usage": "rdc:new-model <slug-or-model-brief>",
+      "args": {
+        "positional": [
+          {
+            "name": "slug-or-model-brief",
+            "required": true,
+            "description": "Reference model slug or natural-language model request to check/register",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "git"
+      ],
+      "produces": [
+        "work_items",
+        "supabase_writes",
+        "git_commits"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "rdc:new-model",
+        "rdc new model",
+        "create model",
+        "new reference model",
+        "add a model",
+        "register model",
+        "new model for",
+        "model registration check"
+      ],
+      "follows": [],
+      "leads_to": [
+        "plan",
+        "build"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
     },
     "workitems": {
       "name": "workitems",
