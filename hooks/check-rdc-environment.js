@@ -164,6 +164,75 @@ function repair(reason) {
   }
 }
 
+/**
+ * ── The global package is BOX-WIDE; this hook is PER-SESSION ──────────────────
+ *
+ * Every session and every worktree runs this hook, but there is only ONE global
+ * npm package and ONE rdc-skills-mcp on the machine. Without coordination, N
+ * sessions starting together each independently conclude "unhealthy" and each run
+ * `npm install -g` against the same directory — they fight, and on Windows they
+ * fight over a directory a live process is sitting in.
+ *
+ * recentlyRepaired() did not prevent this: it gated the BLOCK path, not the REPAIR
+ * path, so concurrent starts all saw "not recently repaired" and all installed.
+ *
+ * A box-wide resource gets a box-wide update: exactly one session performs it, the
+ * rest wait for it and re-probe. Waiting is the correct behaviour for a follower —
+ * the leader is already fixing the thing they would have fixed.
+ */
+const lockPath = path.join(os.tmpdir(), 'rdc-skills-environment-repair.lock');
+const LOCK_STALE_MS = 5 * 60 * 1000;
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err && err.code === 'EPERM'; // exists but not ours to signal
+  }
+}
+
+/** Atomically become the box's updater, or report that someone else already is. */
+function acquireBoxLock() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = fs.openSync(lockPath, 'wx');
+      fs.writeSync(fd, JSON.stringify({ pid: process.pid, ts: new Date().toISOString() }));
+      fs.closeSync(fd);
+      return true;
+    } catch (err) {
+      if (err.code !== 'EEXIST') return false;
+      // Reclaim a lock whose owner died or that outlived any plausible install.
+      let stale = true;
+      try {
+        const held = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+        stale = !processAlive(Number(held.pid)) || Date.now() - Date.parse(held.ts) > LOCK_STALE_MS;
+      } catch {
+        stale = true; // unreadable lock is not a reason to wedge every session
+      }
+      if (!stale) return false;
+      try { fs.unlinkSync(lockPath); } catch { return false; }
+    }
+  }
+  return false;
+}
+
+function releaseBoxLock() {
+  try { fs.unlinkSync(lockPath); } catch { /* best effort */ }
+}
+
+/** Wait for the session that owns the update to finish, re-probing health. */
+async function waitForBoxRepair(timeoutMs = 90000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const h = await health();
+    if (h && h.status === 'ok' && Number(h.skills || 0) >= MIN_SKILLS) return h;
+    if (!fs.existsSync(lockPath)) break; // leader finished; take one last look
+  }
+  return health();
+}
+
 function block(message, details = {}) {
   hookLog('check-rdc-environment', 'SessionStart', 'block', { message, ...details });
   process.stdout.write(JSON.stringify({
@@ -197,10 +266,26 @@ async function main() {
     if (recentlyRepaired()) {
       block(`RDC skills still unhealthy after a recent repair attempt: ${reasons.join(', ')}`);
     }
-    try {
-      repair(reasons.join(', '));
-    } catch (err) {
-      block(`Automatic RDC skills repair failed: ${err.message}`, { reasons });
+    if (acquireBoxLock()) {
+      // This session is the box's updater.
+      try {
+        repair(reasons.join(', '));
+      } catch (err) {
+        block(`Automatic RDC skills repair failed: ${err.message}`, { reasons });
+      } finally {
+        releaseBoxLock();
+      }
+    } else {
+      // Another session owns the box-wide update. Racing it is what broke this.
+      hookLog('check-rdc-environment', 'SessionStart', 'await-box-repair', { reasons });
+      const h = await waitForBoxRepair();
+      if (!h || h.status !== 'ok' || Number(h.skills || 0) < MIN_SKILLS) {
+        block(
+          'Another session is updating the box-wide rdc-skills install and it did not '
+          + `become healthy in time. Reasons seen here: ${reasons.join(', ')}`,
+          { reasons, waited: true },
+        );
+      }
     }
   }
 
