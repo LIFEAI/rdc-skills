@@ -23,6 +23,12 @@ const MCP_HEALTH = 'http://127.0.0.1:3110/health';
 const PACKAGE = '@lifeaitools/rdc-skills';
 const stampPath = path.join(os.tmpdir(), 'rdc-skills-environment-last-repair.json');
 
+// Values interpolated into a shell command are VALIDATED, not quoted. cmd.exe
+// expands %VAR% even inside double quotes, so no quoting function can make an
+// arbitrary string safe there. A name/path that fails these is skipped, not escaped.
+const SAFE_PM2_NAME = /^[A-Za-z0-9._@\-]+$/;
+const SAFE_PATH = /^[A-Za-z0-9 :._\\/\-]+$/;
+
 function q(value) {
   return `"${String(value).replace(/"/g, '\\"')}"`;
 }
@@ -137,7 +143,17 @@ function repair(reason) {
   // Release the directory lock BEFORE npm touches it. Without this the repair
   // cannot succeed while the MCP is running — it fails EBUSY, block() fires, and
   // the session is hard-blocked by its own repair attempt.
-  const holders = processesHoldingPackage();
+  // These MUST go through a shell: npm, pm2 and rdc-skills-install are .cmd shims
+  // on Windows, and execFileSync cannot launch a .cmd without one — measured, not
+  // assumed: execFileSync('npm', ['--version']) fails ENOENT here
+  // (scripts/probe-execfile-cmd.mjs). So the exposure is closed by VALIDATING the
+  // interpolated values instead of trying to quote them: q() escapes only double
+  // quotes, and cmd.exe still expands %VAR% inside them, which no quoting fixes.
+  const holders = processesHoldingPackage().filter((name) => {
+    if (SAFE_PM2_NAME.test(name)) return true;
+    hookLog('check-rdc-environment', 'SessionStart', 'skipped-unsafe-pm2-name', { name });
+    return false;
+  });
   for (const name of holders) {
     try {
       shell(`pm2 stop ${q(name)}`, { timeout: 30000 });
@@ -149,7 +165,11 @@ function repair(reason) {
 
   try {
     shell(`npm install -g ${q(`${PACKAGE}@latest`)}`, { timeout: 120000 });
-    shell(`rdc-skills-install --profile lifeai --project-root ${q(projectRoot())} --write-startup-blocks`, { timeout: 180000 });
+    const root = projectRoot();
+    if (!SAFE_PATH.test(root)) {
+      throw new Error(`refusing to shell out with an unsafe project root: ${root}`);
+    }
+    shell(`rdc-skills-install --profile lifeai --project-root ${q(root)} --write-startup-blocks`, { timeout: 180000 });
     markRepaired(reason);
   } finally {
     // ALWAYS restart, even when the install threw. Leaving the MCP stopped would
@@ -180,49 +200,21 @@ function repair(reason) {
  * rest wait for it and re-probe. Waiting is the correct behaviour for a follower —
  * the leader is already fixing the thing they would have fixed.
  */
-const lockPath = path.join(os.tmpdir(), 'rdc-skills-environment-repair.lock');
-const LOCK_STALE_MS = 5 * 60 * 1000;
+// Single home: hooks/lib/box-lock.js. Kept out of this file so the verification
+// probe can exercise the REAL implementation instead of a copy that drifts.
+const { acquireBoxLock, releaseBoxLock, LOCK_PATH: lockPath } = require('./lib/box-lock');
 
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return err && err.code === 'EPERM'; // exists but not ours to signal
-  }
-}
 
-/** Atomically become the box's updater, or report that someone else already is. */
-function acquireBoxLock() {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const fd = fs.openSync(lockPath, 'wx');
-      fs.writeSync(fd, JSON.stringify({ pid: process.pid, ts: new Date().toISOString() }));
-      fs.closeSync(fd);
-      return true;
-    } catch (err) {
-      if (err.code !== 'EEXIST') return false;
-      // Reclaim a lock whose owner died or that outlived any plausible install.
-      let stale = true;
-      try {
-        const held = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-        stale = !processAlive(Number(held.pid)) || Date.now() - Date.parse(held.ts) > LOCK_STALE_MS;
-      } catch {
-        stale = true; // unreadable lock is not a reason to wedge every session
-      }
-      if (!stale) return false;
-      try { fs.unlinkSync(lockPath); } catch { return false; }
-    }
-  }
-  return false;
-}
 
-function releaseBoxLock() {
-  try { fs.unlinkSync(lockPath); } catch { /* best effort */ }
-}
-
-/** Wait for the session that owns the update to finish, re-probing health. */
-async function waitForBoxRepair(timeoutMs = 90000) {
+/**
+ * Wait for the session that owns the update to finish, re-probing health.
+ *
+ * MUST stay under the SessionStart hook timeout (see HOOK_TIMEOUT_SEC in
+ * scripts/install-rdc-skills.js). At 90s against a 60s harness default the
+ * follower was killed BEFORE it could re-probe or emit a verdict, so a
+ * slow-but-succeeding repair looked like a hook crash to every follower.
+ */
+async function waitForBoxRepair(timeoutMs = 45000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 3000));
@@ -267,23 +259,41 @@ async function main() {
       block(`RDC skills still unhealthy after a recent repair attempt: ${reasons.join(', ')}`);
     }
     if (acquireBoxLock()) {
-      // This session is the box's updater.
+      // This session is the box's updater. block() calls process.exit(1), which
+      // SKIPS finally — so the error is captured here and reported only AFTER the
+      // lock has been released. Calling block() from inside the try/catch leaked
+      // the lock on exactly the path most likely to run.
+      let repairError = null;
       try {
         repair(reasons.join(', '));
       } catch (err) {
-        block(`Automatic RDC skills repair failed: ${err.message}`, { reasons });
+        repairError = err;
       } finally {
         releaseBoxLock();
+      }
+      if (repairError) {
+        block(`Automatic RDC skills repair failed: ${repairError.message}`, { reasons });
       }
     } else {
       // Another session owns the box-wide update. Racing it is what broke this.
       hookLog('check-rdc-environment', 'SessionStart', 'await-box-repair', { reasons });
-      const h = await waitForBoxRepair();
+      await waitForBoxRepair();
+      // Re-evaluate from scratch rather than trusting the pre-wait `reasons`. A
+      // follower's only complaint is often a transient blip caused by the LEADER's
+      // own `pm2 restart`; blocking on that stale list hard-blocked sessions the
+      // leader had already fixed.
+      const afterReasons = [];
+      if (!globalPackageJson()) afterReasons.push('global package missing');
+      if (!commandExists('rdc-skills-install')) afterReasons.push('installer command missing');
+      const h = await health();
       if (!h || h.status !== 'ok' || Number(h.skills || 0) < MIN_SKILLS) {
+        afterReasons.push('local MCP health/catalog invalid');
+      }
+      if (afterReasons.length) {
         block(
           'Another session is updating the box-wide rdc-skills install and it did not '
-          + `become healthy in time. Reasons seen here: ${reasons.join(', ')}`,
-          { reasons, waited: true },
+          + `become healthy in time: ${afterReasons.join(', ')}`,
+          { reasons, afterReasons, waited: true },
         );
       }
     }

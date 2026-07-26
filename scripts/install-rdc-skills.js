@@ -898,12 +898,13 @@ function buildZip(version) {
 // ── Hook config ───────────────────────────────────────────────────────────────
 function buildHooksConfig(hooksDir, profile = 'core') {
   const base = hooksDir.replace(/\\/g, '/');
-  const cmd  = (file, msg) => {
+  const cmd  = (file, msg, timeoutSec) => {
     const command = process.platform === 'win32'
       ? `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${base}/run-hidden-hook.ps1" "${base}/${file}"`
       : `node "${base}/${file}"`;
     const entry = { type: 'command', command };
     if (msg) entry.statusMessage = msg;
+    if (timeoutSec) entry.timeout = timeoutSec;
     return entry;
   };
   const config = {
@@ -937,7 +938,12 @@ function buildHooksConfig(hooksDir, profile = 'core') {
 
   if (profile === 'lifeai') {
     config.SessionStart = [{ hooks: [
-      cmd('check-rdc-environment.js', 'Checking RDC skills runtime...'),
+      // MUST exceed the leader's worst-case repair budget inside the hook:
+      // npm install (120s) + rdc-skills-install (180s) + pm2 stop/restart (~30s).
+      // At the 60s default a genuine cold repair was killed mid-install and every
+      // follower read it as a crash. Keep this above HOOK_TIMEOUT_SEC's components
+      // and above waitForBoxRepair (45s) in hooks/check-rdc-environment.js.
+      cmd('check-rdc-environment.js', 'Checking RDC skills runtime...', 360),
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
       // Truth Gate 3.0 Layer 6 — gate watchdog (ADVISORY; SessionStart cannot block).
