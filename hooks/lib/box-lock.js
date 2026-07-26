@@ -96,8 +96,16 @@ function acquireBoxLock() {
       // 0/12, 1/12, 2/12 double-leader rounds across runs, which is the worst kind
       // of bug to ship: it passes CI and fails on a busy machine.
       settle(SETTLE_MS);
+      // Distinguish "someone else took it" from "the read failed". Standing down on
+      // a transient read error can elect ZERO leaders — nobody repairs the box while
+      // every session waits and then hard-blocks. Only a genuine byte MISMATCH means
+      // another session leads.
       let observed = null;
-      try { observed = fs.readFileSync(LOCK_PATH, 'utf8'); } catch { observed = null; }
+      let readOk = false;
+      for (let r = 0; r < 2 && !readOk; r++) {
+        try { observed = fs.readFileSync(LOCK_PATH, 'utf8'); readOk = true; } catch { settle(20); }
+      }
+      if (!readOk) continue;              // could not verify — retry the create
       if (observed !== body) return false; // someone reclaimed it; they lead
 
       lockHeld = true;
@@ -145,8 +153,21 @@ function acquireBoxLock() {
         let claimRaw = null;
         try { claimRaw = fs.readFileSync(claim, 'utf8'); } catch { claimRaw = null; }
         if (claimRaw !== heldRaw) {
-          // Not ours to take — put it back and stand down.
-          try { fs.renameSync(claim, LOCK_PATH); } catch { /* owner will re-create */ }
+          // Not ours to take — DISCARD the claim and stand down.
+          //
+          // Do NOT rename it back. renameSync silently OVERWRITES an existing
+          // destination, and the bytes we hold are the STALE ones (that is why we
+          // judged them reclaimable). Restoring them clobbers the live leader's
+          // fresh lock with a stale body, so the next session judges it
+          // reclaimable and becomes a SECOND LEADER while the true leader is
+          // mid `npm install -g` — the exact race this module exists to prevent,
+          // arriving through the restore path. Measured, and invisible to the
+          // concurrency probe because it seeds a dead-PID lock, so claimRaw
+          // always equals heldRaw and this branch never runs there.
+          //
+          // Whoever owns the path already owns the box. Losing the stale bytes
+          // costs nothing; putting them back can only mislead.
+          try { fs.unlinkSync(claim); } catch { /* already gone */ }
           return false;
         }
       }

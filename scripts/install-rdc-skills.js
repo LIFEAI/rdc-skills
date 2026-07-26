@@ -203,21 +203,36 @@ function copyHookFiles(src, dst) {
  * only the copied result was broken. A MODULE_NOT_FOUND here is fatal on every
  * session, so it is worth one subprocess at install time.
  */
-function assertHooksLoadable(hooksDst) {
+function assertHooksLoadable(hooksDst, copiedCount) {
+  // A missing hook is FATAL, not a warning. Warn-and-return let the install
+  // "succeed" with NO SessionStart hook at all — the one genuinely vacuous pass in
+  // this guard, and the copy step is exactly where the last critical was lost.
+  if (!copiedCount) throw new Error(`no hook files were copied to ${hooksDst}`);
   const entry = path.join(hooksDst, 'check-rdc-environment.js');
-  if (!fs.existsSync(entry)) { warn(`hook missing after copy: ${entry}`); return; }
+  if (!fs.existsSync(entry)) throw new Error(`entry hook missing after copy: ${entry}`);
+
   const res = require('child_process').spawnSync(process.execPath, ['--check', entry], {
     encoding: 'utf8', timeout: 20000,
   });
   const combined = `${res.stdout || ''}${res.stderr || ''}`;
   if (res.status !== 0) throw new Error(`installed hook fails to parse: ${combined.trim().slice(0, 300)}`);
 
-  // --check does not resolve require(), so load it for real with stdin closed.
-  const load = require('child_process').spawnSync(process.execPath, ['-e',
-    `require(${JSON.stringify(entry.replace(/\\/g, '/'))})`,
-  ], { encoding: 'utf8', input: '', timeout: 20000 });
+  // RESOLVE the dependency graph without EXECUTING it. `require(entry)` ran the
+  // WHOLE hook during install — a real `npm install -g` plus pm2 stop/restart, and
+  // on an unhealthy box a recursive install -> repair -> install loop.
+  // require.resolve answers the only question that matters here ("can it find
+  // ./lib/box-lock?") with no side effects.
+  const probe = [
+    'const { createRequire } = require("node:module");',
+    `const r = createRequire(${JSON.stringify(entry.replace(/\\/g, '/'))});`,
+    'for (const dep of ["./lib/box-lock", "./hook-logger"]) r.resolve(dep);',
+    'process.stdout.write("RESOLVED");',
+  ].join('\n');
+  const load = require('child_process').spawnSync(process.execPath, ['-e', probe], {
+    encoding: 'utf8', input: '', timeout: 20000,
+  });
   const loadOut = `${load.stdout || ''}${load.stderr || ''}`;
-  if (/MODULE_NOT_FOUND|Cannot find module/.test(loadOut)) {
+  if (!/RESOLVED/.test(loadOut)) {
     throw new Error(`installed hook cannot resolve its imports: ${loadOut.trim().slice(0, 300)}`);
   }
 }
@@ -1345,7 +1360,7 @@ async function main() {
   // Fail the INSTALL rather than every future session: a hook that cannot load
   // exits non-zero with empty stdout on SessionStart, before its own repair path
   // can run.
-  assertHooksLoadable(hooksDst);
+  assertHooksLoadable(hooksDst, hookCount);
   ok(`[3/6] Hook files — ${hookCount} file(s) → ${hooksDst} (load-verified)`);
 
   // 4. Hook wiring

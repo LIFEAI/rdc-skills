@@ -137,6 +137,44 @@ function processesHoldingPackage() {
   }
 }
 
+const stoppedStampPath = path.join(os.tmpdir(), 'rdc-skills-stopped-holders.json');
+
+function writeStoppedStamp(names) {
+  try {
+    fs.writeFileSync(stoppedStampPath, JSON.stringify({ names, ts: new Date().toISOString() }), 'utf8');
+  } catch { /* best effort — the finally-restart still covers the normal path */ }
+}
+
+function clearStoppedStamp() {
+  try { fs.unlinkSync(stoppedStampPath); } catch { /* nothing to clear */ }
+}
+
+/**
+ * Restart anything a PREVIOUS run stopped but never restarted.
+ *
+ * The only way a holder stays stopped is if that run died between `pm2 stop` and
+ * `pm2 restart` — a harness timeout kill, which neither `finally` nor
+ * process.on('exit') catches. Leaving the MCP down is strictly worse than the
+ * unhealthy state being repaired, so every run repairs the previous run's crash
+ * before doing anything else.
+ */
+function restartStrandedHolders() {
+  let names = [];
+  try {
+    names = JSON.parse(fs.readFileSync(stoppedStampPath, 'utf8')).names || [];
+  } catch {
+    return; // no stamp — nothing was left stopped
+  }
+  for (const name of names) {
+    if (!SAFE_PM2_NAME.test(name)) continue;
+    try {
+      shell(`pm2 restart ${q(name)}`, { timeout: 30000 });
+      hookLog('check-rdc-environment', 'SessionStart', 'restarted-stranded-holder', { name });
+    } catch { /* reported by the health check below */ }
+  }
+  clearStoppedStamp();
+}
+
 function repair(reason) {
   hookLog('check-rdc-environment', 'SessionStart', 'repair', { reason });
 
@@ -154,6 +192,13 @@ function repair(reason) {
     hookLog('check-rdc-environment', 'SessionStart', 'skipped-unsafe-pm2-name', { name });
     return false;
   });
+  // Record what we are about to stop BEFORE stopping it. `finally` covers an
+  // exception but NOT the harness killing this hook at its timeout — and
+  // process.on('exit') does not fire for a SIGKILL either. Without this stamp a
+  // timeout kill between `pm2 stop` and `pm2 restart` leaves the MCP STOPPED with
+  // nothing that knows to bring it back. restartStrandedHolders() (called at hook
+  // entry) is the crash-safe half of this pair.
+  writeStoppedStamp(holders);
   for (const name of holders) {
     try {
       shell(`pm2 stop ${q(name)}`, { timeout: 30000 });
@@ -181,6 +226,9 @@ function repair(reason) {
         /* surfaced by the health re-check below */
       }
     }
+    // Restarted (or tried to) — the stamp has served its purpose. Clearing it here
+    // means a stamp that SURVIVES is unambiguous evidence of a killed run.
+    clearStoppedStamp();
   }
 }
 
@@ -244,6 +292,10 @@ function block(message, details = {}) {
 }
 
 async function main() {
+  // Repair a PREVIOUS run's crash first: if it was killed between `pm2 stop` and
+  // `pm2 restart`, the MCP is still down and no health check can fix that.
+  restartStrandedHolders();
+
   const initialPkg = globalPackageJson();
   const initialHealth = await health();
   const reasons = [];
@@ -315,4 +367,12 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => block(`RDC skills environment check crashed: ${err.message}`));
+// Run ONLY when git/Claude invokes this file directly. Without the guard, merely
+// require()-ing it executes the whole hook — which is what the installer's own
+// load-check did, triggering a REAL `npm install -g` + pm2 stop/restart during the
+// install, and on an unhealthy box a recursive install→repair→install loop.
+if (require.main === module) {
+  main().catch((err) => block(`RDC skills environment check crashed: ${err.message}`));
+}
+
+module.exports = { main, repair, restartStrandedHolders };
