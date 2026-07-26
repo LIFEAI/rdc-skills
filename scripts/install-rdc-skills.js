@@ -165,16 +165,61 @@ function copyDir(src, dst, ext) {
   return count;
 }
 
+/**
+ * Copy hook files, INCLUDING subdirectories.
+ *
+ * This was flat: readdirSync + a .js/.ps1 filter, skipping anything that was not a
+ * file. So `hooks/lib/` was never created at the destination, and a hook that did
+ * `require('./lib/box-lock')` died MODULE_NOT_FOUND — a SessionStart hook exiting
+ * non-zero with EMPTY stdout on every session, before any health check could run,
+ * meaning its own repair path could never recover it. The npm tarball shipped the
+ * file correctly; it was lost here, in the install step.
+ *
+ * `.mjs` is included because hooks/lib/run-evidence-gate.mjs has the same shape and
+ * was silently dropped by the old filter too.
+ */
 function copyHookFiles(src, dst) {
   if (!fs.existsSync(src)) { warn(`Source not found: ${src}`); return 0; }
   fs.mkdirSync(dst, { recursive: true });
-  const files = fs.readdirSync(src).filter(f => /\.(?:js|ps1)$/i.test(f));
   let count = 0;
-  for (const f of files) {
-    const s = path.join(src, f);
-    if (fs.statSync(s).isFile()) { fs.copyFileSync(s, path.join(dst, f)); count++; }
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dst, entry.name);
+    if (entry.isDirectory()) {
+      count += copyHookFiles(s, d);
+    } else if (/\.(?:js|mjs|ps1)$/i.test(entry.name)) {
+      fs.copyFileSync(s, d);
+      count++;
+    }
   }
   return count;
+}
+
+/**
+ * A SessionStart hook that cannot even LOAD must never ship.
+ *
+ * Verifies the installed tree by actually running the hook, because file-presence
+ * checks would not have caught this: the source was fine, the tarball was fine, and
+ * only the copied result was broken. A MODULE_NOT_FOUND here is fatal on every
+ * session, so it is worth one subprocess at install time.
+ */
+function assertHooksLoadable(hooksDst) {
+  const entry = path.join(hooksDst, 'check-rdc-environment.js');
+  if (!fs.existsSync(entry)) { warn(`hook missing after copy: ${entry}`); return; }
+  const res = require('child_process').spawnSync(process.execPath, ['--check', entry], {
+    encoding: 'utf8', timeout: 20000,
+  });
+  const combined = `${res.stdout || ''}${res.stderr || ''}`;
+  if (res.status !== 0) throw new Error(`installed hook fails to parse: ${combined.trim().slice(0, 300)}`);
+
+  // --check does not resolve require(), so load it for real with stdin closed.
+  const load = require('child_process').spawnSync(process.execPath, ['-e',
+    `require(${JSON.stringify(entry.replace(/\\/g, '/'))})`,
+  ], { encoding: 'utf8', input: '', timeout: 20000 });
+  const loadOut = `${load.stdout || ''}${load.stderr || ''}`;
+  if (/MODULE_NOT_FOUND|Cannot find module/.test(loadOut)) {
+    throw new Error(`installed hook cannot resolve its imports: ${loadOut.trim().slice(0, 300)}`);
+  }
 }
 
 function copyDirRecursive(src, dst) {
@@ -896,6 +941,22 @@ function buildZip(version) {
 }
 
 // ── Hook config ───────────────────────────────────────────────────────────────
+
+/**
+ * SessionStart budget for check-rdc-environment.js, DERIVED from the per-step
+ * timeouts in hooks/check-rdc-environment.js repair() rather than restated, so the
+ * two cannot drift apart.
+ *
+ * At the harness default (60s) a genuine cold repair was killed mid-install — the
+ * leader's own steps alone exceed it — and every follower read that as a crash.
+ * The +60s headroom matters: a budget equal to the exact sum kills a leader that
+ * legitimately uses its full per-step allowance right at the boundary.
+ */
+const REPAIR_NPM_SEC = 120;      // npm install -g
+const REPAIR_INSTALL_SEC = 180;  // rdc-skills-install
+const REPAIR_PM2_SEC = 60;       // pm2 stop + restart
+const RDC_ENV_HOOK_TIMEOUT_SEC = REPAIR_NPM_SEC + REPAIR_INSTALL_SEC + REPAIR_PM2_SEC + 60;
+
 function buildHooksConfig(hooksDir, profile = 'core') {
   const base = hooksDir.replace(/\\/g, '/');
   const cmd  = (file, msg, timeoutSec) => {
@@ -938,12 +999,7 @@ function buildHooksConfig(hooksDir, profile = 'core') {
 
   if (profile === 'lifeai') {
     config.SessionStart = [{ hooks: [
-      // MUST exceed the leader's worst-case repair budget inside the hook:
-      // npm install (120s) + rdc-skills-install (180s) + pm2 stop/restart (~30s).
-      // At the 60s default a genuine cold repair was killed mid-install and every
-      // follower read it as a crash. Keep this above HOOK_TIMEOUT_SEC's components
-      // and above waitForBoxRepair (45s) in hooks/check-rdc-environment.js.
-      cmd('check-rdc-environment.js', 'Checking RDC skills runtime...', 360),
+      cmd('check-rdc-environment.js', 'Checking RDC skills runtime...', RDC_ENV_HOOK_TIMEOUT_SEC),
       cmd('check-cwd.js'),
       cmd('check-stale-work-items.js', 'Checking for stale work items...'),
       // Truth Gate 3.0 Layer 6 — gate watchdog (ADVISORY; SessionStart cannot block).
@@ -1286,7 +1342,11 @@ async function main() {
 
   // 3. Hook files
   const hookCount = copyHookFiles(hooksSrc, hooksDst);
-  ok(`[3/6] Hook files — ${hookCount} file(s) → ${hooksDst}`);
+  // Fail the INSTALL rather than every future session: a hook that cannot load
+  // exits non-zero with empty stdout on SessionStart, before its own repair path
+  // can run.
+  assertHooksLoadable(hooksDst);
+  ok(`[3/6] Hook files — ${hookCount} file(s) → ${hooksDst} (load-verified)`);
 
   // 4. Hook wiring
   if (skipHooks) {
@@ -1404,4 +1464,12 @@ async function main() {
   console.log('');
 }
 
-main().catch(e => { fail(e.message); process.exit(1); });
+// Run ONLY when invoked directly. Exporting the copy helpers lets
+// scripts/probe-installed-hooks.mjs verify the real install path instead of
+// re-implementing it — a probe that copies its own way proves nothing about what
+// ships. Without this guard, requiring the module would run a full install.
+module.exports = { copyHookFiles, assertHooksLoadable, RDC_ENV_HOOK_TIMEOUT_SEC };
+
+if (require.main === module) {
+  main().catch(e => { fail(e.message); process.exit(1); });
+}
