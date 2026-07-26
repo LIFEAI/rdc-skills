@@ -103,11 +103,65 @@ function markRepaired(reason) {
   }
 }
 
+/**
+ * PM2 processes running FROM the global package directory.
+ *
+ * `npm install -g` upgrades by RENAMING that directory. On Windows a directory
+ * that is a live process's cwd cannot be renamed, so the install dies EBUSY —
+ * which is exactly what happened here: `rdc-skills-mcp` runs with
+ * pm_cwd = <npm root>/@lifeaitools/rdc-skills, the very path npm moves.
+ *
+ * Matched by CWD rather than by name so a renamed or duplicated process is still
+ * found — the lock is held by whatever sits in that directory, not by a name.
+ */
+function processesHoldingPackage() {
+  if (!commandExists('pm2')) return [];
+  try {
+    const root = shell('npm root -g', { timeout: 10000 });
+    const pkgDir = path.join(root, '@lifeaitools', 'rdc-skills').toLowerCase().replace(/\\/g, '/');
+    return JSON.parse(shell('pm2 jlist', { timeout: 15000 }))
+      .filter((p) => {
+        const cwd = String(p?.pm2_env?.pm_cwd || '').toLowerCase().replace(/\\/g, '/');
+        return cwd && (cwd === pkgDir || cwd.startsWith(`${pkgDir}/`));
+      })
+      .map((p) => p.name)
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 function repair(reason) {
   hookLog('check-rdc-environment', 'SessionStart', 'repair', { reason });
-  shell(`npm install -g ${q(`${PACKAGE}@latest`)}`, { timeout: 120000 });
-  shell(`rdc-skills-install --profile lifeai --project-root ${q(projectRoot())} --write-startup-blocks`, { timeout: 180000 });
-  markRepaired(reason);
+
+  // Release the directory lock BEFORE npm touches it. Without this the repair
+  // cannot succeed while the MCP is running — it fails EBUSY, block() fires, and
+  // the session is hard-blocked by its own repair attempt.
+  const holders = processesHoldingPackage();
+  for (const name of holders) {
+    try {
+      shell(`pm2 stop ${q(name)}`, { timeout: 30000 });
+      hookLog('check-rdc-environment', 'SessionStart', 'stopped-for-repair', { name });
+    } catch {
+      /* already stopped, or pm2 unavailable — the install will report the truth */
+    }
+  }
+
+  try {
+    shell(`npm install -g ${q(`${PACKAGE}@latest`)}`, { timeout: 120000 });
+    shell(`rdc-skills-install --profile lifeai --project-root ${q(projectRoot())} --write-startup-blocks`, { timeout: 180000 });
+    markRepaired(reason);
+  } finally {
+    // ALWAYS restart, even when the install threw. Leaving the MCP stopped would
+    // turn a failed repair into a worse outage than the one being repaired.
+    for (const name of holders) {
+      try {
+        shell(`pm2 restart ${q(name)}`, { timeout: 30000 });
+      } catch {
+        /* surfaced by the health re-check below */
+      }
+    }
+  }
 }
 
 function block(message, details = {}) {
@@ -116,9 +170,14 @@ function block(message, details = {}) {
     systemMessage:
       `HARD BLOCK — RDC skills environment is not healthy.\n\n` +
       `${message}\n\n` +
-      `Do not proceed with RDC work until the approved install path is repaired:\n` +
+      `Do not proceed with RDC work until the approved install path is repaired.\n\n` +
+      `STOP THE SERVER FIRST — npm upgrades by renaming the global package dir, and\n` +
+      `Windows cannot rename a running process's cwd. Skipping this step is what\n` +
+      `produces "EBUSY ... rename ... @lifeaitools/rdc-skills":\n\n` +
+      `pm2 stop rdc-skills-mcp\n` +
       `npm install -g @lifeaitools/rdc-skills@latest\n` +
-      `rdc-skills-install --profile lifeai --project-root ${projectRoot()} --write-startup-blocks`
+      `rdc-skills-install --profile lifeai --project-root ${projectRoot()} --write-startup-blocks\n` +
+      `pm2 restart rdc-skills-mcp`
   }));
   process.exit(1);
 }
