@@ -132,7 +132,88 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
+2b. **PROVE IT ISN'T ALREADY BUILT (mandatory — never skip, never infer):**
+
+   A work item's `status` and `title` are a *claim about* the codebase, not the
+   codebase. They go stale silently: nobody updates a title when the thing it
+   describes gets built. **Treat every open task as unverified until you have
+   measured the code.** For each task about to be dispatched:
+
+   ```
+   1. codeflow / codeflow_query on the named module or symbol
+   2. grep the repo for the identifiers in the task title
+   3. git log --all --oneline --name-only --diff-filter=A -- '<path-fragment>'
+      → the file may exist on a branch, at a DIFFERENT path than the task names
+   4. if the module exists: run its tests and read the test NAMES,
+      not just the pass count — that is what tells you which behaviours are proven
+   ```
+
+   Then classify the task by what you measured, and say which in your checklist:
+
+   | Measured | Action |
+   |---|---|
+   | Not implemented | Dispatch as written |
+   | Implemented **and** tests name the behaviour | **DO NOT DISPATCH.** Record evidence, move the item to its true state |
+   | Implemented, no test naming the behaviour | Re-scope the task to *prove it*, not rebuild it |
+   | Implemented at a different path than the task says | Correct the task/plan text first, then re-classify |
+
+   **STOP RULE: never dispatch an agent to build something you have not just
+   proven absent.** A rebuild is worse than a no-op — it burns the budget, then
+   produces a second implementation that must be reconciled with the first.
+
+   **Fix the record as you go.** When a task misreports reality, correcting it is
+   part of this build, not follow-up work: `record_evidence_probe` with the
+   measurement, then advance the item. Leaving a known-false status in the DB
+   guarantees the next session repeats the work you just avoided.
+
+   *Why this step exists:* 2026-07-26/27. Four of seven work items on the
+   CodeFlow orchestrator epic misreported reality at once — WP-5's bridge was
+   implemented and tested while the item read `todo`; WP-2R's title still said
+   "UNTESTED and UNCONSUMED" after both were fixed; a resume plan listed four
+   "NOT finished" items of which three were done and the module had landed at a
+   different path than the plan named. Two separate sessions read those claims as
+   a task list. One burned ~550k tokens rebuilding site work that already
+   existed; the next came within one tool call of rebuilding the orchestrator.
+   Steps 2 and 3 as written did not catch any of it, because neither one looks at
+   the code.
+
+2c. **ROUTE TO THE TEMPLATE EPIC (mandatory before creating any work item):**
+
+   Some classes of work are governed by an **orchestration template epic** — an epic that
+   governs a *class* of work rather than a feature, authored per
+   `.rdc/guides/orchestration-epic.md`. Before `insert_work_item`, check whether the files
+   you are about to touch fall inside one's trigger surface:
+
+   ```sql
+   SELECT id, title, description FROM work_items
+   WHERE item_type = 'epic' AND labels && ARRAY['orchestration-template','template'];
+   ```
+
+   If a template epic's §1 trigger surface covers your paths, the new item **MUST** be
+   parented to that epic (or a child of it), and inherit its receipt/trailer requirements.
+   A work item on a governed surface with no orchestration linkage **is invalid** — the
+   commit gate will reject the eventual commit, and the item cannot close.
+
+   Known example: template epic `1574c3f5-d24b-439f-956c-26d9986b56c3` governs
+   `packages/codeflow/**`, `packages/codeflow-parser/**`, `scripts/codeflow*`,
+   `apps/codeflow-explorer/**`. Its §11 names `rdc:build` explicitly as a skill that must
+   route this way.
+
+   **Also check the inherited checklist.** `insert_work_item` auto-inherits the parent
+   epic's `definition_of_done` when `p_checklist` is omitted. A template epic's DoD is
+   written for its class of work — inheriting it onto an unrelated task produces required
+   rows that can never be ticked, so the item can never close. **Pass an explicit
+   `p_checklist` with `decomp-*` and `test-*` rows scoped to the actual task.**
+
+   *Why this step exists:* 2026-07-27. A build session created two work items for edits to
+   `packages/codeflow/src/orchestrator/` and parented both to an unrelated feature epic —
+   precisely the "generic work item with no orchestration linkage" §11 declares invalid.
+   The same two inserts inherited a 26-row place-enrollment DoD and had to be archived and
+   re-created twice.
+
 3. **Load the plan** (mandatory): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
+   **A plan is evidence of intent, not of state** — verify its claims against step 2b
+   before planning any work from it.
 
 3b. **Checklist decomposition quality gate (mandatory before code):**
 
