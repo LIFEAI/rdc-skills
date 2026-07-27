@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.25.5",
+  "version": "0.25.11",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -473,7 +473,7 @@
       "name": "deploy",
       "slash": "rdc:deploy",
       "category": "deploy",
-      "usage": "rdc:deploy <slug> [new|diagnose|audit|promote] [--fix|--hotfix <sha>]",
+      "usage": "rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--fix|--hotfix <sha>] | rdc:deploy maintenance <service>",
       "args": {
         "positional": [
           {
@@ -486,7 +486,7 @@
             "name": "action",
             "required": false,
             "description": "Operation kind",
-            "accepts": "new | diagnose | audit | promote | (omit for default deploy)"
+            "accepts": "new | diagnose | audit | promote | convert | maintenance | (omit for default deploy)"
           }
         ],
         "flags": [

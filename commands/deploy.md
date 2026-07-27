@@ -1,7 +1,7 @@
 ---
 name: rdc:deploy
 description: >-
-  Coolify ops. Usage `rdc:deploy <slug> [build-id]` or `rdc:deploy new <slug>` or `rdc:deploy diagnose <slug>` or `rdc:deploy audit [--fix]` — type checklists, DNS decision tree, mandatory post-deploy gate. Checklist-only output.
+  Coolify ops. Usage `rdc:deploy <slug> [build-id]`, `rdc:deploy new <slug>`, `rdc:deploy maintenance <service>`, `rdc:deploy diagnose <slug>`, or `rdc:deploy audit [--fix]` — typed checklists, private-service controls, DNS decision tree, and mandatory post-deploy gates. Checklist-only output.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -26,6 +26,7 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
 - `rdc:deploy audit --fix` — fleet scan + auto-remediate safe issues
+- `rdc:deploy maintenance <service>` — create, update, or verify a template-declared private service; no public domain or host port
 - `rdc:deploy` (no args) — print mode menu, ask which
 
 ## Modes
@@ -119,6 +120,30 @@ Severity rules:
 - **LOW** — cleanup (orphans, duplicates, registry status stale)
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
+
+### Mode 7 — maintenance <service> (private infrastructure)
+
+Use maintenance only for a service declared in the `private-service` template.
+It creates, updates, or verifies a Coolify-network service with no public
+domain, no DNS route, and no host-port publication. Secret checks use key names
+only; values are never retrieved or emitted. Retiring a service is outside this
+mode and requires separate explicit approval.
+
+```
+rdc:deploy maintenance: <service>
+[ ] Template and source/branch/Dockerfile/internal-port/health-path resolved
+[ ] Private-only contract: domains empty, host port absent, network alias declared
+[ ] Required secret keys confirmed by name only
+[ ] Explicit deploy completed
+[ ] Health gate passes inside the container
+[ ] Existing Coolify-network workload reaches the alias and health path
+[ ] No public domain, TLS route, DNS record, or host endpoint is present
+✅ rdc:deploy maintenance: <service> healthy on the private network
+```
+
+For `clauth`, require `CLAUTH_MACHINE_ID` and `CLAUTH_MASTER_PASSWORD`, port
+`52437`, and `/ping`. The container may bind `0.0.0.0` internally only;
+consumers must use its Coolify network alias rather than `localhost`.
 
 ## Coolify Access — clauth + REST API
 

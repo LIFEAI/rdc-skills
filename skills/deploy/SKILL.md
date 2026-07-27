@@ -1,6 +1,6 @@
 ---
 name: rdc:deploy
-description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--fix|--hotfix <sha>]` — Deploy an app to Coolify (production) or PM2 (staging), promote a verified dev change to production (one-command cherry-pick → PR → admin-merge → explicit Coolify trigger → verify), convert a prod app's runtime in place static→Next, add a new Coolify app, diagnose a failed deploy, or audit watch paths. Handles DNS, branch protection, health checks, and post-deploy verification."
+description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--fix|--hotfix <sha>]` or `rdc:deploy maintenance <service>` — Deploy applications or operate a private Coolify infrastructure service with guarded, internal-only checks."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -24,6 +24,7 @@ No raw MCP dumps. No UUIDs unless asked.
 - A new app needs to be registered and deployed for the first time (`rdc:deploy new`)
 - A deployed app is behaving unexpectedly and needs diagnosis (`rdc:deploy diagnose`)
 - Running a compliance/health audit of all deployed apps (`rdc:deploy audit`)
+- A platform service needs to run only on the Coolify network, with no public domain or host port (`rdc:deploy maintenance <service>`)
 
 ## Arguments
 
@@ -36,6 +37,7 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
 - `rdc:deploy audit --fix` — fleet scan + auto-remediate safe issues
+- `rdc:deploy maintenance <service>` — create, update, or verify one allowlisted private infrastructure service (Mode 7)
 - `rdc:deploy` (no args) — print mode menu, ask which
 
 ## Modes
@@ -290,6 +292,46 @@ rdc:deploy convert: <slug> → <prod-domain>  (static→Next, in place)
 ```
 
 **Rollback:** PATCH the app back to static (`build_pack=static`, `base_directory=/sites/<name>`, `publish_directory=/sites/<name>`, `ports_exposes=80`, `watch_paths=sites/<name>/**`) and redeploy. `sites/<name>` stays in the repo precisely so this rollback is always available.
+
+### Mode 7 — maintenance <service> (private Coolify infrastructure)
+
+Use this mode for a **private service**, not a website: its consumers run on the
+same Coolify Docker network and reach it by internal service alias.  It is the
+only sanctioned path for creating or changing private infrastructure such as
+the Coolify clauth runtime.
+
+**Authorization and scope:** maintenance may create, deploy, or update only a
+service declared in the `private-service` template. It must never add a public
+domain, host-port publication, DNS record, Cloudflare route, or public probe.
+Destructive retirement remains separately approval-gated and is not part of
+this command. Secrets are checked by **key name only**; their values must never
+be retrieved, logged, or copied into source control.
+
+```
+rdc:deploy maintenance: <service>
+[ ] Service allowlisted by the `private-service` template; source repository, branch, Dockerfile, port, and health path resolved
+[ ] Private-only contract checked: domains empty, no host port mapping, and service alias declared for the Coolify network
+[ ] Required secret keys present by name only; values neither read nor emitted
+[ ] Dockerfile preflight: service binds its container interface and exposes only its declared internal port
+[ ] Create or update performed through the private-service template; no manual Coolify field configuration
+[ ] Deploy explicitly triggered and reaches finished state
+[ ] Container health gate passes at the declared health path
+[ ] In-network probe from an existing Coolify workload reaches the declared service alias and health path
+[ ] Public exposure gate passes: no domain, DNS, TLS, or host-port endpoint exists for the service
+[ ] Service record and maintenance receipt updated without secret values
+✅ rdc:deploy maintenance: <service> private service healthy on the Coolify network
+```
+
+**Current allowlisted service — `clauth`:** source `LIFEAI/clauth` on `main`;
+Dockerfile `/Dockerfile`; internal port `52437`; health path `/ping`; required
+secret key names `CLAUTH_MACHINE_ID` and `CLAUTH_MASTER_PASSWORD`. Its Docker
+runtime must bind `0.0.0.0` *inside the container only*. Consumers use the
+resolved Coolify network alias, never `localhost` and never a published URL.
+
+**Verification boundary:** a host-side request to this service is not evidence
+of correctness. Verify it from a running workload on the same Coolify network;
+the expected result is a successful internal health response while public
+domain, TLS, and host-port checks remain absent.
 
 **PATCH command (in-place build-pack switch):**
 ```bash
