@@ -30,8 +30,6 @@ const fs           = require('fs');
 const path         = require('path');
 const os           = require('os');
 const readline     = require('readline');
-const http         = require('http');
-const crypto       = require('crypto');
 const { execSync } = require('child_process');
 
 // ── Args ──────────────────────────────────────────────────────────────────────
@@ -90,9 +88,7 @@ const projectRoot = projectRootArg || codexRoot || detectedLifeaiRoot;
 
 const PLUGIN_KEY   = 'rdc-skills@rdc-skills';
 const MARKETPLACE  = 'rdc-skills';
-const NPM_PACKAGE  = '@lifeaitools/rdc-skills';
-const MCP_NAME     = 'rdc-skills-mcp';
-const MCP_PORT     = '3110';
+const PUBLIC_MCP_URL = 'https://rdc-skills.regendevcorp.com/mcp';
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 const ok   = msg => console.log(`  \x1b[32m✓\x1b[0m ${msg}`);
@@ -102,12 +98,6 @@ const fail = msg => console.log(`  \x1b[31m✗\x1b[0m ${msg}`);
 
 function run(cmd, options = {}) {
   return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
-}
-
-function shellQuote(s) {
-  const raw = String(s);
-  if (process.platform === 'win32') return `"${raw.replace(/"/g, '\\"')}"`;
-  return `'${raw.replace(/'/g, `'\\''`)}'`;
 }
 
 function updateCodexMcpToml(toml, mcpUrl) {
@@ -218,8 +208,8 @@ function assertHooksLoadable(hooksDst, copiedCount) {
   if (res.status !== 0) throw new Error(`installed hook fails to parse: ${combined.trim().slice(0, 300)}`);
 
   // RESOLVE the dependency graph without EXECUTING it. `require(entry)` ran the
-  // WHOLE hook during install — a real `npm install -g` plus pm2 stop/restart, and
-  // on an unhealthy box a recursive install -> repair -> install loop.
+  // WHOLE hook during install — including package repair — and on an unhealthy
+  // box can create a recursive install -> repair -> install loop.
   // require.resolve answers the only question that matters here ("can it find
   // ./lib/box-lock?") with no side effects.
   const probe = [
@@ -363,174 +353,6 @@ function buildPluginCache(cacheDir, version, gitSha) {
     if (fs.statSync(src).isDirectory()) copyDirRecursive(src, dst);
     else fs.copyFileSync(src, dst);
   }
-}
-
-function getPm2Process(name) {
-  try {
-    const list = JSON.parse(run('pm2 jlist'));
-    return Array.isArray(list) ? list.find((p) => p.name === name) || null : null;
-  } catch {
-    return null;
-  }
-}
-
-function isGlobalNpmRdcSkillsPath(scriptPath) {
-  if (!scriptPath) return false;
-  const normalized = scriptPath.replace(/\\/g, '/').toLowerCase();
-  return normalized.includes('/node_modules/@lifeaitools/rdc-skills/');
-}
-
-function packageRootFromMcpScript(scriptPath) {
-  return scriptPath ? path.resolve(path.dirname(scriptPath), '..') : null;
-}
-
-function readInstalledPackageVersion(scriptPath) {
-  const packageRoot = packageRootFromMcpScript(scriptPath);
-  if (!packageRoot) return null;
-  return readJson(path.join(packageRoot, 'package.json'), {}).version || null;
-}
-
-function collectFilesRecursive(baseDir, rel, out) {
-  const full = path.join(baseDir, rel);
-  if (!fs.existsSync(full)) return;
-  const stat = fs.statSync(full);
-  if (stat.isDirectory()) {
-    for (const entry of fs.readdirSync(full).sort()) {
-      collectFilesRecursive(baseDir, path.join(rel, entry), out);
-    }
-    return;
-  }
-  if (stat.isFile()) out.push(rel.replace(/\\/g, '/'));
-}
-
-function hashInstallSurface(root) {
-  if (!root || !fs.existsSync(root)) return null;
-  const rels = [];
-  for (const rel of ['.claude-plugin', 'commands', 'guides', 'skills', 'package.json', 'README.md']) {
-    collectFilesRecursive(root, rel, rels);
-  }
-  const hash = crypto.createHash('sha256');
-  for (const rel of rels.sort()) {
-    hash.update(rel);
-    hash.update('\0');
-    hash.update(fs.readFileSync(path.join(root, rel)));
-    hash.update('\0');
-  }
-  return hash.digest('hex');
-}
-
-function syncGlobalMcpInstall(version) {
-  const proc = getPm2Process(MCP_NAME);
-  if (!proc) {
-    info('[2.9] MCP pkg    — PM2 process not registered yet; start handled below');
-    return;
-  }
-
-  const scriptPath = proc.pm2_env?.pm_exec_path || proc.pm_exec_path || '';
-  if (!isGlobalNpmRdcSkillsPath(scriptPath)) {
-    info(`[2.9] MCP pkg    — PM2 uses source checkout, not global npm (${scriptPath || 'unknown path'})`);
-    return;
-  }
-
-  const installedVersion = readInstalledPackageVersion(scriptPath);
-  const packageRoot = packageRootFromMcpScript(scriptPath);
-  const sourceHash = hashInstallSurface(repoRoot);
-  const installedHash = hashInstallSurface(packageRoot);
-  if (installedVersion === version && sourceHash && installedHash && sourceHash === installedHash) {
-    ok(`[2.9] MCP pkg    — global ${NPM_PACKAGE}@${version} already matches source`);
-    return;
-  }
-
-  let stopped = false;
-  let installed = false;
-  try {
-    const reason = installedVersion === version ? 'same version, source changed' : `${installedVersion || '?'} → ${version}`;
-    info(`[2.9] MCP pkg    — updating global ${NPM_PACKAGE} (${reason}) from local source`);
-    run(`pm2 stop ${MCP_NAME}`);
-    stopped = true;
-    run(`npm install -g ${shellQuote(repoRoot)}`);
-    installed = true;
-    ok(`[2.9] MCP pkg    — installed global ${NPM_PACKAGE}@${version}`);
-  } catch (e) {
-    warn(`[2.9] MCP pkg    — global install failed (${String(e.message || e).split('\n')[0]})`);
-    if (String(e.message || '').includes('EBUSY')) {
-      info('       PM2 was stopped first; if EBUSY persists, another Node/npm process still holds the package directory.');
-    }
-  } finally {
-    if (stopped) {
-      try {
-        run(`pm2 restart ${MCP_NAME} --update-env`, { env: { ...process.env, PORT: MCP_PORT } });
-        ok(`[2.9] MCP pkg    — pm2 restarted ${MCP_NAME}${installed ? '' : ' (previous install restored)'}`);
-      } catch (e) {
-        warn(`[2.9] MCP pkg    — pm2 restart failed (${String(e.message || e).split('\n')[0]})`);
-      }
-    }
-  }
-}
-
-function callLocalMcpTool(name, args = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: { name, arguments: args },
-    });
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: Number(MCP_PORT),
-      path: '/mcp',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream',
-        'Content-Length': Buffer.byteLength(payload),
-      },
-      timeout: 10000,
-    }, (res) => {
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        try {
-          const dataLine = body.split(/\r?\n/).find((line) => line.startsWith('data: '));
-          const envelope = JSON.parse(dataLine ? dataLine.slice(6) : body);
-          const text = envelope?.result?.content?.[0]?.text;
-          resolve(text ? JSON.parse(text) : envelope);
-        } catch (e) {
-          reject(new Error(`invalid MCP response: ${e.message}`));
-        }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error('MCP request timed out')));
-    req.on('error', reject);
-    req.write(payload);
-    req.end();
-  });
-}
-
-async function verifyLiveMcpCatalogFresh() {
-  const proc = getPm2Process(MCP_NAME);
-  if (!proc) {
-    warn('[7.5] MCP catalog — skipped (PM2 process not registered)');
-    return;
-  }
-  const sourceSkills = fs.readdirSync(path.join(repoRoot, 'skills'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(repoRoot, 'skills', entry.name, 'SKILL.md')))
-    .map((entry) => entry.name)
-    .sort();
-  const catalog = await callLocalMcpTool('rdc_skill_list', {});
-  const rows = Array.isArray(catalog)
-    ? catalog
-    : Array.isArray(catalog?.skills) ? catalog.skills
-    : Array.isArray(catalog?.results) ? catalog.results
-    : [];
-  const liveNames = new Set(rows.map((row) => row.name));
-  const missing = sourceSkills.filter((name) => !liveNames.has(name));
-  if (missing.length > 0 || rows.length < sourceSkills.length) {
-    throw new Error(`live MCP catalog stale: source=${sourceSkills.length}, live=${rows.length}, missing=${missing.join(', ') || '(count mismatch)'}`);
-  }
-  ok(`[7.5] MCP catalog — ${rows.length} live skill(s), source catalog fresh`);
 }
 
 // ── User-skills cleanup ───────────────────────────────────────────────────────
@@ -814,7 +636,6 @@ function addCodexTarget(targets, label, targetDir) {
 // existing clauth/codeflow entries exactly. claude.ai web still needs the one-time
 // connector add in its UI (no programmatic API).
 function registerMcpEndpoints() {
-  const MCP_URL = 'https://rdc-skills.regendevcorp.com/mcp';
   const out = [];
 
   // Claude Code — user-level ~/.claude.json mcpServers (covers EVERY project).
@@ -824,8 +645,8 @@ function registerMcpEndpoints() {
       const data = readJson(claudeJson);
       if (!data.mcpServers || typeof data.mcpServers !== 'object') data.mcpServers = {};
       const cur = data.mcpServers['rdc-skills'];
-      if (!cur || cur.url !== MCP_URL) {
-        data.mcpServers['rdc-skills'] = { type: 'http', url: MCP_URL };
+      if (!cur || cur.url !== PUBLIC_MCP_URL) {
+        data.mcpServers['rdc-skills'] = { type: 'http', url: PUBLIC_MCP_URL };
         writeJson(claudeJson, data, 2);
         out.push('claude(~/.claude.json)');
       }
@@ -837,7 +658,7 @@ function registerMcpEndpoints() {
     const codexToml = path.join(os.homedir(), '.codex', 'config.toml');
     if (fs.existsSync(codexToml)) {
       const toml = fs.readFileSync(codexToml, 'utf8');
-      const next = updateCodexMcpToml(toml, MCP_URL);
+      const next = updateCodexMcpToml(toml, PUBLIC_MCP_URL);
       if (next !== toml) {
         fs.writeFileSync(codexToml, next);
         out.push('codex(~/.codex/config.toml)');
@@ -958,19 +779,14 @@ function buildZip(version) {
 // ── Hook config ───────────────────────────────────────────────────────────────
 
 /**
- * SessionStart budget for check-rdc-environment.js, DERIVED from the per-step
- * timeouts in hooks/check-rdc-environment.js repair() rather than restated, so the
- * two cannot drift apart.
+ * SessionStart budget for check-rdc-environment.js, derived from its two repair
+ * steps: global package install and plugin registration.
  *
- * At the harness default (60s) a genuine cold repair was killed mid-install — the
- * leader's own steps alone exceed it — and every follower read that as a crash.
- * The +60s headroom matters: a budget equal to the exact sum kills a leader that
- * legitimately uses its full per-step allowance right at the boundary.
+ * At the harness default (60s) a genuine cold repair can be killed mid-install.
  */
 const REPAIR_NPM_SEC = 120;      // npm install -g
 const REPAIR_INSTALL_SEC = 180;  // rdc-skills-install
-const REPAIR_PM2_SEC = 60;       // pm2 stop + restart
-const RDC_ENV_HOOK_TIMEOUT_SEC = REPAIR_NPM_SEC + REPAIR_INSTALL_SEC + REPAIR_PM2_SEC + 60;
+const RDC_ENV_HOOK_TIMEOUT_SEC = REPAIR_NPM_SEC + REPAIR_INSTALL_SEC + 60;
 
 function buildHooksConfig(hooksDir, profile = 'core') {
   const base = hooksDir.replace(/\\/g, '/');
@@ -1050,62 +866,12 @@ function buildHooksConfig(hooksDir, profile = 'core') {
   return config;
 }
 
-// ── MCP server registration (non-fatal) ───────────────────────────────────────
-// Ensures the rdc-skills MCP deps are installed, registers/starts the local MCP
-// under PM2 as `rdc-skills-mcp` on PORT=3110, and prints the claude.ai connector
-// line. Every failure here WARNs — it must never abort the installer.
-function registerMcpServer() {
-  const binPath = path.join(repoRoot, 'bin', 'rdc-skills-mcp.mjs');
-  const connector = 'https://rdc-skills.regendevcorp.com/mcp';
-
-  try {
-    // (a) ensure MCP runtime deps are present (express, @modelcontextprotocol/sdk, yaml, zod)
-    const needDeps = ['express', '@modelcontextprotocol/sdk', 'yaml', 'zod'].some((d) => {
-      try { require.resolve(d, { paths: [repoRoot] }); return false; } catch { return true; }
-    });
-    if (needDeps) {
-      try {
-        execSync('npm install --no-audit --no-fund', { cwd: repoRoot, stdio: 'pipe' });
-        ok('[7/7] MCP deps   — installed');
-      } catch (e) {
-        warn(`[7/7] MCP deps   — npm install failed (${e.message.split('\n')[0]}); install manually with \`npm install\``);
-      }
-    } else {
-      ok('[7/7] MCP deps   — already present');
-    }
-
-    // (b) register/start under PM2 (tolerate pm2 missing)
-    let pm2Ok = false;
-    try { execSync('pm2 -v', { stdio: 'pipe' }); pm2Ok = true; } catch { pm2Ok = false; }
-
-    if (!pm2Ok) {
-      warn('[7/7] MCP server — pm2 not found; start manually:');
-      info(`       PORT=${MCP_PORT} pm2 start ${binPath} --name ${MCP_NAME}`);
-    } else {
-      let registered = false;
-      try {
-        const jlist = JSON.parse(execSync('pm2 jlist', { encoding: 'utf8', stdio: 'pipe' }));
-        registered = Array.isArray(jlist) && jlist.some((p) => p.name === MCP_NAME);
-      } catch {}
-      try {
-        if (registered) {
-          execSync(`pm2 restart ${MCP_NAME} --update-env`, { cwd: repoRoot, stdio: 'pipe', env: { ...process.env, PORT: MCP_PORT } });
-          ok(`[7/7] MCP server — pm2 restarted ${MCP_NAME} (PORT=${MCP_PORT})`);
-        } else {
-          execSync(`pm2 start "${binPath}" --name ${MCP_NAME}`, { cwd: repoRoot, stdio: 'pipe', env: { ...process.env, PORT: MCP_PORT } });
-          ok(`[7/7] MCP server — pm2 started ${MCP_NAME} (PORT=${MCP_PORT})`);
-        }
-      } catch (e) {
-        warn(`[7/7] MCP server — pm2 start/restart failed (${e.message.split('\n')[0]})`);
-        info(`       PORT=${MCP_PORT} pm2 start ${binPath} --name ${MCP_NAME}`);
-      }
-    }
-
-    // (c) print the claude.ai connector line
-    info(`       claude.ai connector: ${connector}  (Auth: none — URL is the shared secret)`);
-  } catch (e) {
-    warn(`[7/7] MCP server — skipped (${e.message.split('\n')[0]})`);
-  }
+// ── Public MCP connector ──────────────────────────────────────────────────────
+// The MCP is independently hosted. Installation only registers and reports its
+// standard public URL; it never launches a local server or process manager.
+function reportMcpConnector() {
+  ok('[7/7] MCP connector — public stateless endpoint registered');
+  info(`       claude.ai / MCP clients: ${PUBLIC_MCP_URL} (Auth: none)`);
 }
 
 // ── Preflight ─────────────────────────────────────────────────────────────────
@@ -1310,11 +1076,6 @@ async function main() {
     info('[2.6] MCP        — rdc-skills endpoint already registered (claude + codex)');
   }
 
-  // If the live MCP is served from the global npm package, update that exact
-  // install before restarting PM2. Windows otherwise holds the package tree open
-  // and `npm install -g` can fail with EBUSY.
-  syncGlobalMcpInstall(version);
-
   // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)
   if (codexRoot) {
     const skillsLinkDir = path.join(codexRoot, '.claude', 'skills');
@@ -1443,16 +1204,10 @@ async function main() {
     process.exit(2);
   }
 
-  // 7. MCP server registration (non-fatal — WARNs only, never aborts)
+  // 7. Public MCP connector registration
   console.log('');
-  console.log('  \x1b[36mMCP server:\x1b[0m');
-  try { registerMcpServer(); } catch (e) { warn(`[7/7] MCP server — unexpected error (${e.message})`); }
-  try {
-    await verifyLiveMcpCatalogFresh();
-  } catch (e) {
-    fail(`[7.5] MCP catalog — ${e.message}`);
-    process.exit(2);
-  }
+  console.log('  \x1b[36mMCP connector:\x1b[0m');
+  reportMcpConnector();
 
   // Done
   console.log('');

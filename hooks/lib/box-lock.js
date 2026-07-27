@@ -2,11 +2,10 @@
 /**
  * Box-wide single-flight lock — ONE home for the rule.
  *
- * The global rdc-skills package and rdc-skills-mcp are BOX-WIDE (one per machine),
- * but the SessionStart hook runs per session and per worktree. Without
- * coordination, N sessions each conclude "unhealthy" and each run
- * `npm install -g` against the same directory — and on Windows, against a
- * directory a live process is sitting in.
+ * The global rdc-skills package is BOX-WIDE (one per machine), but the
+ * SessionStart hook runs per session and per worktree. Without coordination,
+ * N sessions can each conclude "missing" and run `npm install -g` against the
+ * same directory.
  *
  * This lives in its own module because the verification probe MUST exercise the
  * real implementation. It previously kept a private copy of these functions, and

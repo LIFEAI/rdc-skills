@@ -5,8 +5,8 @@
  * The source was fine, the npm tarball was fine, and only the copied result was
  * broken: copyHookFiles() was flat, so hooks/lib/ was never created at the
  * destination and require('./lib/box-lock') died MODULE_NOT_FOUND — a SessionStart
- * hook exiting non-zero with EMPTY stdout on every session, before any health check
- * could run, so its own repair path could never recover it.
+ * hook exiting non-zero with EMPTY stdout on every session, before its package
+ * verification could run, so its own repair path could never recover it.
  *
  * File-presence checks in the repo would not have caught that. This replays the
  * real copy into a scratch dir and LOADS the result.

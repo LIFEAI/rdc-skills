@@ -63,12 +63,14 @@ Or read `$PROJECT_ROOT/environment.lock.json` and check each tool:
 |------|-------|-------------|
 | node | `node --version` | 22.0.0 |
 | pnpm | `pnpm --version` | 10.0.0 |
-| pm2 | `pm2 --version` | 5.0.0 |
 | clauth | `curl -s http://127.0.0.1:52437/ping` | 1.30.0 |
-| rdc-skills | `npm list -g @lifeai/rdc-skills` | 0.25.0 |
+| rdc-skills | `npm list -g @lifeaitools/rdc-skills` | 0.25.0 |
 | gh | `gh --version` | 2.0.0 |
 
-For `install` and `repair`: install or upgrade any tool below min_version using the `install` command from the lock file. This includes rdc-skills itself — the environment repo is the orchestrator that keeps all tools current, including its own skill set. A `repair` or `install` that bumps rdc-skills will also restart the rdc-skills-mcp PM2 process so the new version is live immediately.
+For `install` and `repair`: install or upgrade any tool below `min_version`
+using the `install` command from the lock file. The local rdc-skills package
+provides CLI/plugin skill files. Its public MCP is independently hosted and must
+never be started, restarted, or treated as a Windows service by this workflow.
 
 ### Step 3: Service health
 
@@ -79,10 +81,13 @@ Check each service:
 | clauth daemon | `curl -s http://127.0.0.1:52437/ping` | `$LIFEAI_ENV/services/restart-clauth.bat` |
 | CodeFlow gateway | `curl -s http://127.0.0.1:3109/health` | **PROBE ONLY — never start/restart/recreate.** CodeFlow is blue-green-owned. If down, report `BLOCKED: CodeFlow gateway down — run: node scripts/codeflow-bluegreen.mjs recover` |
 | CodeFlow brain | `/health` → `health.state` | **REPORT ONLY.** `degraded` = freshness drift (normal after pushes). `offline` = remote PM2 brain unreachable. Never start Docker Neo4j or local brain from this skill. |
-| rdc-skills MCP | `pm2 list` shows rdc-skills-mcp online | `npm install -g @lifeaitools/rdc-skills@latest` (reinstall picks up latest) |
-| PM2 daemon | `pm2 ping` | `pm2 resurrect` |
+| Dev Center | `http://127.0.0.1:3003/api/version` | `$LIFEAI_ENV/services/restart-dev-center.ps1` (standalone, optional) |
+| public rdc-skills MCP | `https://rdc-skills.regendevcorp.com/health` | **REPORT ONLY.** Independently hosted standard MCP; never a Windows startup gate. |
 
-For `status`: report only. For `repair`: fix clauth + rdc-skills only. CodeFlow repair is exclusively through `codeflow-bluegreen.mjs recover` — this skill never touches CodeFlow lifecycle, Docker, or Neo4j.
+For `status`: report only. For `repair`: fix clauth, the local rdc-skills
+package/plugin install, and best-effort Dev Center. CodeFlow repair is
+exclusively through `codeflow-bluegreen.mjs recover`; this skill never touches
+CodeFlow lifecycle, Docker, Neo4j, or PM2.
 
 ### Step 4: MCP server verification
 
@@ -91,7 +96,8 @@ Run the MCP checker:
 pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$LIFEAI_ENV/services/install-mcps.ps1" -ProjectRoot "$PROJECT_ROOT"
 ```
 
-For `repair`: add `-Fix` flag to auto-start missing local MCPs.
+For `repair`: add `-Fix` to repair eligible local MCP registration. This does
+not start the public rdc-skills MCP.
 
 ### Step 5: Shim integrity
 
@@ -123,17 +129,18 @@ This is the same check the startup guard runs. Zero blockers = environment healt
 | pnpm | ✅ | 10.12.1 (min 10.0.0) |
 | clauth | ✅ | v1.30.2, unlocked |
 | CodeFlow | ✅ | v0.33.11, brain=dev, operational |
-| rdc-skills MCP | ✅ | v0.25.0, online |
+| rdc-skills package | ✅ | v0.25.0, installed |
+| public rdc-skills MCP | ✅ | connector reachable |
 | Shims | ✅ | 47/47 valid |
 | Agent readiness | ✅ | 0 blockers |
 
-**Verdict: environment healthy (9/9 checks pass)**
+**Verdict: environment healthy (10/10 checks pass)**
 ```
 
 For `repair`, append:
 ```
 ## Repairs Applied
 - [x] Restarted clauth daemon
-- [x] Rebuilt CodeFlow dist + restarted gateway
-- [ ] rdc-skills: already running
+- [ ] CodeFlow: observed healthy; lifecycle untouched
+- [x] Refreshed local rdc-skills package/plugin
 ```

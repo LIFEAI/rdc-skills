@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * bin/rdc-skills-mcp.mjs — local MCP server exposing the rdc-skills library.
+ * bin/rdc-skills-mcp.mjs — standard stateless MCP server exposing rdc-skills.
  *
  * Mirrors the codeflow MCP topology (packages/codeflow/src/mcp/server.ts):
  *   express + @modelcontextprotocol/sdk McpServer + StreamableHTTPServerTransport,
