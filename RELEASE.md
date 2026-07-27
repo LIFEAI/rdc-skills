@@ -14,7 +14,8 @@
   local MCP daemon or any process manager.
 - The public rdc-skills MCP at `https://rdc-skills.regendevcorp.com/mcp` is the
   independently hosted, stateless surface used by claude.ai and any compatible
-  MCP client.
+  MCP client. Its Linux runtime is the checked-in `rdc-skills-mcp.service`; it is
+  not a PM2 process.
 - Hosting and deployment of the public endpoint are separate from Windows
   package installation.
 
@@ -59,6 +60,16 @@ REMOTE=1 node tests/curl-surface.test.mjs
 The public `/health` version must equal the released npm version and its skill
 count must match the packaged catalog. The local installer never restarts or
 deploys that endpoint.
+
+The Vultr host checks out this repository at `/srv/regen/rdc-skills`. Install or
+refresh its standalone systemd unit after pulling `master`:
+
+```bash
+sudo ./deploy/install-systemd.sh
+```
+
+Port `3110` is reserved for this public MCP ingress. Application fleet manifests
+must not claim it.
 
 ## Version policy
 
