@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.25.11 — private Coolify maintenance path
+
+### Added
+- `rdc:deploy maintenance <service>` for template-declared private Coolify
+  infrastructure, with internal-network health verification and no public
+  domain or host-port publication.
+
+### Fixed
+- Re-aligned package, lockfile, and plugin manifest versions for strict skill
+  validation.
+
+---
+
 ## v0.25.5 — MCP catalog release hygiene
 
 ### Fixed
