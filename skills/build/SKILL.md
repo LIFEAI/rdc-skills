@@ -466,7 +466,20 @@ Read the task title and description, then:
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
      - **`"You are running in an isolated git worktree. Commit your work normally. Do NOT push to origin — the supervisor merges your branch after the wave completes."`**
-     - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
+     - **`"When done: FIRST call submit_implementation_report(<work_item_id>, {...}) including a codeflow_post with agent_session_id, summary, files_changed, verification, commit, repo_truth_state. THEN set your work item to 'review' (NOT 'done'). Return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
+       > The order is load-bearing, not stylistic: `update_work_item_status(..., 'review')`
+       > **raises** on a non-epic item unless `implementation_report.codeflow_post` already
+       > exists. An agent told only to "set review" hits that exception and either gives up
+       > or leaves the item in `todo` while its code sits landed on the branch.
+       >
+       > **Supervisor: verify this actually happened before closing the wave.** Query
+       > `status` and `implementation_report IS NOT NULL` for every dispatched item. On
+       > 2026-07-27 three agents landed real, verified code (`881ad3dac`, `0343de92a`,
+       > `b17cd4459`, 189/189 tests, tsc 0) and all three items still read `todo` with no
+       > report, because the dispatch prompts omitted this line. That is the identical
+       > drift this build was convened to fix — a work item asserting `todo` about code
+       > that is already on develop. If the agent did not file it, the supervisor files it
+       > from measured evidence and flags that it was filed on the agent's behalf.
      - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
      - **The decomposition items from the work item's checklist** (all `decomp-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
