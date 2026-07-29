@@ -309,37 +309,27 @@ Read the task title and description, then:
    model: <chosen per the routing table below>
    max_turns: 70
    ```
-   `isolation` is chosen per the dispatch-mode rule below — it is NOT a blanket
-   default. Worktree isolation is reserved for true parallel MULTI-committer waves
-   in the same repo; doc-only and single-committer waves default to NON-isolated.
+   Every dispatched agent that may edit or commit MUST receive a unique leased
+   worktree. A non-isolated dispatched agent is read-only and may research,
+   review, or validate merged source; it may not write.
 
-   ### ⛔ Dispatch mode — non-isolated is the default for single-committer / doc-only waves
-   Worktree isolation exists to protect a SHARED working tree from a git-index race
-   between MULTIPLE agents committing in parallel. When there is only ONE committer,
-   that race cannot occur, and the stale-base hazard of worktrees (see the HARD GATE
-   below — recurring across 2026-06-10/11/15/16/17/23) is pure downside. Pick the
-   dispatch mode by committer count, not by reflex:
+   ### ⛔ Dispatch mode — writers are always isolated
+   Isolation is an ownership boundary, not a concurrency optimization. The
+   supervisor may implement directly as the sole writer, but once work is
+   dispatched, each writer gets its own fresh leased worktree:
 
    | Wave shape | Dispatch mode | isolation |
    |---|---|---|
-   | **Doc-only wave** (markdown/docs/plans, no code build) | NON-isolated, one committer on `develop` | omit `isolation` |
-   | **Single-committer wave** (only one agent commits, or work serializes to the supervisor) | NON-isolated, one committer on `develop` | omit `isolation` |
-   | **True parallel MULTI-committer wave** (2+ agents committing concurrently in the same repo, disjoint files) | worktree-isolated, supervisor merges | `isolation: "worktree"` |
+   | **Read-only research/review/validator** | shared merged source, no writes | omit `isolation` |
+   | **Any dispatched writer** | unique leased worktree and branch | `isolation: "worktree"` |
+   | **Cross-repository outcome** | one linked branch per repository | unique worktree in each repo |
 
-   - **Default = NON-isolated.** Only escalate to `isolation: "worktree"` when the
-     wave genuinely has 2+ concurrent committers in the same repo.
-   - A pure docs wave is single-committer by default: either dispatch ONE doc agent,
-     or have parallel doc agents return diffs/patches that the supervisor commits
-     serially. Do NOT fan out 2+ concurrent committers onto one shared `develop`
-     tree (lesson 2026-06-13-build-concurrent-agents-same-branch-git-race: three
-     parallel doc agents on one `develop` tree raced on the git index/stash — one
-     commit swept in another agent's staged-but-uncommitted files under the wrong
-     message, two agents reported the SAME SHA, a pre-commit `sync:docs` ref-lock
-     race misattributed authorship). The fix for that race is single-committer
-     serialization, NOT blanket worktree isolation.
-   - When you DO need a true MULTI-committer parallel wave, worktree isolation is
-     mandatory AND the HARD GATE below (base == develop HEAD) MUST pass before
-     dispatch — a stale-base worktree wave is a build failure, not a warning.
+   - One issue may touch multiple apps in one monorepo branch when the paths are
+     explicitly attributed to that issue.
+   - Crossing repositories always creates one branch per repository, linked by
+     the collaboration manifest and work item.
+   - Independent outcomes use independent worktrees.
+   - The HARD GATE below applies before every writing dispatch.
 
    ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
    Worktree isolation protects against THIS build's own agents, not against a
@@ -410,9 +400,9 @@ Read the task title and description, then:
    - **MANDATORY ABORT:** if ANY worktree base != `$DEV_HEAD`, you MUST abort
      isolation for this wave. Do NOT merge stale worktree output. Do NOT "fast-forward
      and continue". Do NOT proceed with the isolated wave under any circumstance.
-     Pivot to **sequential, non-isolated dispatch on a real `develop` checkout**
-     (one disjoint WP at a time to avoid `.git/index` races; the supervisor pushes) —
-     the same reason the validator runs non-isolated (it must see merged develop).
+     Recreate the worktree from the current remote integration head. Do not pivot
+     a dispatched writer into a shared checkout. A validator remains non-isolated
+     only because it is read-only and must inspect merged source.
    - This gate is blocking by design: an isolated wave dispatched on a stale base
      is treated as a build failure, not a warning. Skipping or downgrading this
      assertion to advisory is a contract violation.
@@ -664,7 +654,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. `isolation` is per the dispatch-mode rule in Step 7: NON-isolated (omit `isolation`) for doc-only and single-committer waves; `isolation: "worktree"` ONLY for true parallel MULTI-committer waves, and only after the HARD GATE (worktree base == develop HEAD) passes — a stale-base isolated wave is a build failure. Model is chosen per task per the routing table in Step 7: Sonnet 5 for updates/edits, Opus 5 for harder coding and design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 always omits isolation; validator model stays `claude-sonnet-5` (verification, not generation).
+- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. Every dispatched writer uses `isolation: "worktree"` after the HARD GATE; non-isolated agents are read-only. Model is chosen per task per the routing table in Step 7. Exception: the validator omits isolation because it is read-only and must inspect merged source.
 - Finding an existing file is NOT task completion — verify it satisfies the spec
 
 ## Capture lessons (exit step)

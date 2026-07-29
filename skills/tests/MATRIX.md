@@ -1,6 +1,6 @@
 # RDC Skill Test Suite Matrix
 
-Current coverage: 31 manifests for 31 skill directories.
+Current coverage: 35 manifests for 35 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
@@ -17,12 +17,15 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:deploy` | `rdc-deploy.test.json` | Deployment diagnosis | `commits_made`, `exit_code`, `stdout_contains` | Read-only diagnose output and destructive deploy/DNS negative checks |
 | `rdc:edit` | `rdc-edit.test.json` | Local editor launch | `exit_code`, `stdout_contains` | Resolved target, editor host URL, and no-unknown-target negative checks |
 | `rdc:design` | `rdc-design.test.json` | Studio palette audit | `exit_code`, `stdout_contains` | Studio/token/Rampa references and external-write negative checks |
+| `rdc:env` | `rdc-env.test.json` | Environment status | `exit_code`, `stdout_contains` | Installed version/status and destructive-action negative checks |
 | `rdc:fixit` | `rdc-fixit.test.json` | Tiny sandbox typo fix | `commits_made`, `exit_code`, `stdout_contains` | Scope, code-review, specific-file staging, and broad-add negative checks |
 | `rdc:fs-mcp` | `rdc-fs-mcp.test.json` | File-system bridge read fixture | `commits_made`, `exit_code`, `stdout_contains` | Local-vs-MCP access boundary, live FS, no-preview/no-overwrite checks, and read-tool routing |
 | `rdc:handoff` | `rdc-handoff.test.json` | Stub work handoff | `exit_code`, `stdout_contains` | Plan path, DoD, work-item handoff, and placeholder negative checks |
 | `rdc:help` | `rdc-help.test.json` | Help menu rendering | `commits_made`, `exit_code`, `stdout_contains` | MCP/curl output, structured JSON fetch, dev-endpoint negative checks |
 | `rdc:housekeeping` | `rdc-housekeeping.test.json` | Read-only housekeeping audit | `commits_made`, `exit_code`, `stdout_contains` | PUBLISH/CLAUDE/orphan/report checks and no-fix/no-Coolify-write negative checks |
 | `lifeai-brochure-author` | `rdc-lifeai-brochure-author.test.json` | JSX compliance review fixture | `exit_code`, `stdout_contains` | brochure-kit component guidance and raw HTML/style/token negative checks |
+| `rdc:new-model` | `rdc-new-model.test.json` | Canonical model registration gate | `exit_code`, `stdout_contains` | Canonical registration and raw-insert/skip-gate negative checks |
+| `rdc:onramp` | `onramp.test.json` | Place enrollment dry-run | `exit_code`, `stdout_contains` | Preflight, drift, idempotency, and generated-context safety checks |
 | `rdc:overnight` | `rdc-overnight.test.json` | Label-based overnight queue drain | `exit_code`, `stdout_contains` | overnight sentinel, clauth preflight, full chain, and no-wide-add/no-lock-left negative checks |
 | `rdc:plan` | `rdc-plan.test.json` | Health-endpoint planning prompt | `exit_code`, `stdout_contains` | Design-decision, decomposition-matrix, work-package, and coarse-check negative checks |
 | `rdc:preplan` | `rdc-preplan.test.json` | Rate-limiter research prompt | `commits_made`, `exit_code`, `stdout_contains` | Research artifact, comparison, unknowns, recommendation, and research-tool routing checks |
@@ -32,6 +35,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:release` | `rdc-release.test.json` | Dry-run package release | `commits_made`, `exit_code`, `stdout_contains` | Dry-run release checklist and force/bypass negative checks |
 | `rdc:regen-media` | `rdc-regen-media.test.json` | Image generation path selection | `commits_made`, `exit_code`, `stdout_contains` | Local keyless Codex gpt-image-2 default, test-mode no-generation, and server-side fallback negative checks |
 | `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Report status block, counts, next recommendation, and dump/push negative checks |
+| `rdc:refactor` | `rdc-refactor.test.json` | Governed corrective takeover | `commits_made`, `exit_code`, `stdout_contains` | Consolidation RPC, isolated writers, collaboration manifest, and validator checks |
 | `rdc:review` | `rdc-review.test.json` | Unattended review gate | `exit_code`, `stdout_contains` | Code-review, verify, fresh-evidence, tsc, and forbidden-build negative checks |
 | `rdc:rpms-filemap` | `rdc-rpms-filemap.test.json` | Canonical location lookup | `commits_made`, `exit_code`, `stdout_contains` | Rule #1, context door, one-home rules, and no-hand-edit/second-home negative checks |
 | `rdc:self-test` | `rdc-self-test.test.json` | Strict self-test prompt | `commits_made`, `exit_code`, `stdout_contains` | Strict validation evidence, hook/guide checks, and no-relaxed-linter negative check |

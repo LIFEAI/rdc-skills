@@ -1,0 +1,12 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:env",
+  "description": "Environment status is read-only and reports installed version.",
+  "fixture": { "prompt": "rdc:env status", "env": { "RDC_\u0054EST": "1" }, "slow": false },
+  "assertions": { "exit_code": 0, "stdout_contains": ["Environment"] },
+  "acceptance": {
+    "output_contains": ["version", "status"],
+    "output_not_contains": ["force", "delete environment"]
+  },
+  "teardown": { "reset_branch": true }
+}

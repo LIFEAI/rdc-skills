@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.25.12",
+  "version": "0.26.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -1178,6 +1178,63 @@
       ],
       "leads_to": [],
       "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": true
+    },
+    "refactor": {
+      "name": "refactor",
+      "slash": "rdc:refactor",
+      "category": "build",
+      "usage": "rdc:refactor <epic-id|topic> --takeover <reason>",
+      "args": {
+        "positional": [
+          {
+            "name": "epic-id-or-topic",
+            "required": true,
+            "description": "Corrective epic UUID or refactor topic",
+            "accepts": "uuid|string"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--takeover",
+            "type": "string",
+            "default": null,
+            "description": "Required governed takeover reason when active work is re-parented"
+          }
+        ]
+      },
+      "requires": [
+        "supabase",
+        "clauth",
+        "codeflow",
+        "agent-dispatch",
+        "work-items-rpc",
+        "git"
+      ],
+      "produces": [
+        "git_commits",
+        "work_items",
+        "supabase_writes",
+        "git_pushes"
+      ],
+      "default_model": "opus",
+      "triggers": [
+        "refactor the system",
+        "take over this refactor",
+        "consolidate corrective work",
+        "rdc refactor"
+      ],
+      "follows": [
+        "plan",
+        "build"
+      ],
+      "leads_to": [
+        "review",
+        "report"
+      ],
+      "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true

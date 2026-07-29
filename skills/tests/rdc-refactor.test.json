@@ -1,0 +1,29 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:refactor",
+  "description": "Refactor preserves evidence and isolates all dispatched writers.",
+  "fixture": {
+    "prompt": "rdc:refactor hook-scope --takeover \"corrective consolidation\"",
+    "env": { "RDC_\u0054EST": "1" },
+    "slow": true
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["RDC Refactor"]
+  },
+  "acceptance": {
+    "output_contains": [
+      "consolidate_work_items_into_epic",
+      "unique leased worktree",
+      "collaboration manifest",
+      "validator"
+    ],
+    "output_not_contains": [
+      "raw update",
+      "shared working directory",
+      "archive all"
+    ]
+  },
+  "teardown": { "reset_branch": true }
+}
