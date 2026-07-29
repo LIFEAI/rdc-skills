@@ -132,7 +132,88 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
+2b. **PROVE IT ISN'T ALREADY BUILT (mandatory — never skip, never infer):**
+
+   A work item's `status` and `title` are a *claim about* the codebase, not the
+   codebase. They go stale silently: nobody updates a title when the thing it
+   describes gets built. **Treat every open task as unverified until you have
+   measured the code.** For each task about to be dispatched:
+
+   ```
+   1. codeflow / codeflow_query on the named module or symbol
+   2. grep the repo for the identifiers in the task title
+   3. git log --all --oneline --name-only --diff-filter=A -- '<path-fragment>'
+      → the file may exist on a branch, at a DIFFERENT path than the task names
+   4. if the module exists: run its tests and read the test NAMES,
+      not just the pass count — that is what tells you which behaviours are proven
+   ```
+
+   Then classify the task by what you measured, and say which in your checklist:
+
+   | Measured | Action |
+   |---|---|
+   | Not implemented | Dispatch as written |
+   | Implemented **and** tests name the behaviour | **DO NOT DISPATCH.** Record evidence, move the item to its true state |
+   | Implemented, no test naming the behaviour | Re-scope the task to *prove it*, not rebuild it |
+   | Implemented at a different path than the task says | Correct the task/plan text first, then re-classify |
+
+   **STOP RULE: never dispatch an agent to build something you have not just
+   proven absent.** A rebuild is worse than a no-op — it burns the budget, then
+   produces a second implementation that must be reconciled with the first.
+
+   **Fix the record as you go.** When a task misreports reality, correcting it is
+   part of this build, not follow-up work: `record_evidence_probe` with the
+   measurement, then advance the item. Leaving a known-false status in the DB
+   guarantees the next session repeats the work you just avoided.
+
+   *Why this step exists:* 2026-07-26/27. Four of seven work items on the
+   CodeFlow orchestrator epic misreported reality at once — WP-5's bridge was
+   implemented and tested while the item read `todo`; WP-2R's title still said
+   "UNTESTED and UNCONSUMED" after both were fixed; a resume plan listed four
+   "NOT finished" items of which three were done and the module had landed at a
+   different path than the plan named. Two separate sessions read those claims as
+   a task list. One burned ~550k tokens rebuilding site work that already
+   existed; the next came within one tool call of rebuilding the orchestrator.
+   Steps 2 and 3 as written did not catch any of it, because neither one looks at
+   the code.
+
+2c. **ROUTE TO THE TEMPLATE EPIC (mandatory before creating any work item):**
+
+   Some classes of work are governed by an **orchestration template epic** — an epic that
+   governs a *class* of work rather than a feature, authored per
+   `.rdc/guides/orchestration-epic.md`. Before `insert_work_item`, check whether the files
+   you are about to touch fall inside one's trigger surface:
+
+   ```sql
+   SELECT id, title, description FROM work_items
+   WHERE item_type = 'epic' AND labels && ARRAY['orchestration-template','template'];
+   ```
+
+   If a template epic's §1 trigger surface covers your paths, the new item **MUST** be
+   parented to that epic (or a child of it), and inherit its receipt/trailer requirements.
+   A work item on a governed surface with no orchestration linkage **is invalid** — the
+   commit gate will reject the eventual commit, and the item cannot close.
+
+   Known example: template epic `1574c3f5-d24b-439f-956c-26d9986b56c3` governs
+   `packages/codeflow/**`, `packages/codeflow-parser/**`, `scripts/codeflow*`,
+   `apps/codeflow-explorer/**`. Its §11 names `rdc:build` explicitly as a skill that must
+   route this way.
+
+   **Also check the inherited checklist.** `insert_work_item` auto-inherits the parent
+   epic's `definition_of_done` when `p_checklist` is omitted. A template epic's DoD is
+   written for its class of work — inheriting it onto an unrelated task produces required
+   rows that can never be ticked, so the item can never close. **Pass an explicit
+   `p_checklist` with `decomp-*` and `test-*` rows scoped to the actual task.**
+
+   *Why this step exists:* 2026-07-27. A build session created two work items for edits to
+   `packages/codeflow/src/orchestrator/` and parented both to an unrelated feature epic —
+   precisely the "generic work item with no orchestration linkage" §11 declares invalid.
+   The same two inserts inherited a 26-row place-enrollment DoD and had to be archived and
+   re-created twice.
+
 3. **Load the plan** (mandatory): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
+   **A plan is evidence of intent, not of state** — verify its claims against step 2b
+   before planning any work from it.
 
 3b. **Checklist decomposition quality gate (mandatory before code):**
 
@@ -228,37 +309,27 @@ Read the task title and description, then:
    model: <chosen per the routing table below>
    max_turns: 70
    ```
-   `isolation` is chosen per the dispatch-mode rule below — it is NOT a blanket
-   default. Worktree isolation is reserved for true parallel MULTI-committer waves
-   in the same repo; doc-only and single-committer waves default to NON-isolated.
+   Every dispatched agent that may edit or commit MUST receive a unique leased
+   worktree. A non-isolated dispatched agent is read-only and may research,
+   review, or validate merged source; it may not write.
 
-   ### ⛔ Dispatch mode — non-isolated is the default for single-committer / doc-only waves
-   Worktree isolation exists to protect a SHARED working tree from a git-index race
-   between MULTIPLE agents committing in parallel. When there is only ONE committer,
-   that race cannot occur, and the stale-base hazard of worktrees (see the HARD GATE
-   below — recurring across 2026-06-10/11/15/16/17/23) is pure downside. Pick the
-   dispatch mode by committer count, not by reflex:
+   ### ⛔ Dispatch mode — writers are always isolated
+   Isolation is an ownership boundary, not a concurrency optimization. The
+   supervisor may implement directly as the sole writer, but once work is
+   dispatched, each writer gets its own fresh leased worktree:
 
    | Wave shape | Dispatch mode | isolation |
    |---|---|---|
-   | **Doc-only wave** (markdown/docs/plans, no code build) | NON-isolated, one committer on `develop` | omit `isolation` |
-   | **Single-committer wave** (only one agent commits, or work serializes to the supervisor) | NON-isolated, one committer on `develop` | omit `isolation` |
-   | **True parallel MULTI-committer wave** (2+ agents committing concurrently in the same repo, disjoint files) | worktree-isolated, supervisor merges | `isolation: "worktree"` |
+   | **Read-only research/review/validator** | shared merged source, no writes | omit `isolation` |
+   | **Any dispatched writer** | unique leased worktree and branch | `isolation: "worktree"` |
+   | **Cross-repository outcome** | one linked branch per repository | unique worktree in each repo |
 
-   - **Default = NON-isolated.** Only escalate to `isolation: "worktree"` when the
-     wave genuinely has 2+ concurrent committers in the same repo.
-   - A pure docs wave is single-committer by default: either dispatch ONE doc agent,
-     or have parallel doc agents return diffs/patches that the supervisor commits
-     serially. Do NOT fan out 2+ concurrent committers onto one shared `develop`
-     tree (lesson 2026-06-13-build-concurrent-agents-same-branch-git-race: three
-     parallel doc agents on one `develop` tree raced on the git index/stash — one
-     commit swept in another agent's staged-but-uncommitted files under the wrong
-     message, two agents reported the SAME SHA, a pre-commit `sync:docs` ref-lock
-     race misattributed authorship). The fix for that race is single-committer
-     serialization, NOT blanket worktree isolation.
-   - When you DO need a true MULTI-committer parallel wave, worktree isolation is
-     mandatory AND the HARD GATE below (base == develop HEAD) MUST pass before
-     dispatch — a stale-base worktree wave is a build failure, not a warning.
+   - One issue may touch multiple apps in one monorepo branch when the paths are
+     explicitly attributed to that issue.
+   - Crossing repositories always creates one branch per repository, linked by
+     the collaboration manifest and work item.
+   - Independent outcomes use independent worktrees.
+   - The HARD GATE below applies before every writing dispatch.
 
    ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
    Worktree isolation protects against THIS build's own agents, not against a
@@ -329,9 +400,9 @@ Read the task title and description, then:
    - **MANDATORY ABORT:** if ANY worktree base != `$DEV_HEAD`, you MUST abort
      isolation for this wave. Do NOT merge stale worktree output. Do NOT "fast-forward
      and continue". Do NOT proceed with the isolated wave under any circumstance.
-     Pivot to **sequential, non-isolated dispatch on a real `develop` checkout**
-     (one disjoint WP at a time to avoid `.git/index` races; the supervisor pushes) —
-     the same reason the validator runs non-isolated (it must see merged develop).
+     Recreate the worktree from the current remote integration head. Do not pivot
+     a dispatched writer into a shared checkout. A validator remains non-isolated
+     only because it is read-only and must inspect merged source.
    - This gate is blocking by design: an isolated wave dispatched on a stale base
      is treated as a build failure, not a warning. Skipping or downgrading this
      assertion to advisory is a contract violation.
@@ -385,7 +456,20 @@ Read the task title and description, then:
      - Exact deliverables and commit message
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
      - **`"You are running in an isolated git worktree. Commit your work normally. Do NOT push to origin — the supervisor merges your branch after the wave completes."`**
-     - **`"When done, set your work item to 'review' (NOT 'done') and return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
+     - **`"When done: FIRST call submit_implementation_report(<work_item_id>, {...}) including a codeflow_post with agent_session_id, summary, files_changed, verification, commit, repo_truth_state. THEN set your work item to 'review' (NOT 'done'). Return AGENT_COMPLETE with a verification field. The validator closes work items — you do not."`**
+       > The order is load-bearing, not stylistic: `update_work_item_status(..., 'review')`
+       > **raises** on a non-epic item unless `implementation_report.codeflow_post` already
+       > exists. An agent told only to "set review" hits that exception and either gives up
+       > or leaves the item in `todo` while its code sits landed on the branch.
+       >
+       > **Supervisor: verify this actually happened before closing the wave.** Query
+       > `status` and `implementation_report IS NOT NULL` for every dispatched item. On
+       > 2026-07-27 three agents landed real, verified code (`881ad3dac`, `0343de92a`,
+       > `b17cd4459`, 189/189 tests, tsc 0) and all three items still read `todo` with no
+       > report, because the dispatch prompts omitted this line. That is the identical
+       > drift this build was convened to fix — a work item asserting `todo` about code
+       > that is already on develop. If the agent did not file it, the supervisor files it
+       > from measured evidence and flags that it was filed on the agent's behalf.
      - **`"COMPLETION PROOF REQUIRED in AGENT_COMPLETE: list every file written, the exact commit hash, and paste the vitest/tsc output. A report without this evidence will be rejected."`**
      - **`"If you find that a file or feature already exists: you MUST still verify it satisfies the full task spec before marking review. Finding a file is not completion. Run verification, check every requirement, and report what you found vs. what was required."`**
      - **The decomposition items from the work item's checklist** (all `decomp-*` prefixed items). Include them verbatim in the prompt and instruct the agent:
@@ -570,7 +654,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor
-- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. `isolation` is per the dispatch-mode rule in Step 7: NON-isolated (omit `isolation`) for doc-only and single-committer waves; `isolation: "worktree"` ONLY for true parallel MULTI-committer waves, and only after the HARD GATE (worktree base == develop HEAD) passes — a stale-base isolated wave is a build failure. Model is chosen per task per the routing table in Step 7: Sonnet 5 for updates/edits, Opus 5 for harder coding and design/innovative thought (CS 2.0, brand/UX, architecture). Supervisor logs `model=<chosen> reason=<phrase>` per agent. Exception: validator agent in Step 10 always omits isolation; validator model stays `claude-sonnet-5` (verification, not generation).
+- Every Agent() dispatch: `model: <routed>` + `max_turns: 70` — non-negotiable. Every dispatched writer uses `isolation: "worktree"` after the HARD GATE; non-isolated agents are read-only. Model is chosen per task per the routing table in Step 7. Exception: the validator omits isolation because it is read-only and must inspect merged source.
 - Finding an existing file is NOT task completion — verify it satisfies the spec
 
 ## Capture lessons (exit step)

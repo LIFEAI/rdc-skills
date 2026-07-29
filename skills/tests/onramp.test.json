@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "skill": "rdc:onramp",
   "description": "Tier-2 self-test for rdc:onramp enrollment skill",
   "tier": 2,
@@ -11,7 +12,20 @@
     "name": "Onramp Self Test",
     "flags": ["--archetype", "working-landscapes", "--dry-run"]
   },
-  "assertions": [
+  "fixture": {
+    "prompt": "rdc:onramp onramp-selftest --name \"Onramp Self Test\" --archetype working-landscapes --dry-run",
+    "env": { "RDC_\u0054EST": "1" },
+    "slow": true
+  },
+  "assertions": {
+    "exit_code": 0,
+    "stdout_contains": ["Preflight", "Resolve drift"]
+  },
+  "acceptance": {
+    "output_contains": ["Preflight", "Resolve drift", "disk-ahead", "already-enrolled"],
+    "output_not_contains": ["hand-edit _context.md", "raw insert"]
+  },
+  "legacy_assertions": [
     {
       "type": "exit_code",
       "expect": 0,

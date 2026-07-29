@@ -328,6 +328,7 @@ skills/
   prototype/SKILL.md   (build JSX prototype)
   rdc-brochurify/SKILL.md (Brochurify orchestration)
   rdc-extract-verifier-rules/SKILL.md (verifier rule extraction)
+  refactor/SKILL.md   (governed corrective takeover and consolidation)
   release/SKILL.md     (atomic package/app release)
   report/SKILL.md      (nightly report)
   review/SKILL.md      (quality gate: tests, types, docs)

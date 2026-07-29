@@ -1,0 +1,12 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:new-model",
+  "description": "New-model registration begins with the canonical gate.",
+  "fixture": { "prompt": "rdc:new-model example-model", "env": { "RDC_\u0054EST": "1" }, "slow": true },
+  "assertions": { "exit_code": 0, "stdout_contains": ["New Model"] },
+  "acceptance": {
+    "output_contains": ["canonical", "registration"],
+    "output_not_contains": ["raw insert", "skip gate"]
+  },
+  "teardown": { "reset_branch": true }
+}
