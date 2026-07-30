@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:deploy",
+  "description": "Plugin deployment validates the build manifest and delegates lifecycle to Clauth.",
+  "fixture": {
+    "prompt": "rdc:deploy plugin regen-media-local test",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": {
+    "exit_code": 0,
+    "commits_made": { "min": 0 },
+    "stdout_contains": ["clauth-plugin.json", "isolated", "52439", "Verdict"]
+  },
+  "teardown": { "reset_branch": true }
+}
