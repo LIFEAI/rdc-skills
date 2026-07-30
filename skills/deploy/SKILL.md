@@ -1,7 +1,7 @@
 ---
 name: rdc:deploy
 description: >-
-  Coolify ops. Usage `rdc:deploy <slug> [build-id]` or `rdc:deploy new <slug>` or `rdc:deploy diagnose <slug>` or `rdc:deploy audit [--fix]` — type checklists, DNS decision tree, mandatory post-deploy gate. Checklist-only output.
+  Deploy Coolify applications or LIFEAI clauth plugins. Usage `rdc:deploy <slug> [build-id]`, `rdc:deploy plugin <id>`, `rdc:deploy new <slug>`, `rdc:deploy diagnose <slug>`, or `rdc:deploy audit [--fix]` — type checklists, plugin-contract validation, DNS decision tree, and mandatory post-deploy gates. Checklist-only output.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -23,6 +23,7 @@ No raw MCP dumps. No UUIDs unless asked.
 - A new app needs to be registered and deployed for the first time (`rdc:deploy new`)
 - A deployed app is behaving unexpectedly and needs diagnosis (`rdc:deploy diagnose`)
 - Running a compliance/health audit of all deployed apps (`rdc:deploy audit`)
+- A LIFEAI plugin must be installed, rescanned, tested, or promoted (`rdc:deploy plugin`)
 
 ## Arguments
 
@@ -32,6 +33,9 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
 - `rdc:deploy audit --fix` — fleet scan + auto-remediate safe issues
+- `rdc:deploy plugin <id>` — validate a built `clauth-plugin.json`, install/rescan it through the Clauth supervisor, and verify its surface
+- `rdc:deploy plugin <id> test` — run the isolated candidate lifecycle without changing the active version
+- `rdc:deploy plugin <id> promote` — atomically promote a passing candidate through Clauth
 - `rdc:deploy` (no args) — print mode menu, ask which
 
 ## Modes
@@ -75,6 +79,46 @@ rdc:deploy new: <slug>
 [ ] deployment_registry row inserted
 ✅ rdc:deploy new: <slug> live at <domain>
 ```
+
+### Mode 8 — plugin <id> [test|promote]
+
+`rdc:deploy plugin` is the deploy path for a LIFEAI plugin surface. It does not
+start PM2 or invoke a plugin process directly; Clauth remains the lifecycle
+authority and Dev Center remains the cockpit.
+
+```
+rdc:deploy plugin: <id>
+[ ] Build completed in the current isolated lane
+[ ] Build artifact contains clauth-plugin.json (schema lifeai.plugin.v1)
+[ ] Manifest id, version, publisher, surfaces, routes, credentials, and test contract validated
+[ ] Every declared start/stop/health/selfTest command resolves to a file or installed executable
+[ ] Relative script paths are inside the plugin artifact; traversal and shell interpolation rejected
+[ ] Destination and lifecycle_owner are valid (CodeFlow remains plugin-owned)
+[ ] Managed/user origin is explicit; managed IDs cannot be silently shadowed
+[ ] Credential records are created by discovery without assigning secret values
+[ ] Manifest is installed through $LIFEAI_ENV/services/install-clauth-plugins.ps1
+[ ] Clauth supervisor rescan receipt recorded (52439)
+[ ] Surface state, port lease, health, MCP initialization, and contract tests verified
+[ ] Test candidates use an isolated localhost port and cannot create public routes
+[ ] Candidate failure preserves logs and leaves the active version unchanged
+[ ] Promotion (only when requested) is atomic and records rollback metadata
+[ ] Dev Center displays origin, version, drift, lifecycle owner, route, and operation receipt
+✅ rdc:deploy plugin: <id> installed/tested/promoted with Clauth evidence
+```
+
+Build contract:
+
+1. The plugin build must write `clauth-plugin.json` into its publish artifact;
+   hand-authored runtime state is not accepted as a substitute.
+2. The deploy gate fails before installation when a declared script, health path,
+   test command, or self-test is missing. The gate never invents a command.
+3. Use `pwsh $env:LIFEAI_ENV/services/install-clauth-plugins.ps1 -Fix` for the
+   managed catalog, then `POST http://127.0.0.1:52439/v1/plugins/rescan` only
+   through the governed supervisor operation. Do not call PM2 directly.
+4. A user plugin belongs under `%APPDATA%/LifeAI/clauth/plugins/<id>`; it may
+   not replace a managed ID without an explicit governed takeover.
+5. `test` allocates a separate port and state namespace; `promote` requires the
+   successful candidate receipt. Cloudflare routes are never created for tests.
 
 ### Mode 3 — diagnose <slug>
 
