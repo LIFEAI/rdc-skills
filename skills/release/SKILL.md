@@ -17,7 +17,7 @@ description: "Usage `rdc:release <repo> [version|--patch|--minor|--major|--dry-r
 - A package or app needs versioning plus verification.
 - A repo provides release metadata in `package.json`, `.rdc/release.json`, README release instructions, or CI config.
 
-Never release without explicit user authorization.
+Never release without explicit user authorization — either a direct go-ahead for THIS release, or a standing opt-in for one named repo scoped to the current session only (same contract as `rdc:deploy` Mode 5's standing opt-in: one repo, expires with the session, does not skip the code-review block or any other gate below, requires a fresh dev-green check before each release under the opt-in). Approved: option-2 — standing per-slug/session opt-in. Interview: 2026-07-31 (Dave), regen-root session.
 
 ## Inputs
 
