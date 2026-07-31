@@ -207,7 +207,17 @@ Severity rules:
 
 Promote a **verified `develop` change** for one app to production. This is the sanctioned production-patch fast path — one command instead of fighting branch protection, the main-push hook, and a flaky Coolify webhook by hand.
 
-**Authorization:** production promote requires explicit user go-ahead ("promote", "patch prod", "push live", "go"). A dev deploy does NOT. If the user has not given it for THIS promote, stop and ask first.
+**Authorization:** production promote requires explicit user go-ahead, in either form:
+- **Per-promote:** a direct go word for THIS call ("promote", "patch prod", "push live", "go").
+- **Standing opt-in:** the user names one slug and grants it for the current session only ("auto-promote <slug> whenever dev is green", "standing go-ahead for <slug> this session"). Scope rules:
+  - One named slug per opt-in — never blanket ("auto-promote everything").
+  - Expires with the session. A new session/conversation needs a fresh opt-in; never infer one from a prior session's transcript or memory.
+  - Does not skip any other gate below — metadata-audit block, content-level verify, mandatory code review block on critical/high, scope guard, and back-merge all still run in full. The opt-in only removes the "stop and ask" step.
+  - Before EACH promote under a standing opt-in, re-verify dev is green with a **fresh** check (the content-level check further down this checklist) — "dev is green" means checked now for this call, not remembered from earlier in the session.
+
+A dev deploy requires neither form. If the user has not given either form of go-ahead for THIS promote, stop and ask first.
+
+Approved: option-2 — standing per-slug/session opt-in. Interview: 2026-07-31 (Dave), regen-root session.
 
 ```
 rdc:deploy promote: <slug> → <prod-domain>
