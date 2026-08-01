@@ -71,7 +71,20 @@ description: "Usage `rdc:status` — Read-only snapshot of open epics, work item
    - Get infrastructure overview or diagnose issues
    - Report any apps with failed builds or down containers
 
-8. **Present as a compact dashboard:**
+8. **CodeFlow deploy-webhook + repo-registration health:**
+   ```bash
+   # Vultr deploy-hook (scripts/webhook-server.js, PM2 process 'deploy-hook', port 9001) liveness + scan-queue backlog
+   curl -s -m 5 http://64.237.54.189:9001/status
+   ```
+   Report `lastResult` and how far `lastDeployFinishedAt` is in the past (stale = likely dead process, not just idle).
+   Then compare the repos CodeFlow actually scans against the known fleet:
+   ```bash
+   node -e "const {DEFAULT_REPO_NAMES}=await import('file:///C:/Dev/regen-root/packages/codeflow/src/scanner/repo-target.js'); console.log(DEFAULT_REPO_NAMES.length, 'repos configured')"
+   ```
+   Cross-check a couple of names against `codeflow` tool results (e.g. query a symbol you expect from a standalone repo) — if a repo with an active local checkout under `C:/Dev/<name>` and a package.json isn't in that list, it is silently never scanned (this is how `lifeai-env` went unindexed until 2026-08-01 — see regen-root work item `5047726c-1629-4366-977b-158afb1eb26d`). Note any gap found; don't fix it here, just surface it.
+   If the deploy-hook is unreachable or the list check can't run, note "CodeFlow ingestion health: unavailable" and continue — this section must never block the rest of the dashboard.
+
+9. **Present as a compact dashboard:**
    ```
    ## Open Epics (N)
    <table>
@@ -86,6 +99,9 @@ description: "Usage `rdc:status` — Read-only snapshot of open epics, work item
    
    ## Deployments
    <green/red/yellow status>
+   
+   ## CodeFlow Ingestion
+   deploy-hook: <alive/stale/unreachable>   repos configured: N   gaps found: <none, or repo names>
    
    ## Recommended Next
    <highest priority unstarted epic>
