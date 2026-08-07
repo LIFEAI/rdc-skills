@@ -155,6 +155,22 @@ _COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
 curl -s -H "Authorization: Bearer $_COOLIFY" "$DEPLOY_API_BASE/api/v1/applications"
 ```
 
+**Triggering the actual deploy is different — use the wrapper, not raw curl.**
+`hooks/lib/guard-rules.mjs`'s `coolify-direct` rule blocks a raw curl (or any command whose
+TEXT contains the literal URL) to `/api/v1/deploy` — the deploy-trigger endpoint — on
+purpose, so a production deploy is never one arbitrary curl an agent can fire silently. This
+is NOT a bug to route around with SSH or a differently-worded command
+(`.rdc/lessons/2026-08-07-deploy-coolify-direct-blocks-own-documented-step.md`). The
+sanctioned way to actually trigger a deploy for Mode 1's "Deploy triggered" step is:
+
+```bash
+python3 scripts/coolify-deployments.py deploy <application-uuid>
+```
+
+Run from the regen-root repo root. Poll `status <deployment-uuid>` (the same script) or
+`GET /api/v1/deployments/<deployment-uuid>` (read-only, not blocked) until `status` is
+`finished`/`failed`/`cancelled` before moving to the gate checks.
+
 If clauth daemon is not responding:
 ```
 BLOCKED: clauth daemon not responding. Run scripts\restart-clauth.bat, unlock at http://127.0.0.1:52437
