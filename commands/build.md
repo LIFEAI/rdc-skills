@@ -13,6 +13,16 @@ description: >-
 
 # rdc:build — Typed Agent Dispatch Engine
 
+## Execution Engine Contract
+
+All `rdc:*` skills are Codex skills. Run this build through Codex's native
+agent/worktree mechanisms and the current Codex model configured by the
+environment. Do not invoke Claude Code, `claude`, `mcp__clauth__call_agent`, or
+Claude-only model names. If a Codex subagent cannot be dispatched, the Codex
+supervisor may implement the scoped work directly while preserving the same
+work-item, isolation, verification, review, and validator gates; a Claude
+backend outage is not a reason to stop the build.
+
 ## When to Use
 - Plan is approved and ready to execute
 - Project lead says "build it", "go", "execute", "do not stop"
