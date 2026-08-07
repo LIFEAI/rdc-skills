@@ -49,3 +49,10 @@ Thumbs.db
 .orphaned_at
 docs/
 dist/
+
+# pack/publish-time artifact (scripts/stamp-git-sha.mjs). Tracking this in git
+# makes checkout-based deployments (e.g. the Vultr rdc-skills-mcp host) report a
+# permanently-stale git_sha in /health, since it wins over the runtime
+# git-rev-parse fallback. npm-installed copies still get it stamped fresh at
+# pack time regardless of gitignore.
+git-sha.json
