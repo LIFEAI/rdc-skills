@@ -69,11 +69,19 @@ The public `/health` version must equal the released npm version and its skill
 count must match the packaged catalog. The local installer never restarts or
 deploys that endpoint.
 
-The Vultr host checks out this repository at `/srv/regen/rdc-skills`. Install or
-refresh its standalone systemd unit after pulling `master`:
+The Vultr host checks out this repository at `/srv/regen/rdc-skills` — it runs
+straight from the checkout (no `npm install`), so `/health`'s `git_sha` comes
+from `bin/rdc-skills-mcp.mjs`'s runtime `git rev-parse HEAD` fallback, NOT a
+stamped `git-sha.json` (that file is `.gitignore`d on purpose — it's a
+pack-time-only artifact for npm-installed copies; see the comment above its
+`.gitignore` entry). `install-systemd.sh` alone does not restart the running
+process. After pulling `master`:
 
 ```bash
-sudo ./deploy/install-systemd.sh
+git pull --ff-only origin master
+sudo ./deploy/install-systemd.sh        # re-verify/re-enable the unit config
+sudo systemctl restart rdc-skills-mcp.service   # actually load the new commit
+curl -fsS https://rdc-skills.regendevcorp.com/health   # confirm git_sha == new HEAD
 ```
 
 Port `3110` is reserved for this public MCP ingress. Application fleet manifests
