@@ -117,6 +117,7 @@ Phase 5: Regen Score — Model-Driven Rubric Assessment
   [ ] Compose Regen Score from model rubric
   [ ] Score gate decision — GO/NEEDS WORK/NO-GO
   [ ] SCREENING.md written — lattice + score card + evidence
+  [ ] Corpus Clarification Page emitted — customer-safe overview, conditions, pathway, evidence intake, and ways forward
   [ ] Phase 5 rubric gate — 15-row pass/fail + ONRAMP-REPORT.md appended
 Phase 6: Site Build — Archetype Routes + RegenOps Integration
   [ ] Create apps/<slug>/ — archetype-specific routes from PRODUCT.md
@@ -1205,7 +1206,38 @@ from 5.3). This is the durable scoring artifact.
 
 If NEEDS WORK: list exactly what would move the score to GO — which capital needs
 evidence, which annihilator needs a pathway, which process state needs attention.
-A NO-GO is a success of the model if the place genuinely isn't ready.
+A NO-GO is a success of the model if the place genuinely isn’t ready.
+
+### 5.12a Corpus Clarification Page — Required Customer Output
+
+Every enrolled place receives a reusable customer-review artifact after the
+Phase 5 score is recorded, regardless of GO, NEEDS WORK, or NO-GO. The
+readiness gate controls authorization for full site build and engagement; it
+does not suppress evidence delivery or customer clarification.
+
+The Codex-native onramp MUST:
+
+1. Upsert conditions into the existing RegenOps project ledger using a stable
+   `(place_slug, external_key)` identity. Do not create a new app per place.
+2. Map findings from `RECONCILIATION.md`, `SCREENING.md`, `PROCESS-ARC.md`, and
+   the financial model into customer-safe conditions. Preserve source paths and
+   do not expose internal notes, sensitive relationship data, or unreviewed
+   claims to the customer projection.
+3. Include, at minimum, an overview, honest readiness/gate explanation,
+   Conditions to Proceed, proposed Path to Delivery, evidence/submission
+   instructions, and condition-linked consulting or education ways forward.
+4. Permit text-block and file evidence submissions against open conditions;
+   submissions create append-only events and never overwrite the source report.
+5. On rerun, preserve submissions and prior events, update the same condition
+   IDs, and write a change summary: added, changed, resolved, held, and
+   unchanged. A resolved condition remains visible in history.
+6. Write `places/<slug>/CORPUS-CLARIFICATION.md` with `run_id`, links to the
+   internal report and screening artifacts, and the customer-safe summary.
+
+For a NO-GO result, the output MUST say that the project is not ready for full
+engagement and MUST NOT imply authorization for site build, investment,
+construction, or public readiness claims. Phase 6/7 remain gated exactly as
+specified below; only the customer-review output is allowed through.
 
 Append the full scoring narrative to ONRAMP-REPORT.md:
 ```markdown
@@ -1250,6 +1282,7 @@ PHASE 5 RUBRIC — <slug>
 | 13| Composite >= 75                | GO                                    | ?      |      |
 | 14| SCREENING.md written           | lattice + score card + evidence       | ?      |      |
 | 15| Score in ONRAMP-REPORT.md      | Phase 5 section appended              | ?      |      |
+| 16| Corpus Clarification Page      | customer artifact + ledger upsert    | ?      |      |
 ```
 
 Append Phase 5 results to ONRAMP-REPORT.md + INTAKE-LOG.md.
