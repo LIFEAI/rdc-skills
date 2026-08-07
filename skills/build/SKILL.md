@@ -1,7 +1,6 @@
 ---
 name: rdc:build
-description: >-
-  Usage `rdc:build <epic-id|topic> [--unattended]` — dispatch typed agents from an epic, commit, push, update work items. The build engine. Use after rdc:plan or when the project lead says "build it".
+description: "Usage `rdc:build <epic-id>` — Codex-native execution for a planned epic. Dispatches parallel typed Codex agents, each commits atomically to develop, runs a mandatory per-wave code-review gate (pr-review-toolkit:code-reviewer), closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -12,6 +11,22 @@ description: >-
 
 
 # rdc:build — Typed Agent Dispatch Engine
+
+## Execution Engine Contract
+
+`rdc:*` skills are Codex skills. The supervisor and dispatched implementation,
+review, and validator agents run through Codex's native agent/worktree
+mechanisms. **Do not invoke Claude Code, `claude`, `mcp__clauth__call_agent`,
+or a Claude-only model name to execute this skill.** An external dispatcher
+outage is not a build result and must not be reported as the build being
+complete.
+
+Use the current Codex model configured by the environment (normally `gpt-5.5`)
+and record the selected Codex model in the wave plan. If a Codex subagent cannot
+be dispatched, the Codex supervisor may implement the scoped work directly in
+the current leased worktree, preserving the same work-item checklist,
+verification, review, and validator gates. Never stop merely because a Claude
+backend is unavailable.
 
 ## When to Use
 - Plan is approved and ready to execute
@@ -119,6 +134,152 @@ Read the task title and description, then:
    - Wave 3: integration tasks
 
 7. **For each wave — dispatch typed agents in parallel:**
+
+   ### ⛔ Agent Dispatch Non-Negotiable Defaults
+   Every `Agent()` call MUST include these parameters:
+   ```
+   model: <chosen per the routing table below>
+   max_turns: 70
+   ```
+   Every dispatched agent that may edit or commit MUST receive a unique leased
+   worktree. A non-isolated dispatched agent is read-only and may research,
+   review, or validate merged source; it may not write.
+
+   ### ⛔ Dispatch mode — writers are always isolated
+   Isolation is an ownership boundary, not a concurrency optimization. The
+   supervisor may implement directly as the sole writer, but once work is
+   dispatched, each writer gets its own fresh leased worktree:
+
+   | Wave shape | Dispatch mode | isolation |
+   |---|---|---|
+   | **Read-only research/review/validator** | shared merged source, no writes | omit `isolation` |
+   | **Any dispatched writer** | unique leased worktree and branch | `isolation: "worktree"` |
+   | **Cross-repository outcome** | one linked branch per repository | unique worktree in each repo |
+
+   - One issue may touch multiple apps in one monorepo branch when the paths are
+     explicitly attributed to that issue.
+   - Crossing repositories always creates one branch per repository, linked by
+     the collaboration manifest and work item.
+   - Independent outcomes use independent worktrees.
+   - The HARD GATE below applies before every writing dispatch.
+
+   ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
+   Worktree isolation protects against THIS build's own agents, not against a
+   DIFFERENT session (another cell, a Codex run, a human) already committing on
+   the same shared tree (lesson 2026-06-16-build-concurrent-session-shared-tree-commit-corruption:
+   a foreign session's staged-but-uncommitted files were swept into this build's
+   commit under the wrong message). Before dispatching any wave, run `git status`
+   to detect foreign-dirty files you did not create. If foreign-dirty files are
+   present: do NOT fan out concurrent committers — **serialize ALL committers to
+   the supervisor** (agents return diffs/patches; the supervisor stages and
+   commits each one alone). After every supervisor commit, assert the exact file
+   set landed and nothing foreign leaked in:
+   ```bash
+   git show --stat <sha>   # confirm ONLY the files this commit owns are listed
+   ```
+   A `git show --stat` that lists a file the agent did not touch = a foreign file
+   leaked into the commit; reset and re-stage by explicit path.
+
+   **Agent model routing — pick per task, not per wave.** The supervisor session model does NOT cascade to agents; you must set `model` explicitly on every dispatch.
+
+   | Task character | Model | When to pick it |
+   |---|---|---|
+   | Updates, edits, mechanical refactors, small fixes, content tweaks, config patches, doc/copy edits, straightforward API wiring | current Codex Sonnet-equivalent configured by the environment | Default for `frontend.md`/`content.md`/`infrastructure.md` work whose checklist is mostly "change X to Y" or "wire up endpoint Z". |
+   | Harder coding tasks — non-trivial algorithm, migration with backfill, schema reshape, multi-file refactor with subtle invariants, performance-sensitive code, anything where correctness is the bar | `gpt-5.5` or the current Codex high-reasoning model | Default for `backend.md`/`data.md` work and any `frontend.md` task that involves state machines, race conditions, or cross-package contracts. |
+   | Design or innovative thought — new component design, brand/UX work, CS 2.0 paradigm work (HAIL/Quad Pixel/AEMG/Virtue), grammar evolution, architecture-first design, anything where the *shape* of the solution is the deliverable rather than the implementation | `gpt-5.5` or the current Codex high-reasoning model | Default for `design.md`/`cs2.md` work. Also use for `backend.md`/`data.md` tasks tagged with `architecture` or `design-decision` in work item labels. |
+
+   **How to choose when the task straddles categories:**
+   - If the task's checklist contains the word "design", "decide", "propose", "evaluate alternatives", "novel", or any CS 2.0 primitive → **Codex high-reasoning model**.
+   - If the task touches `packages/cs2*`, `packages/hail`, `packages/quad-pixel`, `packages/virtue-engine`, `packages/aemg`, `packages/planetary-ontology`, or `packages/being-state-processor` → **Codex high-reasoning model** (CS 2.0 paradigm requires innovative thought, not transcription).
+   - If the task is a Supabase migration that drops/renames/reshapes anything, or a refactor across ≥5 files → **Codex high-reasoning model**.
+   - Otherwise → the current Codex standard model.
+
+   **State the choice in the wave plan.** Before dispatching a wave, the supervisor must log one line per agent in the form `[wave-N agent-K] role=<role> task=<id> model=<chosen> reason=<one phrase>`. This keeps routing decisions reviewable in the transcript and lets `rdc:report` summarize the fleet mix.
+
+   **Cost guardrail.** If a single wave would dispatch more than 3 high-reasoning Codex agents in parallel, downshift the lowest-priority tasks to the current Codex standard model unless their work items are tagged `priority=urgent`.
+   Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
+   `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
+
+   ### ✅ PREVENTION FIRST — create worktrees fresh off origin/develop (kills stale-base by construction)
+   The repeated stale-base failures below come from creating worktrees off a
+   local/old ref. Eliminate the failure mode at the source: ALWAYS create agent
+   worktrees with a fresh fetch + `origin/develop` base, e.g.
+   `git fetch origin develop && git worktree add <dir> -b <branch> origin/develop`
+   — or use the canonical launcher `node scripts/wt.mjs add <name>`, which does
+   exactly that. A worktree cut from `origin/develop` HEAD **cannot** be stale.
+   The HARD GATE below remains as the blocking backstop (detection), but
+   construction-from-`origin/develop` is the primary defense.
+
+   ### ⛔ HARD GATE — Worktree base MUST equal develop HEAD (blocking, not advisory)
+   The worktree-isolation harness has shipped worktrees pinned to a STALE base
+   commit (lessons 2026-06-10-build-worktree-stale-base, 2026-06-11-build-worktree-stale-base,
+   2026-06-15-build-worktree-stale-base, 2026-06-16-build-worktree-stale-base,
+   2026-06-17-build-worktree-stale-base, 2026-06-23-build-worktree-stale-base:
+   agents branched hundreds of commits / multiple days behind develop HEAD, on a
+   tree where the target app did not yet exist — their diffs would have silently
+   reverted merged work or operated on a deleted structure). This is a recurring
+   harness defect, so the check is a **HARD BLOCKING GATE, not a suggestion.**
+
+   **Before dispatching ANY `isolation:"worktree"` wave**, the supervisor MUST run
+   the base==HEAD assertion and MUST abort isolation on any mismatch — there is no
+   "proceed anyway" path:
+   ```bash
+   DEV_HEAD=$(git rev-parse develop)
+   # After worktrees are created, for each agent worktree:
+   git worktree list   # compare each agent worktree's SHA to $DEV_HEAD
+   # If ANY worktree base != $DEV_HEAD (it is behind), the wave is UNSAFE — ABORT.
+   ```
+   - **MANDATORY ABORT:** if ANY worktree base != `$DEV_HEAD`, you MUST abort
+     isolation for this wave. Do NOT merge stale worktree output. Do NOT "fast-forward
+     and continue". Do NOT proceed with the isolated wave under any circumstance.
+     Recreate the worktree from the current remote integration head. Do not pivot
+     a dispatched writer into a shared checkout. A validator remains non-isolated
+     only because it is read-only and must inspect merged source.
+   - This gate is blocking by design: an isolated wave dispatched on a stale base
+     is treated as a build failure, not a warning. Skipping or downgrading this
+     assertion to advisory is a contract violation.
+   - Also at every merge: `git show <branch>:<key-file> | grep -c <symbol-a-prior-wave-introduced>`
+     — a 0 where there should be ≥1 means the branch is stale or deleted a shared
+     export; resolve to `--ours` and re-apply that wave's real delta on current HEAD.
+     esbuild/tsc PASS is necessary, not sufficient — pair it with a grep gate on
+     the symbols a refactor must preserve.
+
+   ### Forked agents vs. standalone agents
+
+   **When the supervisor has already read the plan** (via a prior `Read` tool call in the same session),
+   dispatch **forked agents** with short prompts. Forked agents inherit the full conversation context —
+   including every file the supervisor has read — so you do NOT need to copy plan sections, file specs,
+   or architecture details into the prompt. The agent already sees them.
+
+   Short forked prompt template:
+   ```
+   You are a frontend agent building <WP name>. Work item: <uuid>.
+   Scope: <one sentence>. Files: <list>. Verification: tsc --noEmit.
+   Set item to review when done, return AGENT_COMPLETE with verification evidence.
+   Read .rdc/guides/agent-bootstrap.md + .rdc/guides/engineering-behavior.md + .rdc/guides/frontend.md before starting.
+   ```
+
+   **When the supervisor has NOT read the plan** (e.g. dispatching from a fresh `rdc:build` call with
+   only an epic ID), the agent has no plan context — write a full briefing prompt with all specs.
+
+   ### ⛔ Reuse contract — when a WP builds on an existing subsystem
+   When a work package extends an existing subsystem, "compose adapter + X"
+   under-specifies reuse and lets an agent legitimately re-author markup/logic the
+   subsystem already exposes (lesson 2026-06-11-build-reuse-existing-engine-prompt:
+   an agent set up to reinvent a grid when the card engine already shipped four
+   `CardLayout` display types + a full `parseCommand → CardSpec → adapter → CardModel[]`
+   calling sequence). The dispatch prompt MUST:
+   1. **Enumerate the existing public API the agent must reuse, BY FILE** — types/enums
+      (`packages/.../types.ts:NN`), calling-sequence functions, AND the existing
+      display/render components — not just the data adapter.
+   2. **Mark which seams are extend/delegate-only.** State explicitly: "thread a
+      pass-through prop (e.g. `layout`) to the existing components; do NOT
+      reimplement layout/render." Verify at WP review that the agent reused the
+      named parser/adapter/components and did not hand-roll a parallel implementation.
+
+   ---
+
+   ### Required agent prompt contents
    - Set work item to `in_progress` before dispatching
    - Each agent prompt MUST include:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
@@ -141,8 +302,18 @@ Read the task title and description, then:
    - New code must have tests: if a modified package shows 0 new test files, flag it
 
 9. **As agents complete:**
-   - Verify commit landed on the development branch
+   - Verify each worktree branch is merged to the development branch
    - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
+   After all wave agents complete, merge worktrees and push:
+
+   Each completed Codex agent returns a worktree branch (e.g. `codex/agent-frontend-abc123`). Merge them all to develop before running the test gate:
+
+   ```bash
+   # For each worktree branch returned by agents in this wave:
+   git merge --no-ff <worktree-branch> -m "merge(<agent-type>): <task-title>"
+   ```
+
+   - Resolve any conflicts before proceeding — do not skip
    - Worker agents set items to `review` — **do NOT close to `done` yet**
    - Continue to next wave
 
