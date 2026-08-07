@@ -27,11 +27,16 @@ git checkout master
 git pull --ff-only origin master
 git merge <feature-branch> --no-edit
 
-# 2. Bump the version
+# 2. Bump the version — package.json AND the plugin manifest, they must match.
+#    rdc-skills-self-test fails the whole run (plugin manifest FAIL) if they drift,
+#    and .claude-plugin/plugin.json ships inside the published npm package, so a
+#    stale plugin.json version is a real defect in the release, not a lint nit.
 npm version patch|minor|major --no-git-tag-version
+# then hand-edit .claude-plugin/plugin.json's top-level "version" field to match —
+# there is no script for this yet, only the self-test catches drift after the fact.
 
 # 3. Commit, tag, and push
-git add package.json package-lock.json
+git add package.json .claude-plugin/plugin.json
 git commit -m "release: v$(node -e \"console.log(require('./package.json').version)\")"
 git tag "v$(node -e \"console.log(require('./package.json').version)\")"
 git push origin master --tags
@@ -43,6 +48,9 @@ npm view @lifeaitools/rdc-skills version
 npm install -g @lifeaitools/rdc-skills@latest
 npm list -g @lifeaitools/rdc-skills --depth=0
 rdc-skills-self-test
+# ^ run this LAST and read the verdict line, not just the section pass counts —
+#   a plugin-manifest version mismatch prints as a single top-line FAIL above the
+#   skill/guide tables, which all pass independently of it. Exit code 1 on drift.
 ```
 
 ## Public MCP release gate
