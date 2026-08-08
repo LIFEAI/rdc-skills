@@ -247,13 +247,19 @@ rdc:deploy promote: <slug> → <prod-domain>
 ```
 
 **The explicit Coolify trigger (the whole point — do not skip):**
+
+**⚠️ Do NOT curl the deploy-trigger endpoint directly.** `hooks/lib/guard-rules.mjs`'s
+`coolify-direct` rule pattern-matches and hard-blocks any raw `curl … /api/v1/deploy?uuid=…`
+Bash call — including inside `/rdc:deploy` itself (lesson
+2026-08-07-deploy-coolify-direct-blocks-own-documented-step). Use the sanctioned wrapper instead,
+which passes the guard:
 ```bash
-_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
-# Correct endpoint is GET /api/v1/deploy?uuid= — NOT POST /applications/<uuid>/deploy (that 404s)
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<PROD_UUID>&force=true"
-# → {"deployments":[{"deployment_uuid":"...","message":"...deployment queued."}]}
+python3 scripts/coolify-deployments.py deploy <PROD_UUID>
+# → TRIGGERED app=<uuid> deployment_uuid=... message=...deployment queued.
 ```
+Read-only Coolify REST calls (list/status/inspect) are NOT blocked and may still use clauth + curl
+directly per `.claude/rules/infrastructure-contract.md` Rule 11 — only the deploy-trigger endpoint
+itself is guarded.
 
 **Why each guard exists (lessons from 2026-06-05 EF Hooper promote):**
 - `main` branch protection rejects PR merge without `--admin`; a raw `git push …:main` is blocked by the main-push hook → must go branch → PR → admin-merge.
@@ -289,7 +295,7 @@ rdc:deploy convert: <slug> → <prod-domain>  (static→Next, in place)
       (clear publish_directory; static-only field)
 [ ] PROXY LABELS (mandatory — the static-app `custom_labels` are read-only and do NOT auto-update on a build_pack PATCH): fetch `custom_labels`, base64-decode, rewrite `loadbalancer.server.port=80`→`=<port>` (all routers) AND `upstreams 80}}`→`upstreams <port>}}`, and STRIP the static `caddy_*.try_files=…/index.html /index.php` lines (wrong for a Next app), re-base64, PATCH `custom_labels`. Skipping this = container serves on :<port> but the proxy still routes :80 → **502** even though the build "finished" and the app logs "Ready". (Note: the API rejects `is_container_label_readonly_enabled` and a non-base64 `custom_labels` — you must hand-rewrite the base64.)
 [ ] Env vars present in Coolify (compare registry.env_vars_needed); set any missing
-[ ] EXPLICITLY trigger deploy: GET /api/v1/deploy?uuid=<PROD_UUID>&force=true — never rely on the webhook
+[ ] EXPLICITLY trigger deploy: `python3 scripts/coolify-deployments.py deploy <PROD_UUID>` — never rely on the webhook, never raw curl the endpoint (coolify-direct guard blocks it)
 [ ] Deployment reached "finished" state (poll coolify_events)
 [ ] Gate: SSR proof — prod HTML now contains `/_next/static` (it is the Next app, not the old static build)
 [ ] Gate: HTTP 200 + content-level assertion of a known string from the Next render
@@ -503,12 +509,19 @@ curl -s -H "Authorization: Bearer $_COOLIFY" \
 # Get application details
 curl -s -H "Authorization: Bearer $_COOLIFY" \
   "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
+```
 
-# Deploy (trigger) — correct endpoint is GET /api/v1/deploy?uuid=
-# (POST /applications/<uuid>/deploy returns {"message":"Not found."})
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<uuid>&force=true"
+**Deploy-trigger endpoint is DIFFERENT — do not curl it.** `GET /api/v1/deploy?uuid=` is the
+correct Coolify endpoint (`POST /applications/<uuid>/deploy` 404s), but the `coolify-direct`
+guard hard-blocks a raw curl to it — including from inside this skill's own documented steps
+(lesson 2026-08-07-deploy-coolify-direct-blocks-own-documented-step). Every read-only call above
+is fine as raw curl; the deploy-trigger step below is the one exception and MUST go through the
+wrapper:
+```bash
+python3 scripts/coolify-deployments.py deploy <uuid>
+```
 
+```bash
 # Get deployment logs
 curl -s -H "Authorization: Bearer $_COOLIFY" \
   "$DEPLOY_API_BASE/api/v1/deployments/<deployment-id>"
