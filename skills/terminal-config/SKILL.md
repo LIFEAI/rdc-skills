@@ -57,6 +57,11 @@ rdc:terminal-config: <task>
 Get-Content "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json" | ConvertFrom-Json
 ```
 
+- **A `%VAR%` in `commandline`/`startingDirectory` not expanding is two DIFFERENT root causes with the same symptom — diagnose before editing:**
+  - **Stale inherited env block** (far more common): the var was set at User/Machine scope AFTER `explorer.exe` (Terminal's parent process) last started, so Terminal still has the old environment. Fix: `Stop-Process -Name explorer -Force` (it auto-relaunches), then fully restart Windows Terminal — a new tab in an already-running WT instance still carries the stale block. Confirm the var IS set correctly at User/Machine scope first (`[Environment]::GetEnvironmentVariable('VAR','User')`) before assuming this is the cause.
+  - **Hardcoded path**: the config never referenced a variable at all, or someone already baked in a literal path. Only this case is fixed by editing the config file.
+  - Never `replace_all` a `%VAR%` reference with a literal path to "fix" a stale-env-block failure — that permanently destroys the portable-path design intent for a problem a process restart would have solved in seconds.
+
 ## Startup Scripts
 
 If a project uses role/cell startup scripts, keep those scripts under the project root and commit them with the project. Do not bake one user's absolute machine paths into shared RDC skill files.

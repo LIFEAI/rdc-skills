@@ -78,6 +78,21 @@ launch if it is dead.
   ```
 
 ### 4. Open the page
+- **Verify the resolved `targetUrl` returns 2xx before declaring the preview open.**
+  The editor host (3015) rendering green does NOT prove the target is healthy —
+  it serves a standalone shell and can report "up" while the iframe target is a
+  500 page (e.g. a Supabase-gated app whose `middleware.ts` throws when
+  `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are unset locally).
+  Probe the target directly (skip for `brandSlug=test`, which has no separate target):
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}" <targetUrl>/
+  ```
+  - 2xx: proceed to open normally.
+  - non-2xx (`4xx`/`5xx`/`000`): do NOT report the preview as open. Report the
+    target's actual status code plus the first error line from its dev-server
+    log (the likely cause — e.g. missing `.env.local` for Supabase-gated apps),
+    and stop; opening a 500 in the iframe and calling it "ready" is worse than
+    surfacing the real blocker.
 - Normal use: open the URL in the browser and confirm the editor loaded.
   Open via PowerShell `Start-Process`, NOT `cmd start` — `cmd` treats the `&`
   between query params as a command separator and truncates the URL:

@@ -34,6 +34,7 @@ If `<repo>` is not resolvable from the current workspace, ask for its local path
 rdc:release: <repo> vX.Y.Z -> vA.B.C
 [ ] PUBLISH.md status gate: status=active AND prod in environments (block if not)
 [ ] Source path resolved
+[ ] Repo-local RELEASE.md read (if present) — deploy path, publish trigger, and gotchas override the generic flow below
 [ ] Release metadata read
 [ ] Working tree clean or user-approved dirty scope identified
 [ ] Current version detected
@@ -81,6 +82,21 @@ If PUBLISH.md is absent and app has no `app_deployments` row (library/package), 
 3. GitHub slug `<owner>/<repo>`.
 4. Repo-local `.rdc/release.json` if present.
 5. Ask for the missing path or release mechanism.
+
+## Read `<repo>/RELEASE.md` first — before running the generic flow below
+
+**Once the source path is resolved, read `<repo>/RELEASE.md` (repo root) before doing anything else.**
+A standalone repo's own RELEASE.md is the actual source of truth for its release mechanics and
+overrides the Generic Commands below wherever they conflict — e.g. whether `master`/`main` push
+itself triggers a webhook publish (making a manual `npm publish` redundant and racy), what the
+default branch is, what post-publish gates exist beyond npm (a separately hosted MCP endpoint,
+a systemd unit on a remote host, etc.), and any documented gotchas for that repo's toolchain.
+Skipping this step and running the generic flow blind has cost real rounds — e.g. `rdc-skills` push
+to `master` IS the publish (webhook-driven); a manual `npm publish` right after it races the webhook
+and returns a misleading `E403 "cannot publish over previously published version"` that reads like a
+foreign collision but is actually the webhook having already shipped your own commit seconds earlier
+(lesson 2026-07-24-release-rdc-skills-webhook-autopublish). If `RELEASE.md` is absent, fall back to
+`package.json`, `.rdc/release.json`, README release instructions, or CI config as listed above.
 
 ## Generic Commands
 
