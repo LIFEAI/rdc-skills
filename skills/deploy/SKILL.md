@@ -15,7 +15,7 @@ No raw MCP dumps. No UUIDs unless asked.
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 >
-> *Under `$RDC_TEST=1`:* Modes 1 (deploy), 2 (new), and 5 (promote) are **entirely skipped** — echo `[RDC_TEST] skipping Coolify deploy/create/promote` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, **PR/admin-merge to main**, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
+> *Under `$RDC_TEST=1`:* Modes 1 (PM2 dev deploy), 2 (new), and 5 (Coolify promote) are **entirely skipped** — echo `[RDC_TEST] skipping PM2 deploy/create/Coolify promote` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, **PR/admin-merge to main**, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
 
 ## When to Use
 - Project lead says "deploy", "ship it", "push to production", "update the server"
@@ -67,27 +67,19 @@ rdc:deploy: <slug> → PM2 dev target
 ✅ rdc:deploy: <slug> deployed in Nm Ns
 ```
 
-#### Static PM2 dev sites — do NOT trust the push webhook (SSH-reset + served-hash gate)
+#### Static PM2 dev sites — bearer job + served-content gate
 
-For a **static** PM2 dev site, `git push` succeeding does NOT mean the live site
-updated: the push webhook skips/instruments static apps unreliably, so the host
-working tree (and the committed `dist/` it serves) can stay STUCK across several
-pushes while HTTP stays 200 and `origin/develop` looks shipped (lesson
-2026-06-11-deploy-static-host-stuck: issho served the v1.10.0 bundle across three
-pushes because `/srv/regen/regen-root` never pulled). The only signal is the
-SERVED bundle hash vs the local `dist/` hash.
+For a **static** PM2 dev site, a successful `git push` is not deployment proof:
+the formerly unreliable webhook could leave the host working tree and committed
+`dist/` stale while HTTP still returned 200. The agent MUST submit the same
+manifest-scoped `clauth ops deploy` job used by every other dev runtime, then
+record its checkout SHA, declared build, PM2 reload, and health receipt.
 
-After pushing committed `dist/`, SSH-reset the host explicitly, then verify the
-served hash:
-```bash
-_K=$(mktemp); curl -s http://127.0.0.1:52437/v/vultr-dev-ssh > "$_K"; printf '\n' >> "$_K"; chmod 600 "$_K"
-ssh -i "$_K" root@64.237.54.189 'cd /srv/regen/regen-root && git fetch -q origin develop && git reset -q --hard origin/develop && pm2 restart <app> --update-env'
-rm -f "$_K"
-# Then verify SERVED hash == local build hash (HTTP 200 is NOT proof):
-curl -s https://<app>.dev.place.fund/ | grep -oE 'index-[A-Za-z0-9_-]+\.js'   # served
-grep -oE 'index-[A-Za-z0-9_-]+\.js' sites/<app>/dist/index.html                # local
-```
-Only when the two hashes match do the content/screenshot gates mean anything.
+Agents MUST NOT retrieve `vultr-dev-ssh`, stage private keys, run raw SSH, reset
+the host checkout, or invoke PM2 directly. If a served-asset hash or content
+marker does not match the declared build after the job reaches `succeeded`, mark
+the deployment verification failed and use `rdc:deploy <slug> diagnose`; only
+the server-operations recovery procedure may perform host-level repair.
 
 ### Mode 2 — new <slug>
 
