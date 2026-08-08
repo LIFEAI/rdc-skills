@@ -97,7 +97,39 @@ Read the task title and description, then:
    
    **If design decisions exist: follow them.** Include the summary in the agent prompt.
 
-3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
+2b. **PROVE IT ISN'T ALREADY BUILT (mandatory, mechanical — never skip):**
+   Work items and plans are claims about the code, not state. A stale title,
+   a stale plan, or an un-updated checklist is the default drift state, not
+   an exception — nobody updates a work-item title when the thing it
+   describes gets built. Before dispatching ANY agent, run all four checks
+   below for every task in the wave. Never dispatch an agent to build
+   something you have not just proven absent.
+
+   | Check | Command | What a positive hit means |
+   |---|---|---|
+   | CodeFlow | `mcp__codeflow__codeflow query <topic/identifiers>` (or `node packages/codeflow/bin/codeflow.mjs context <topic>`) | The capability may already be indexed as built — read the returned symbols/files before assuming greenfield |
+   | Identifier grep | `grep -rn "<key identifier from the task title>" apps/ packages/ sites/ models/` | A hit means the named thing exists somewhere — go read it before writing a new one |
+   | Path history | `git log --all --diff-filter=A -- "**/<file-fragment>*"` | A hit means the file was already created — possibly at a DIFFERENT path than the task names. Check out that commit and read it |
+   | Test names | Run the package's test suite and read the **test names**, not the pass count | Named tests are what say which behaviours are already proven — a passing suite with the target behaviour named means it's done |
+
+   **Stop rule:** if any check returns a hit, correct the work item / plan
+   status FIRST (this correction is part of the build, not follow-up work),
+   then re-scope the dispatch to what's actually missing — a delta, not a
+   rebuild. Only dispatch a full build when all four checks come back empty.
+
+2c. **Route to the template epic, with an explicit checklist.** When work
+   spawned from 2b needs its own work item, insert it under the correct
+   template epic and pass an explicit `p_checklist` on `insert_work_item` —
+   do not rely on inheritance. `insert_work_item` auto-inherits the parent
+   epic's `definition_of_done` as the child's checklist, and a template
+   epic's DoD produces required rows an unrelated task can never tick,
+   silently blocking `done` at close time.
+
+3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic
+   (fallback: `.rdc/plans/`). **A plan is evidence of intent, not evidence of
+   state** — it tells you what was supposed to happen, never what actually
+   happened to the code. Step 2b's checks are what tell you what's real;
+   never dispatch an agent off a plan's task list alone.
 
 4. **Read CLAUDE.md files** for all affected packages.
 
