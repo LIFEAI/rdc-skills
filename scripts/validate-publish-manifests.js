@@ -27,6 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const { execFileSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -68,7 +69,35 @@ for (let i = 0; i < args.length; i++) {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MONOREPO_ROOT = 'C:/Dev/regen-root';
+/**
+ * Resolve the regen-root monorepo checkout this run should validate against.
+ *
+ * 2026-07-26 (lesson 2026-07-26-deploy-worktree-validator-root): hardcoding
+ * 'C:/Dev/regen-root' made every check run against the main tree even when
+ * this validator was invoked from a registered worktree lane
+ * (`C:/Dev/regen-root.wt/<lane>`), so a newly-landed app's PUBLISH.md read as
+ * "not found" though the file existed on the lane's own branch.
+ *
+ * Resolution order: explicit override env var, then `git rev-parse
+ * --show-toplevel` from the caller's cwd (works for the main tree AND any
+ * worktree lane), then the historical default as a last resort.
+ */
+function resolveMonorepoRoot() {
+  if (process.env.REGEN_ROOT) return process.env.REGEN_ROOT;
+  if (process.env.PROJECT_ROOT) return process.env.PROJECT_ROOT;
+  try {
+    const top = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+    if (top) return top;
+  } catch {
+    // Not inside a git checkout (or git unavailable) — fall through to the default.
+  }
+  return 'C:/Dev/regen-root';
+}
+
+const MONOREPO_ROOT = resolveMonorepoRoot();
 const CLAUTH_BASE = 'http://127.0.0.1:52437';
 
 // Ordered list of root-relative prefixes to probe when looking for app source
