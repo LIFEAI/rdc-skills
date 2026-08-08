@@ -1,0 +1,4 @@
+interface:
+  display_name: "Behavior Audit"
+  short_description: "Audit Claude and Codex behavior against shared rules."
+  default_prompt: "Run a behavior audit for the last seven days and write the evidence bundle to a report directory."

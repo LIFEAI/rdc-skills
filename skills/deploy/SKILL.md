@@ -1,6 +1,6 @@
 ---
 name: rdc:deploy
-description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--fix|--hotfix <sha>]` or `rdc:deploy maintenance <service>` — Deploy applications or operate a private Coolify infrastructure service with guarded, internal-only checks."
+description: "Usage `rdc:deploy <slug> [promote|diagnose|audit|convert]` — registry-resolved PM2 development deployment and Coolify production promotion through clauth's bearer-authenticated job control plane, with status receipts and mandatory content gates."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -8,14 +8,14 @@ description: "Usage `rdc:deploy <slug> [new|diagnose|audit|promote|convert] [--f
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
 
-# rdc:deploy — Coolify Operations
+# rdc:deploy — Bearer Deployment Control Plane
 
 **READ FIRST:** `guides/output-contract.md`. Checklist-only output. No narration.
 No raw MCP dumps. No UUIDs unless asked.
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 >
-> *Under `$RDC_TEST=1`:* Modes 1 (deploy), 2 (new), and 5 (promote) are **entirely skipped** — echo `[RDC_TEST] skipping Coolify deploy/create/promote` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, **PR/admin-merge to main**, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
+> *Under `$RDC_TEST=1`:* Modes 1 (PM2 dev deploy), 2 (new), and 5 (Coolify promote) are **entirely skipped** — echo `[RDC_TEST] skipping PM2 deploy/create/Coolify promote` and mark every `[ ]` line in those checklists as `[~]`. Modes 3 (diagnose) and 4 (audit without `--fix`) are **read-only and run normally**. Mode 4 with `--fix` skips all remediation — echo `[RDC_TEST] skipping audit --fix remediation` and report findings only. Registry SELECTs, Coolify status reads, HTTP gate probes, TLS checks, and DNS lookups are NOT destructive and run normally. Anything that writes (create app, set watch_paths, deploy trigger, **PR/admin-merge to main**, env var write, DNS write, CF cache purge, registry UPDATE/INSERT) is gated.
 
 ## When to Use
 - Project lead says "deploy", "ship it", "push to production", "update the server"
@@ -28,8 +28,8 @@ No raw MCP dumps. No UUIDs unless asked.
 
 ## Arguments
 
-- `rdc:deploy <slug>` — deploy existing app (latest commit on its watched branch)
-- `rdc:deploy <slug> <build-id>` — deploy specific commit/tag
+- `rdc:deploy <slug>` — submit the registered `develop` deployment to the PM2 dev target
+- `rdc:deploy <slug> <ref>` — submit one registered manifest ref (never arbitrary shell or repository input)
 - `rdc:deploy <slug> promote` — promote the verified `develop` change for this app to production (Mode 5)
 - `rdc:deploy <slug> promote --hotfix <sha>` — promote a specific commit (cherry-pick just that sha to `main`)
 - `rdc:deploy <slug> convert` — convert a prod app's runtime in place from static→Next (Mode 6); use when dev is Next but prod is still a static Coolify build
@@ -42,25 +42,24 @@ No raw MCP dumps. No UUIDs unless asked.
 
 ## Modes
 
-### Mode 1 — deploy <slug> [build-id]
+### Mode 1 — deploy <slug> [ref]
 
 ```
-rdc:deploy: <slug> → <domain>
+rdc:deploy: <slug> → PM2 dev target
 [ ] Registry lookup (slug, uuid, branch, type, env_vars_needed)
 [ ] Runtime-source guard: if the source being deployed is static (`sites/<name>`, nixpacks/static) but the registry `runtime` for <slug> is `next`, BLOCK — never deploy a flat/static source over a Next app. A static prototype deploys only under its OWN slug (never an existing Next app's slug), dev only. Changing a slug's runtime is architectural. (`.claude/rules/production-stack-nextjs.md`)
-[ ] Git state verified (branch matches Coolify, commit pushed)
-[ ] Build-id resolved (default: HEAD of watched branch)
-[ ] Env vars present in Coolify (compare to registry)
-[ ] Type-specific preflight (see docs/runbooks/coolify-deploy-checklist.md)
+[ ] Git state verified (registered ref is pushed to origin)
+[ ] Dev deployment manifest resolved (application, repo path, fixed build argv, PM2 name, allowed ref, health URL)
+[ ] Local clauth retrieves `vultr-ops-api-token` internally; bearer is never printed or passed by an agent
 [ ] Mandatory pre-deploy code-review (pr-review-toolkit:code-reviewer on `git diff <last-deployed-sha>..HEAD` for this app's paths). Block deploy on `critical`/`high` findings; record `medium`/`low` and proceed.
 [ ] PUBLISH.md read from app root (warn if absent; fail if present but invalid)
 [ ] watch_paths derived from PUBLISH.md surfaces (union of all surface watch_paths arrays) and updated in app_deployments
-[ ] Deploy triggered
-[ ] Deployment reached "finished" state
+[ ] `clauth ops deploy --endpoint <control-plane> --application <slug> --ref <registered-ref>` accepted (202)
+[ ] Job polled at `GET /v1/ops/jobs/<id>` to terminal state; receipt proves checkout SHA, build, PM2 reload, and health probe
 [ ] Gate: HTTP 200
 [ ] Gate: TLS valid (no SSL cipher mismatch)
 [ ] Gate: cache headers correct on HTML
-[ ] Gate: container running on declared port
+[ ] Gate: named PM2 process is online at its declared port
 [ ] Gate: metadata audit (see § Metadata Audit below) — warn on gaps, do not block deploy
 [ ] Cloudflare cache purged (if proxied)
 [ ] artifact_registry INSERT per PUBLISH.md surface (if PUBLISH.md present)
@@ -68,27 +67,19 @@ rdc:deploy: <slug> → <domain>
 ✅ rdc:deploy: <slug> deployed in Nm Ns
 ```
 
-#### Static PM2 dev sites — do NOT trust the push webhook (SSH-reset + served-hash gate)
+#### Static PM2 dev sites — bearer job + served-content gate
 
-For a **static** PM2 dev site, `git push` succeeding does NOT mean the live site
-updated: the push webhook skips/instruments static apps unreliably, so the host
-working tree (and the committed `dist/` it serves) can stay STUCK across several
-pushes while HTTP stays 200 and `origin/develop` looks shipped (lesson
-2026-06-11-deploy-static-host-stuck: issho served the v1.10.0 bundle across three
-pushes because `/srv/regen/regen-root` never pulled). The only signal is the
-SERVED bundle hash vs the local `dist/` hash.
+For a **static** PM2 dev site, a successful `git push` is not deployment proof:
+the formerly unreliable webhook could leave the host working tree and committed
+`dist/` stale while HTTP still returned 200. The agent MUST submit the same
+manifest-scoped `clauth ops deploy` job used by every other dev runtime, then
+record its checkout SHA, declared build, PM2 reload, and health receipt.
 
-After pushing committed `dist/`, SSH-reset the host explicitly, then verify the
-served hash:
-```bash
-_K=$(mktemp); curl -s http://127.0.0.1:52437/v/vultr-dev-ssh > "$_K"; printf '\n' >> "$_K"; chmod 600 "$_K"
-ssh -i "$_K" root@64.237.54.189 'cd /srv/regen/regen-root && git fetch -q origin develop && git reset -q --hard origin/develop && pm2 restart <app> --update-env'
-rm -f "$_K"
-# Then verify SERVED hash == local build hash (HTTP 200 is NOT proof):
-curl -s https://<app>.dev.place.fund/ | grep -oE 'index-[A-Za-z0-9_-]+\.js'   # served
-grep -oE 'index-[A-Za-z0-9_-]+\.js' sites/<app>/dist/index.html                # local
-```
-Only when the two hashes match do the content/screenshot gates mean anything.
+Agents MUST NOT retrieve `vultr-dev-ssh`, stage private keys, run raw SSH, reset
+the host checkout, or invoke PM2 directly. If a served-asset hash or content
+marker does not match the declared build after the job reaches `succeeded`, mark
+the deployment verification failed and use `rdc:deploy <slug> diagnose`; only
+the server-operations recovery procedure may perform host-level repair.
 
 ### Mode 2 — new <slug>
 
@@ -246,14 +237,13 @@ rdc:deploy promote: <slug> → <prod-domain>
 ✅ rdc:deploy promote: <slug> live in prod — <changed-string> verified
 ```
 
-**The explicit Coolify trigger (the whole point — do not skip):**
-```bash
-_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
-# Correct endpoint is GET /api/v1/deploy?uuid= — NOT POST /applications/<uuid>/deploy (that 404s)
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<PROD_UUID>&force=true"
-# → {"deployments":[{"deployment_uuid":"...","message":"...deployment queued."}]}
-```
+**The explicit Coolify trigger (the whole point — do not skip):** submit
+`clauth ops promote --endpoint <control-plane> --application <registered-coolify-uuid>`.
+The local client retrieves `vultr-ops-api-token` internally; the server-side
+allowlist owns the Coolify UUID and keeps `coolify-api` out of agent inputs and
+transcripts. Poll the returned job or subscribe to
+`GET /v1/ops/jobs/<id>/events` until the redacted receipt reaches a terminal
+state.
 
 **Why each guard exists (lessons from 2026-06-05 EF Hooper promote):**
 - `main` branch protection rejects PR merge without `--admin`; a raw `git push …:main` is blocked by the main-push hook → must go branch → PR → admin-merge.
@@ -487,51 +477,26 @@ ON CONFLICT (entity_slug, surface_id) DO UPDATE SET
 
 If the INSERT fails, surface the failure in the deploy output but **do NOT roll back the deploy**. The artifact registry is a post-deploy record, not a deploy gate.
 
-## Coolify Access — clauth + REST API
+## Control-plane Access — clauth bearer jobs
 
-All Coolify operations use the clauth daemon and the Coolify REST API directly.
-There is no Coolify MCP server. Do not reference `@masonator/coolify-mcp`.
+There is no Coolify MCP server. Agent-facing deploy and promotion operations use
+the clauth control plane, not raw PM2, SSH, or the Coolify deploy-trigger API.
+The local fixed client obtains `vultr-ops-api-token` from local clauth and sends
+it as `Authorization: Bearer`; it never prints the token.
 
 ```bash
-# Get token (plain text — no JSON parsing needed)
-_COOLIFY=$(curl -s http://127.0.0.1:52437/v/coolify-api)
-
-# List applications
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/applications"
-
-# Get application details
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
-
-# Deploy (trigger) — correct endpoint is GET /api/v1/deploy?uuid=
-# (POST /applications/<uuid>/deploy returns {"message":"Not found."})
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/deploy?uuid=<uuid>&force=true"
-
-# Get deployment logs
-curl -s -H "Authorization: Bearer $_COOLIFY" \
-  "$DEPLOY_API_BASE/api/v1/deployments/<deployment-id>"
-
-# Set env var
-curl -s -X POST -H "Authorization: Bearer $_COOLIFY" \
-  -H "Content-Type: application/json" \
-  -d '{"key":"<KEY>","value":"<VALUE>"}' \
-  "$DEPLOY_API_BASE/api/v1/applications/<uuid>/envs"
-
-# Set watch_paths
-curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
-  -H "Content-Type: application/json" \
-  -d '{"watch_paths":"apps/<name>/**\npackages/**"}' \
-  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
-
-# Change the app's domain — the writable field is "domains", NOT "fqdn"
-# (Coolify v4 PATCH rejects {"fqdn":...} with "This field is not allowed"; fqdn is read-only/derived)
-curl -s -X PATCH -H "Authorization: Bearer $_COOLIFY" \
-  -H "Content-Type: application/json" \
-  -d '{"domains":"https://<host>"}' \
-  "$DEPLOY_API_BASE/api/v1/applications/<uuid>"
+clauth ops catalog --endpoint <control-plane>
+clauth ops list --endpoint <control-plane>
+clauth ops describe --endpoint <control-plane> --target <pm2-name>
+clauth ops deploy --endpoint <control-plane> --application <slug> --ref <registered-ref>
+clauth ops promote --endpoint <control-plane> --application <registered-coolify-uuid>
+clauth ops job --endpoint <control-plane> --job <job-id>
 ```
+
+Returns are accepted jobs (`202`) and the server persists redacted `queued`,
+`running`, `building`, `waiting`, and terminal events. Generic PM2 catalog
+operations are policy-disabled unless the server owner explicitly allowlists the
+operation and target.
 
 **Domain change / namespace migration** (lesson 2026-06-13-deploy-media-manager-namespace-migration):
 PATCH `applications/<uuid>` with `{"domains":"https://<host>"}` — never `fqdn`.
