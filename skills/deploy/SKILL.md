@@ -1,7 +1,7 @@
 ---
 name: rdc:deploy
 description: >-
-  Coolify ops. Usage `rdc:deploy <slug> [build-id]` or `rdc:deploy new <slug>` or `rdc:deploy diagnose <slug>` or `rdc:deploy audit [--fix]` — type checklists, DNS decision tree, mandatory post-deploy gate. Checklist-only output.
+  Deployment control plane. Usage `rdc:deploy <slug>` for PM2 development deployment or `rdc:deploy <slug> promote` for Coolify production promotion — registry-resolved, bearer-authenticated clauth jobs with status receipts and mandatory content gates.
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -9,7 +9,7 @@ description: >-
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
 
-# rdc:deploy — Coolify Operations
+# rdc:deploy — Bearer Deployment Control Plane
 
 **READ FIRST:** `guides/output-contract.md`. Checklist-only output. No narration.
 No raw MCP dumps. No UUIDs unless asked.
@@ -26,8 +26,9 @@ No raw MCP dumps. No UUIDs unless asked.
 
 ## Arguments
 
-- `rdc:deploy <slug>` — deploy existing app (latest commit on its watched branch)
-- `rdc:deploy <slug> <build-id>` — deploy specific commit/tag
+- `rdc:deploy <slug>` — deploy the registered `develop` ref to the PM2 dev target
+- `rdc:deploy <slug> promote` — promote the registered production app through Coolify
+- `rdc:deploy <slug> status <job-id>` — retrieve a submitted control-plane job
 - `rdc:deploy new <slug>` — create a new Coolify app from registry
 - `rdc:deploy diagnose <slug>` — debug why an app is broken
 - `rdc:deploy audit` — fleet-wide scan for missed failures
@@ -36,25 +37,44 @@ No raw MCP dumps. No UUIDs unless asked.
 
 ## Modes
 
-### Mode 1 — deploy <slug> [build-id]
+### Mode 1 — deploy <slug> [ref]
 
 ```
-rdc:deploy: <slug> → <domain>
+rdc:deploy: <slug> → PM2 dev target
 [ ] Registry lookup (slug, uuid, branch, type, env_vars_needed)
-[ ] Git state verified (branch matches Coolify, commit pushed)
-[ ] Build-id resolved (default: HEAD of watched branch)
-[ ] Env vars present in Coolify (compare to registry)
-[ ] Type-specific preflight (see docs/runbooks/coolify-deploy-checklist.md)
-[ ] Deploy triggered
-[ ] Deployment reached "finished" state
+[ ] Git state verified (branch is registered; commit is on origin)
+[ ] Deployment manifest resolved (application, fixed repo path, fixed build argv, PM2 name, allowed ref, health URL)
+[ ] Local clauth retrieves `vultr-ops-api-token` without printing it
+[ ] `clauth ops deploy --endpoint <control-plane> --application <slug> --ref <registered-ref>` submitted
+[ ] Job polled at `GET /v1/ops/jobs/<id>` until a terminal phase
+[ ] Job receipt includes checkout SHA, build, PM2 reload, and health-probe evidence
 [ ] Gate: HTTP 200
 [ ] Gate: TLS valid (no SSL cipher mismatch)
 [ ] Gate: cache headers correct on HTML
-[ ] Gate: container running on declared port
-[ ] Cloudflare cache purged (if proxied)
+[ ] Gate: PM2 process is online at its declared port
 [ ] deployment_registry updated (last_deploy_at, status)
 ✅ rdc:deploy: <slug> deployed in Nm Ns
 ```
+
+**Do not use SSH, raw PM2 commands, or a webhook as the agent-facing deployment interface.** SSH is only the bootstrap/recovery transport used to install or repair the clauth control-plane service. The server-side manifest owns repository path, build command, PM2 process, allowed ref, and health URL; callers supply only the registered application and ref.
+
+### Mode 1b — promote <slug>
+
+```
+rdc:deploy: <slug> promote → Coolify production target
+[ ] Registry lookup proves production Coolify UUID and domain
+[ ] User approval for production promotion recorded
+[ ] Scoped app change is landed on main
+[ ] Local clauth retrieves `vultr-ops-api-token` without printing it
+[ ] `clauth ops promote --endpoint <control-plane> --application <registered-uuid>` submitted
+[ ] Job SSE (`GET /v1/ops/jobs/<id>/events`) or job polling reaches terminal phase
+[ ] Coolify deployment UUID and terminal status are present in the redacted job receipt
+[ ] Production HTTP, TLS, cache, and content gates pass
+[ ] deployment_registry updated (last_deploy_at, status)
+✅ rdc:deploy: <slug> promoted
+```
+
+Promotion is allowlisted by `CLAUTH_COOLIFY_PROMOTE_UUIDS`; agents cannot supply a Coolify bearer token or invoke the deploy-trigger endpoint directly.
 
 ### Mode 2 — new <slug>
 
@@ -126,11 +146,27 @@ Severity rules:
 
 `--fix` auto-remediates only: missing watch_paths, registry row updates, CF cache purges. Never touches env vars, DNS, or container config without explicit confirmation.
 
+## Control-plane API
+
+All operations use `Authorization: Bearer <local clauth:vultr-ops-api-token>`; the fixed local client obtains that bearer internally and never prints it.
+
+| Intent | Client command | API |
+|---|---|---|
+| Catalog | `clauth ops catalog --endpoint <url>` | `GET /v1/ops/catalog` |
+| PM2 status | `clauth ops list --endpoint <url>` | `GET /v1/ops/processes` |
+| One process | `clauth ops describe --endpoint <url> --target <name>` | `GET /v1/ops/processes/:target` |
+| Explicit PM2 operation | `clauth ops run ...` | `POST /v1/ops/operations` |
+| Dev deployment | `clauth ops deploy ...` | `POST /v1/ops/deployments` |
+| Production promotion | `clauth ops promote ...` | `POST /v1/ops/promotions` |
+| Job status | `clauth ops job --job <id>` | `GET /v1/ops/jobs/:id` |
+
+Calls return `202` for accepted asynchronous work; terminal states are `succeeded`, `failed`, `timed_out`, or `rejected`. All actions are logged as redacted persisted job events.
+
 ## References
 
 - Type-specific checklists + DNS tree + gate commands: `docs/runbooks/coolify-deploy-checklist.md`
 - Rules / registry RPCs / hard limits: `.claude/rules/coolify-deployment.md`
-- MCP server: `@masonator/coolify-mcp` (38 tools)
+- Coolify production adapter: clauth-owned bearer interface (no Coolify MCP)
 - Infrastructure constants:
   ```
   Server UUID:     ih386anenvvvn6fy1umtyow0
