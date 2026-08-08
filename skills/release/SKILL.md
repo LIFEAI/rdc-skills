@@ -20,6 +20,13 @@ When user says **"release"**, **"publish"**, **"promote"**, **"deploy to main"**
 
 Dave has Bash access. He should never be asked to run commands. This skill runs the complete loop and shows one checklist + one verdict.
 
+## When to Use
+
+- The user explicitly asks to release, publish, ship, tag, bump a version, or promote a repository
+- A validated package must be published and installed on its target runtime
+- A reviewed Regen Root change is explicitly authorized to move from `develop` to `main`
+- Do not use for a routine PM2 development deployment or a single Coolify application promotion; use `rdc:deploy` instead
+
 ## Arguments
 
 - `rdc:release <repo>` — patch bump (default), full loop
