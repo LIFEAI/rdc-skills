@@ -4,5 +4,9 @@
   "description": "Behavior audit requires a bounded output path and preserves transcript evidence as redacted, validator-governed artifacts.",
   "fixture": { "prompt": "rdc:behavior-audit reports/behavior-audit/test --since-days 7", "env": { "RDC_TEST": "1" } },
   "assertions": { "exit_code": 0, "commits_made": { "min": 0 }, "stdout_contains": ["manifest.json", "locators.jsonl", "independent", "validator"] },
+  "acceptance": {
+    "output_contains": ["manifest.json", "redacted", "validator"],
+    "output_not_contains": ["deploy", "rewrite transcripts", "self-certify"]
+  },
   "teardown": { "reset_branch": true }
 }

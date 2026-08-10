@@ -181,7 +181,7 @@ Throughout the skills, the following substitutions have been made to make them p
 
 ## Skills Overview
 
-34 MCP skills organized into 8 manifest categories. Nineteen of these also have
+36 MCP skills organized into 8 manifest categories. Nineteen of these also have
 `/rdc:*` command shorthands for Claude Code/plugin callers.
 
 Use `rdc_skill_list` for the authoritative live catalog, including names,
@@ -303,6 +303,7 @@ Boundaries:
 
 ```
 skills/
+  behavior-audit/SKILL.md (governed behavior and policy audit)
   brochure/SKILL.md    (print-quality PDF rendering)
   build/SKILL.md       (dispatch agents in waves — mandatory validator gate)
   channel-formatter/SKILL.md (channel-native formatting and content packs)

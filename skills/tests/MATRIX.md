@@ -1,6 +1,6 @@
 # RDC Skill Test Suite Matrix
 
-Current coverage: 35 manifests for 35 skill directories.
+Current coverage: 36 manifests for 36 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
@@ -8,6 +8,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 
 | Skill | Manifest | Fixture prompt class | Assertions | Acceptance depth |
 |---|---|---|---|---|
+| `rdc:behavior-audit` | `rdc-behavior-audit.test.json` | Bounded transcript-audit fixture | `commits_made`, `exit_code`, `stdout_contains` | Redacted evidence bundle, independent validator, and no-deploy/no-self-certify checks |
 | `rdc:brochure` | `rdc-brochure.test.json` | HTML-to-PDF brochure fixture | `exit_code`, `stdout_contains` | PDF artifact, page/size/source output, and no upload/deploy/source-modification checks |
 | `rdc:build` | `rdc-build.test.json` | Unattended build from sandbox label | `commits_made`, `exit_code`, `stdout_contains` | Dispatch guide, code-review, validator, sandbox, and no-push/no-skip checks |
 | `rdc:channel-formatter` | `rdc-channel-formatter.test.json` | Long article to social content pack | `exit_code`, `stdout_contains` | Output contains, output not contains, tool-call routing |

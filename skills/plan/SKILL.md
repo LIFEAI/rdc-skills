@@ -234,15 +234,20 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - Epic via `insert_work_item(p_item_type := 'epic', p_definition_of_done := '[...]'::jsonb, ...)`
    - Epic DoD MUST include: `{"id":"test-plan-verified","text":"All test plan items implemented and passing","required":true,"checked":false}`
    - Set `p_definition_of_done` on the epic — child tasks inserted under it will auto-inherit it as their checklist
-   - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)` — checklist auto-hydrated from epic's DoD
+   - Attach a **Design Review contract** to every executable work package. It must contain registered architecture-evidence reference(s), declared target boundary, and a concrete alignment claim; independently observable acceptance criteria plus required `decomp-*` and `test-*` rows; and estimated files/LOC, declared surfaces, and change kind.
+   - One executable task per work package only through `upsert_admitted_work_item(...)`, never a direct `work_items` write. Supply a stable source fingerprint, the task checklist, and the Design Review contract. `insert_work_item` remains valid for the parent epic only.
+   - Do not invent architecture evidence. Missing or unregistered evidence, broad refactors, multi-surface work, or disproportionate contracts intentionally route to human Design Review.
+   - Read the durable result for each package: `dispatchable: true` / `automatic_approved` may become `todo`; `dispatchable: false` / `needs_human` or `pending` stays `blocked`, gets `needs-human-design-review`, and is reported as held.
    - **Additionally, write decomposition rows as checklist items** on each task, using id format `decomp-<surface>-<slug>`.
      The task checklist MUST include both the atomic `decomp-*` rows and the `test-*` verification rows.
      The `decomp-*` row text must include the route/file, action, expected result, and evidence artifact.
    - **Write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`:
      ```sql
-     SELECT insert_work_item(
+     SELECT upsert_admitted_work_item(
+       p_source_fingerprint := 'plan:<epic-id>:wp-2-ast-scanner:v1',
        p_parent_id := '<epic_id>',
        p_title := 'WP-2: AST Scanner',
+       p_description := 'Bounded scanner work package with its durable Design Review contract.',
        p_checklist := '[
          {"id":"decomp-api-scan-success","text":"api: GET /api/layout/scan?dir=apps/studio/src returns 200 JSON with roots[] and warnings[]; evidence: route probe output","required":true,"checked":false},
          {"id":"test-assert-scanner-filters","text":"assert: scanFile returns only container components","required":true,"checked":false},
@@ -250,7 +255,12 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
          {"id":"test-smoke-scan-api","text":"smoke: GET /api/layout/scan returns 200","required":true,"checked":false},
          {"id":"test-contract-scanresult","text":"contract: ScanResult shape matches spec","required":true,"checked":false},
          {"id":"tsc-clean","text":"npx tsc --noEmit passes","required":true,"checked":false}
-       ]'::jsonb
+       ]'::jsonb,
+       p_design_review := '{
+         "architecture":{"alignment_claim":"Scanner change stays within the declared analysis boundary.","evidence_refs":["<registered-reference>"],"target_boundaries":["<declared-boundary>"]},
+         "acceptance":{"criteria":["scanner focused test passes"]},
+         "proportionality":{"estimated_files":2,"estimated_loc":180,"declared_surfaces":["<surface>"],"change_kind":"feature"}
+       }'::jsonb
      );
      ```
    - Agents MUST tick each `decomp-*` and `test-*` checklist item as they implement/verify it via `update_checklist_item(..., p_actor_session_id := '<agent-session-id>', p_actor_role := 'agent')`
@@ -262,7 +272,7 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - Interactive: present the plan for approval before building
    - Unattended: skip approval, proceed immediately, emit status block:
      ```
-     PLAN_STATUS: { epic_id, task_count, doc_path, waves }
+     PLAN_STATUS: { epic_id, task_count, dispatchable_task_count, held_for_design_review, doc_path, waves }
      ```
 
 ## Unattended Escalation
@@ -280,6 +290,7 @@ choose the most conservative/reversible approach and document the decision.
 - Each work package must be independently executable by an agent
 - No file overlap between work packages
 - Include test requirements in every work package
+- **No executable work item is dispatchable without a durable Design Review decision; a planner cannot self-approve with prose-only evidence**
 - Reference affected CLAUDE.md files in each work package description
 - Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context
 - **If a work package involves creating a new deployed app:** the task description MUST say "Use `rdc:deploy new <slug>` — do NOT create the Coolify app manually. Read `docs/runbooks/coolify-app-templates.json` first." Assign it to an `infra` agent. This is a hard rule — manually created apps have consistently been misconfigured.
