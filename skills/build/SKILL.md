@@ -85,6 +85,8 @@ Read the task title and description, then:
    - A returned `admission_refocus` or `pipeline_blocked` is a durable hold, not a failed attempt to work around. Preserve its task state and route the required Design Review or validator closure.
    - Only a returned `pipeline_complete` whose phase tasks are all design-review admitted **and** durably `done` permits an epic completion claim. If the project lacks a real dispatcher/manifest, report `BLOCKED: CodeFlow supervisor entrypoint unavailable` rather than emulating completion.
 
+   **Read the epic's `plan_ref`, `spec_ref`, `architecture_ref`, and `scoping_statement`** (columns on the epic row). `scoping_statement` bounds what this build may touch. If `architecture_ref` is set, this epic crosses an architectural boundary — read that doc now, before classifying or dispatching any task, and carry it into every agent prompt below.
+
    **Session lock — claim the epic immediately (before any agent dispatch):**
 
    After loading the epic, check its status:
@@ -111,6 +113,7 @@ Read the task title and description, then:
    | Plan doc missing `## Checklist Quality Gate` with `verdict: PASS` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Any implementation task lacks `decomp-*` items, has < 10 attested rows, or leaves a declared surface (screen/api/db/tool) uncovered | → Invoke `rdc:plan` on this epic. Coarse/under-decomposed checklists cannot be safely dispatched. |
    | Any `decomp-*` item lacks route/file, action, expected result, or evidence artifact | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
+   | Epic has `architecture_ref` set and any implementation task's checklist lacks a required `architecture-fidelity-*` row | → Invoke `rdc:plan` on this epic. That task will hard-fail the exit gate at close regardless of build quality — catch it here, not after a wasted agent run. |
    | Tasks exist and have descriptions | → Continue with build. |
 
    **Re-planning is not a failure — it is correct behavior.** The build skill is the last gate before agent dispatch; catching an under-specified epic here is cheaper than a wasted agent run.
@@ -495,6 +498,10 @@ Read the task title and description, then:
        - test-visual-xxx: <description> → note: delegate to UI audit (you cannot verify this yourself)
        - test-contract-xxx: <description> → verify the export/type/shape exists
        Tick each item as you complete it. Do NOT batch — tick immediately after each verification.
+       ```
+     - **If the epic's `architecture_ref` is set**, the task's checklist carries a required `architecture-fidelity-*` row. Include it verbatim and instruct the agent:
+       ```
+       ARCHITECTURE FIDELITY — this epic crosses an architectural boundary (<architecture_ref>). Read that doc before implementing. Before ticking architecture-fidelity-<slug>, your implementation must actually conform to it — tick it via update_checklist_item(..., p_actor_role := 'agent') with evidence that cites the specific section/boundary, not a bare "done". update_work_item_status(..., 'done') hard-rejects this task without this row checked.
        ```
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
