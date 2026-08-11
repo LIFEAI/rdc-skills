@@ -72,10 +72,18 @@ Read the task title and description, then:
 
 ## Procedure
 
-1. **Load the epic and run pre-flight gate:**
+1. **Load the epic, durable admission decisions, and run the pre-flight gate:**
    ```sql
-   SELECT get_work_items_by_epic('<epic-id>', 'todo');
+   SELECT get_work_items_by_epic('<epic-id>');
    ```
+   - Read `design_review_state` and `status` for every executable child.
+   - Only `automatic_approved`, `human_approved`, or legacy `not_required` rows may be considered for dispatch.
+   - For `pending`, `needs_human`, or `rejected`, write an `admission_refocus` receipt, keep the child blocked, and route it to the reviewer/planner. **Do not dispatch it, retry it, or call the epic complete.**
+
+1a. **Run the durable CodeFlow supervisor before each wave and after every gate-changing action.**
+   - Invoke `runOrchestrator()` with the project manifest, `SupabaseStateStore`, and the real phase dispatcher. It is the sole authority for resuming/refocusing a phase DAG; do not reconstruct waves by hand from task prose.
+   - A returned `admission_refocus` or `pipeline_blocked` is a durable hold, not a failed attempt to work around. Preserve its task state and route the required Design Review or validator closure.
+   - Only a returned `pipeline_complete` whose phase tasks are all design-review admitted **and** durably `done` permits an epic completion claim. If the project lacks a real dispatcher/manifest, report `BLOCKED: CodeFlow supervisor entrypoint unavailable` rather than emulating completion.
 
    **Session lock — claim the epic immediately (before any agent dispatch):**
 
@@ -296,7 +304,7 @@ Read the task title and description, then:
     The agent must complete every item on this checklist and return it checked off in AGENT_COMPLETE.
     A checklist with unchecked items = incomplete work. Do not proceed to next wave with unchecked items.
 
-6. **Group tasks into waves** — parallelize tasks with no file overlap:
+6. **Use the supervisor-resolved waves** — parallelize only phases returned by `runOrchestrator()` after its durable admission check:
    - Wave 1: independent tasks (different packages/files)
    - Wave 2: tasks that depend on Wave 1 outputs
    - Wave 3: integration tasks
@@ -543,6 +551,7 @@ Read the task title and description, then:
 
    - Resolve any conflicts before proceeding — do not skip
    - Worker agents set items to `review` — **do NOT close to `done` yet**
+   - Re-invoke `runOrchestrator()` after the durable status/gate update. A task in `review` remains incomplete even when its phase gate passed.
    - After all branches merged, push once:
      ```bash
      if [ "$RDC_TEST" != "1" ]; then
@@ -633,7 +642,7 @@ Read the task title and description, then:
 
 11. **After verification passes:**
     - All wave commits are already on develop and pushed (Step 9 pushes after each wave merge).
-    - Update epic version: `bump_epic_version()`
+    - Re-invoke `runOrchestrator()` and require its `pipeline_complete` receipt before `bump_epic_version()` or any epic completion claim. A clean code review or green test suite is not a substitute for admitted, validator-closed work items.
     - Report summary with verification evidence quoted
 
 ## Agent TDD Requirements
@@ -651,6 +660,7 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 - NEVER run `pnpm build` (crashes system) — code only
 - Every agent reads its guide file — no exceptions
 - Update Supabase work items IN REAL TIME — not batch at end
+- **Never dispatch, resume, or complete around `design_review_state`; the durable database result and `runOrchestrator()` receipt win over an agent's narrative**
 - Push after each wave, not just at the end
 - Unattended: NEVER pause — continue automatically
 - Unattended: max 2 retries per task before escalating to advisor

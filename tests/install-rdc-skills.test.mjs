@@ -24,7 +24,7 @@ const plugin = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin', 'plugin
 const skillCount = Array.isArray(plugin.skills_meta)
   ? plugin.skills_meta.length
   : Object.keys(plugin.skills_meta || {}).length;
-assert.equal(skillCount, 34, 'test fixture should expose all 34 MCP skills from plugin skills_meta');
+assert.equal(skillCount, 36, 'test fixture should expose all 36 MCP skills from plugin skills_meta');
 assert.match(
   source,
   /Available MCP skills.*\/rdc:\* command shorthands/,

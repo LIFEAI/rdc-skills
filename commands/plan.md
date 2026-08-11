@@ -107,6 +107,11 @@ description: >-
    - Include the guide file path (from `.rdc/guides/`, fallback `.rdc/guides/`) in each work package description
    - Include any relevant architecture doc, context file, or package CLAUDE.md the agent must read
    - Estimate: small (1 agent, <500 LOC), medium (1 agent, 500-1500 LOC), large (needs splitting)
+   - Attach a **Design Review contract** to every executable package. It must contain:
+     - architecture alignment: registered architecture-evidence reference(s), declared target boundary, and a concrete alignment claim;
+     - completeness: independently observable acceptance criteria plus at least one required `decomp-*` and `test-*` checklist row; and
+     - proportionality: estimated files/LOC, declared surfaces, and change kind.
+   - Do not invent architecture evidence. Missing, unregistered, broad-refactor, multi-surface, or disproportionate contracts are intentionally routed to human Design Review.
 
 6. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist):
    ```markdown
@@ -127,14 +132,17 @@ description: >-
 
 7. **Create Supabase epic + child tasks:**
    - Epic via `insert_work_item(p_item_type := 'epic', ...)`
-   - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)`
+   - One task per work package only through `upsert_admitted_work_item(...)`, never a direct `work_items` write. Supply a stable source fingerprint, the package checklist, and the Design Review contract from Step 5.
+   - Read the durable result for each package:
+     - `dispatchable: true` / `automatic_approved` → task may become `todo`;
+     - `dispatchable: false` / `needs_human` or `pending` → keep the task `blocked`, label it `needs-human-design-review`, and include the assessment in the plan status.
    - Set priorities: urgent/high/normal based on sequencing
 
 8. **Report results:**
    - Interactive: present the plan for approval before building
    - Unattended: skip approval, proceed immediately, emit status block:
      ```
-     PLAN_STATUS: { epic_id, task_count, doc_path, waves, source_docs_read: [list], architecture_conflicts: [] }
+     PLAN_STATUS: { epic_id, task_count, dispatchable_task_count, held_for_design_review, doc_path, waves, source_docs_read: [list], architecture_conflicts: [] }
      ```
 
 ## Unattended Escalation
@@ -153,6 +161,7 @@ choose the most conservative/reversible approach and document the decision.
 - Each work package must be independently executable by an agent
 - No file overlap between work packages
 - Include test requirements in every work package
+- **No executable work item is dispatchable without a durable Design Review decision; a planner cannot self-approve by supplying prose-only evidence**
 - Reference affected CLAUDE.md files and architecture docs in each work package description
 - Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context
 - Always list source docs read in the output doc header and status block
