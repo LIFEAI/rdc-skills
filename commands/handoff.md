@@ -105,6 +105,19 @@ SELECT insert_work_item(
   p_source      := 'planning'
 );
 
+-- Immediately populate governance refs — the handoff's plan doc IS the plan_ref/spec_ref.
+-- Set architecture_ref ONLY when this handoff crosses an architectural boundary (storage
+-- authority, process topology, auth boundary, deployment model, persistence, service
+-- ownership, public contract); leave it NULL for ordinary feature work, or every task
+-- below gets held for a review it doesn't need.
+SELECT set_epic_governance_refs(
+  p_epic_id := '<epic-uuid>'::uuid,
+  p_plan_ref := '.rdc/plans/<topic-slug>.md',
+  p_spec_ref := '.rdc/plans/<topic-slug>.md',
+  p_architecture_ref := '<docs/systems/<system>/ARCHITECTURE.md or NULL>',
+  p_scoping_statement := '<one paragraph: what is explicitly in scope and what is explicitly out of scope>'
+);
+
 -- Create tasks (one per work package)
 SELECT insert_work_item(
   p_title       := '<Package Name>',
@@ -121,6 +134,9 @@ Est: <hours>',
   p_labels      := ARRAY['<label>'],
   p_estimated_hours := 2,
   p_source      := 'planning'
+  -- If the epic has architecture_ref set, also add a required
+  -- architecture-fidelity-<slug> checklist row via p_checklist here — the exit gate
+  -- hard-rejects `done` on any task under an architecture_ref epic that lacks one.
 );
 ```
 

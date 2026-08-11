@@ -250,6 +250,16 @@ SELECT insert_work_item(
   p_project_node_id := '<project_node_id>'::uuid,
   p_labels          := ARRAY['onramp','<archetype>']
 );
+
+-- Immediately populate governance refs. architecture_ref stays NULL — onramp phases are
+-- data/content pipeline work (research, brand, site build), not an architectural-boundary
+-- change; setting it would hold every phase task for a review it doesn't need.
+SELECT set_epic_governance_refs(
+  p_epic_id := '<epic-uuid>'::uuid,
+  p_spec_ref := 'BRIDGE-MODE-SPEC.md',
+  p_architecture_ref := NULL,
+  p_scoping_statement := 'Enroll <slug> through the 7 onramp phases: enroll, research + document integration, conflict resolution, brand book + imagery, Regen Score gate, site build, deploy dev.'
+);
 ```
 
 ### 1.5 Disk Tree + Directory Verification

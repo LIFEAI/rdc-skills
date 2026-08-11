@@ -39,6 +39,18 @@ SELECT insert_work_item(
   p_labels      := ARRAY['system-label'],
   p_source      := 'planning'
 );
+
+-- Immediately populate governance refs. architecture_ref stays NULL unless this epic
+-- crosses an architectural boundary (storage authority, process topology, auth boundary,
+-- deployment model, persistence, service ownership, public contract) — setting it holds
+-- every child task for a required architecture-fidelity-* checklist row at close time.
+SELECT set_epic_governance_refs(
+  p_epic_id := '<epic-uuid>'::uuid,
+  p_plan_ref := '.rdc/plans/<n>.md or NULL',
+  p_spec_ref := '.rdc/plans/<n>.md or NULL',
+  p_architecture_ref := NULL,
+  p_scoping_statement := '<one paragraph: what is in scope and what is explicitly out>'
+);
 ```
 
 ## Create Task
