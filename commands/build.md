@@ -87,6 +87,7 @@ Read the task title and description, then:
    ```
    - Interactive (no args): show open epics, ask which to build
    - Unattended (no tasks found): escalate via advisor tool
+   - **Read the epic's `plan_ref`, `spec_ref`, `architecture_ref`, and `scoping_statement` fields** (returned on the epic row itself). `scoping_statement` bounds what this build may touch — do not silently expand past it. If `architecture_ref` is set, this epic crosses an architectural boundary: read that doc now, before classifying or dispatching any task, and carry it into every agent prompt in step 7.
 
 2. **CHECK FOR EXISTING WORK (mandatory — never skip):**
    ```sql
@@ -124,7 +125,9 @@ Read the task title and description, then:
      - `"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."`
      - Specific files to create/modify
      - Exact deliverables and commit message
+     - The epic's `scoping_statement` — explicit boundary on what this task may and may not touch
      - `"NEVER run pnpm build/test. NEVER modify files outside your scope."`
+   - **If the epic's `architecture_ref` is set:** include `"Read <architecture_ref> before implementing. Your task's checklist requires a checked architecture-fidelity-<slug> row before this item can close — when you tick it, its evidence must cite the specific section/boundary of <architecture_ref> your implementation conforms to, not just 'done'."` A task under an `architecture_ref` epic will hard-fail at the exit gate (step 9) without this row checked with real evidence.
    - Use `run_in_background: true` for parallel execution
    - NEVER let agents overlap on the same files
 
@@ -143,6 +146,7 @@ Read the task title and description, then:
    - Verify commit landed on the development branch
    - Push to origin *(skip if `$RDC_TEST=1` — echo `[RDC_TEST] skipping git push` instead)*
    - Ensure the agent submitted `implementation_report.codeflow_post`, then set the work item to `review`; the validator closes `done`
+   - **If the epic's `architecture_ref` is set:** before the validator attempts `done`, confirm the task's checklist has a checked `architecture-fidelity-*` row with real evidence (a cited doc section, not a bare "matches"). `update_work_item_status(..., 'done')` will hard-reject otherwise — catching this here avoids a wasted validator round-trip.
    - Continue to next wave
 
    **If an agent fails:**
