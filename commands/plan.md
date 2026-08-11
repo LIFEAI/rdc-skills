@@ -127,7 +127,9 @@ description: >-
 
 7. **Create Supabase epic + child tasks:**
    - Epic via `insert_work_item(p_item_type := 'epic', ...)`
+   - Immediately call `set_epic_governance_refs(p_epic_id, p_plan_ref := '.rdc/plans/<topic-slug>.md', p_spec_ref := '.rdc/plans/<topic-slug>.md', p_architecture_ref := '<ARCHITECTURE.md path or NULL — set only when this plan crosses an architectural boundary>', p_scoping_statement := '<in/out of scope, one paragraph>')` so `rdc:build`/`rdc:overnight`/`rdc:fixit`/`rdc:refactor` never have to guess or stall on these fields
    - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)`
+   - If (and only if) the epic's `architecture_ref` is set, each task's checklist MUST also include one required `architecture-fidelity-<slug>` row naming the specific architecture doc + boundary — the exit gate hard-rejects `done` on any task under an `architecture_ref` epic missing this row. Do not add it under an epic with no `architecture_ref` — that holds ordinary work for a review it doesn't need.
    - Set priorities: urgent/high/normal based on sequencing
 
 8. **Report results:**

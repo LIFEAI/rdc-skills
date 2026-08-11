@@ -234,11 +234,22 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
    - Epic via `insert_work_item(p_item_type := 'epic', p_definition_of_done := '[...]'::jsonb, ...)`
    - Epic DoD MUST include: `{"id":"test-plan-verified","text":"All test plan items implemented and passing","required":true,"checked":false}`
    - Set `p_definition_of_done` on the epic — child tasks inserted under it will auto-inherit it as their checklist
+   - **Immediately after creating the epic, call `set_epic_governance_refs`** so downstream execution (`rdc:build`, `rdc:overnight`, `rdc:fixit`, `rdc:refactor`) never has to guess or stall waiting on these fields:
+     ```sql
+     SELECT set_epic_governance_refs(
+       p_epic_id := '<epic_id>',
+       p_plan_ref := '.rdc/plans/<topic-slug>.md',           -- the doc written in step 6
+       p_spec_ref := '.rdc/plans/<topic-slug>.md',            -- same doc unless a dedicated spec doc exists for this topic
+       p_architecture_ref := '<docs/systems/<system>/ARCHITECTURE.md or NULL>',  -- set ONLY when this plan crosses an architectural boundary (storage authority, process topology, auth boundary, deployment model, persistence, service ownership, public contract) — leave NULL for ordinary feature/bugfix work, or every task gets held for human review that doesn't need it
+       p_scoping_statement := '<one paragraph: what is explicitly in scope and what is explicitly out of scope for this epic>'
+     );
+     ```
    - One task per work package via `insert_work_item(p_parent_id := <epic_id>, ...)` — checklist auto-hydrated from epic's DoD
    - **Additionally, write decomposition rows as checklist items** on each task, using id format `decomp-<surface>-<slug>`.
      The task checklist MUST include both the atomic `decomp-*` rows and the `test-*` verification rows.
      The `decomp-*` row text must include the route/file, action, expected result, and evidence artifact.
-   - **Write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`:
+   - **Write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`.
+   - **If (and only if) the epic's `architecture_ref` is set** (this work package crosses an architectural boundary), ALSO write one required `architecture-fidelity-<slug>` checklist row on that task: text names the specific architecture doc + the boundary being touched, e.g. `"implementation matches docs/systems/codeflow/ARCHITECTURE.md § local-index registration"`. The exit gate (`update_work_item_status(..., 'done')`) hard-rejects closure on any task under an architecture_ref epic that lacks this row — do not add it to tasks under an epic with no `architecture_ref`; that would hold ordinary work for a review it doesn't need.
      ```sql
      SELECT insert_work_item(
        p_parent_id := '<epic_id>',
@@ -251,9 +262,10 @@ description: "Usage `rdc:plan <topic>` — No epic exists and you need architect
          {"id":"test-contract-scanresult","text":"contract: ScanResult shape matches spec","required":true,"checked":false},
          {"id":"tsc-clean","text":"npx tsc --noEmit passes","required":true,"checked":false}
        ]'::jsonb
+       -- Only add an architecture-fidelity-* row here too if this task's epic has architecture_ref set.
      );
      ```
-   - Agents MUST tick each `decomp-*` and `test-*` checklist item as they implement/verify it via `update_checklist_item(..., p_actor_session_id := '<agent-session-id>', p_actor_role := 'agent')`
+   - Agents MUST tick each `decomp-*`, `test-*`, and (when present) `architecture-fidelity-*` checklist item as they implement/verify it via `update_checklist_item(..., p_actor_session_id := '<agent-session-id>', p_actor_role := 'agent')`
    - Agents submit `implementation_report.codeflow_post`, then move work to `review`; validators close `done`
    - `update_work_item_status('done', ..., p_actor_role := 'validator')` rejects missing reports, unchecked required items, and supervisor/validator re-ticks
    - Set priorities: urgent/high/normal based on sequencing
