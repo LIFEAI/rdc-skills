@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.26.6",
+  "version": "0.27.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -1402,7 +1402,12 @@
             "name": "action",
             "required": false,
             "default": "status",
-            "values": ["status", "install", "repair", "update"]
+            "values": [
+              "status",
+              "install",
+              "repair",
+              "update"
+            ]
           }
         ],
         "flags": []
@@ -1424,7 +1429,9 @@
         "GPU crash"
       ],
       "follows": [],
-      "leads_to": ["status"],
+      "leads_to": [
+        "status"
+      ],
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
@@ -1580,19 +1587,58 @@
       "category": "reporting",
       "usage": "rdc:behavior-audit <report-dir> [--since-days N] [--latest N] [--reprocess]",
       "args": {
-        "positional": [{ "name": "report-dir", "required": true, "description": "Bounded directory for the evidence bundle.", "accepts": "path" }],
+        "positional": [
+          {
+            "name": "report-dir",
+            "required": true,
+            "description": "Bounded directory for the evidence bundle.",
+            "accepts": "path"
+          }
+        ],
         "flags": [
-          { "name": "--since-days", "type": "number", "default": 7, "description": "Only include transcripts modified within the window." },
-          { "name": "--latest", "type": "number", "default": null, "description": "Limit to the newest N sessions per engine." },
-          { "name": "--reprocess", "type": "boolean", "default": false, "description": "Intentionally parse completed hashes again without deleting the ledger." }
+          {
+            "name": "--since-days",
+            "type": "number",
+            "default": 7,
+            "description": "Only include transcripts modified within the window."
+          },
+          {
+            "name": "--latest",
+            "type": "number",
+            "default": null,
+            "description": "Limit to the newest N sessions per engine."
+          },
+          {
+            "name": "--reprocess",
+            "type": "boolean",
+            "default": false,
+            "description": "Intentionally parse completed hashes again without deleting the ledger."
+          }
         ]
       },
-      "requires": ["codeflow", "work-items-rpc"],
-      "produces": ["work_items", ".rdc/reports/"],
+      "requires": [
+        "codeflow",
+        "work-items-rpc"
+      ],
+      "produces": [
+        "work_items",
+        ".rdc/reports/"
+      ],
       "default_model": "inherit",
-      "triggers": ["audit transcript calls", "audit codex behavior", "audit claude behavior", "truth gate audit", "review behavior evidence", "why did the agent bypass the gate"],
-      "follows": ["workitems"],
-      "leads_to": ["review"],
+      "triggers": [
+        "audit transcript calls",
+        "audit codex behavior",
+        "audit claude behavior",
+        "truth gate audit",
+        "review behavior evidence",
+        "why did the agent bypass the gate"
+      ],
+      "follows": [
+        "workitems"
+      ],
+      "leads_to": [
+        "review"
+      ],
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
