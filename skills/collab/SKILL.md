@@ -17,6 +17,14 @@ description: "Usage `rdc:collab <collaborator> [mode] <topic>` — Structured co
 
 ---
 
+> **Two halves.** This file is the **initiator's** contract — how to dispatch,
+> what to demand, how to bound it. [`COLLABORATOR.md`](./COLLABORATOR.md) is the
+> **responder's** contract — what the peer owes back and what it may expect from
+> you. **Link `COLLABORATOR.md` in every dispatch**; a contract only one side has
+> read is a contract only one side keeps.
+
+---
+
 ## The rule this skill exists to enforce
 
 **Never dispatch to another agent without a response contract.**
