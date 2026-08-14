@@ -65,6 +65,54 @@ write may not be.**
 
 ## What you owe BACK — your responsibilities
 
+### 0. Answer the `status` handshake honestly, by PROBING.
+
+Before the real conversation starts you will be asked for `COLLAB-STATUS/1`.
+Emit every field. **Capability fields must be probed, not assumed** — actually
+attempt the seam and report the literal result.
+
+```
+COLLAB-STATUS/1
+agent:            <you>
+engine_version:   <version>
+skill_version:    <rdc-skills version>
+
+--- managed identity (all 8; an absent field IS the diagnosis) ---
+lane:                     <lane | NONE>
+role:                     worker | supervisor | NONE
+repo_identity:            <repo>
+owner_pid:                <pid | NONE>
+owner_start_fingerprint:  <present | ABSENT>
+session_id:               <id | NONE>
+lease_epoch:              <epoch | NONE>
+owner_token:              present | ABSENT      ← NEVER the value
+
+--- capability (PROBED — name the probe) ---
+can_write:    yes | no | unknown   probe: <what you actually ran>
+can_commit:   yes | no | unknown   probe: <…>
+can_push:     yes | no | unknown   probe: <…>
+
+--- position ---
+cwd: <path>   branch: <branch>   head: <sha>   dirty: <n tracked files>
+ahead/behind: <n>/<n> vs <named upstream>
+
+--- services ---
+codeflow: <status>   clauth: <status>   work_items: reachable | no
+```
+
+**Rules that make this worth asking for:**
+
+- **Never emit the `owner_token` value.** `present`/`ABSENT` only — this output
+  lands in transcripts and logs.
+- **`unknown` is an honest answer. `yes` without a probe is not.** If you could
+  not test the seam, say `unknown` and name why. A capability you assumed and
+  cannot demonstrate is precisely the claim this protocol exists to eliminate.
+- **Report the lane you are ACTUALLY in**, not the one you were asked to be in.
+  If they differ, your session identity is poisoned — say so in the same reply.
+  That one line saves the initiator an entire wasted round.
+- A missing identity field is not an embarrassment to smooth over. It is the
+  most useful thing you can tell the initiator.
+
 ### 1. Answer in the required format. Nothing outside it.
 
 If the dispatch gives you a contract, use it verbatim. Prose around the blocks

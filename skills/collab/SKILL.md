@@ -1,6 +1,6 @@
 ---
 name: rdc:collab
-description: "Usage `rdc:collab <collaborator> [inbound] <topic>` — Structured agent-to-agent CONVERSATION with Codex, a local LLM, a Claude agent, or a claude.ai session. Converges on a decision and never writes to the repo — work that needs writing becomes a work item for rdc:build. Every dispatch carries a response contract."
+description: "Usage `rdc:collab <collaborator> [inbound] <topic>` — Structured agent-to-agent CONVERSATION with Codex, a local LLM, a Claude agent, or a claude.ai session. Converges on a decision and never writes to the repo — work that needs writing becomes a work item for rdc:build. Run `rdc:collab status <peer>` first — both sides emit probed capability state. Every dispatch carries a response contract."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -116,8 +116,11 @@ diagnosis ladder in order and stop at the first hit:
 2. **Did it exit, and with what?** A non-zero exit or exit 143 (killed) is a
    result, not silence. Read it.
 3. **Was it guard-blocked?** Grep the output for a `deny`/`Blocked` line. The
-   `CODEX MANAGED LANE` block is the common one and is a *dispatch* defect
-   (wrong `-C`), not a peer failure — fix and re-dispatch once.
+   `CODEX MANAGED LANE` block is the common one and is a *dispatch* defect, not a
+   peer failure. **It is not fixed by `-C`** — the session's identity was recorded
+   at creation and `resume` replays it, so a mis-started session is poisoned for
+   life. Start a **new** session in the right lane. Had `status` run first
+   (Step 0.5), this would have been visible before any content was sent.
 4. **Is the session still addressable?** A stale `resume <session-id>`, a stopped
    chitchat session, or a dead local-LLM endpoint all present as silence.
 5. **Did it answer somewhere you are not reading?** A peer that cannot write its
@@ -134,8 +137,9 @@ outliving its dispatch is noise, and noise is how a real stall gets ignored.
 ## Step 0 — Parse arguments
 
 ```
-rdc:collab <collaborator> [mode] <topic…>
-rdc:collab --session <id>          ← legacy form, implies `claude-ai listen`
+rdc:collab status <collaborator>          ← handshake; run BEFORE round 1
+rdc:collab <collaborator> [inbound] <topic…>
+rdc:collab --session <id>                 ← legacy form, implies `claude-ai inbound`
 ```
 
 - No collaborator → list active chitchat sessions and available engines, then stop.
@@ -143,6 +147,73 @@ rdc:collab --session <id>          ← legacy form, implies `claude-ai listen`
   claude.ai relay section. Same conversation, opposite direction.
 - **If the topic names work to be performed rather than a question to settle, this
   is the wrong skill.** Create the work item and use `rdc:build` / `rdc:fixit`.
+
+---
+
+## Step 0.5 — `status` handshake (run BEFORE round 1)
+
+`rdc:collab status <collaborator>` — both sides emit their state. **This is a
+precondition, not a debugging command.** Reaching for it after a failure is
+already too late; the point is to never dispatch into a session that cannot
+deliver.
+
+**The probe rule — the whole value of this step.** Every capability field is
+**PROBED, never asserted.** A peer that *reports* `can_write: yes` from an
+assumption has produced another unverified capability claim, which is the defect
+class this entire protocol exists to remove. `-C` "should" have set lane identity
+too. Probe the seam, report the literal result, and if you cannot probe, say
+`unknown` — never `yes`.
+
+### `COLLAB-STATUS/1` payload
+
+```
+COLLAB-STATUS/1
+agent:            codex | claude-code | claude-ai | local-llm
+engine_version:   <version>
+skill_version:    <rdc-skills version>
+
+--- managed identity (the 8 fields; absent ones are the diagnosis) ---
+lane:                     <lane | NONE>
+role:                     worker | supervisor | NONE
+repo_identity:            <repo>
+owner_pid:                <pid | NONE>
+owner_start_fingerprint:  <present | ABSENT>
+session_id:               <id | NONE>
+lease_epoch:              <epoch | NONE>
+owner_token:              present | ABSENT      ← NEVER the value
+
+--- capability (PROBED — state the probe used) ---
+can_write:    yes | no | unknown   probe: <what you actually ran>
+can_commit:   yes | no | unknown   probe: <…>
+can_push:     yes | no | unknown   probe: <…>
+
+--- position ---
+cwd:      <path>
+branch:   <branch>
+head:     <sha>
+dirty:    <n tracked files>
+ahead/behind: <n>/<n> vs <named upstream>
+
+--- services ---
+codeflow: <status>   clauth: <status>   work_items: reachable | no
+```
+
+**`owner_token` reports `present`/`ABSENT` only. Never emit the value** — status
+output lands in transcripts and logs.
+
+### How the initiator reads it
+
+| Signal | Meaning | Action |
+|---|---|---|
+| `lane: NONE` or missing identity fields | No managed identity was ever minted | Conversation only. Do not name this peer as writer. |
+| `can_write: no` | Structurally read-only right now | Fine for collab. Name someone else to land the outcome. |
+| `can_write: unknown` | It could not probe | Treat as `no` until proven. Never as `yes`. |
+| `lane` ≠ the lane you dispatched to | **Poisoned session** — identity is recorded at creation and `resume` replays it | Start a NEW session. `-C` will not repair it. |
+| `dirty` > 0 on a peer you are about to name as writer | Pre-existing uncommitted work | Surface it before it gets swept into your commit |
+
+**Mismatch between what you dispatched and what `status` reports is the single
+highest-value signal in this protocol.** It is exactly the failure that cost a
+full negotiation on 2026-08-14, and it is visible in one line here.
 
 ---
 
