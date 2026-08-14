@@ -44,6 +44,25 @@ not an evasion.
 
 ---
 
+## The boundary — you are in a CONVERSATION, not a build
+
+**Do not write to the repository during a collab. Not one file.**
+
+This is not a restriction on you; it is what a collab *is*. Your deliverable is
+the **reply**. If settling the point requires code, config, or a document change,
+say what should change — the change itself happens afterward, in a session built
+for it (`rdc:build`, an isolated worktree agent, or you working your own lane
+against a work item).
+
+**Why it matters to you specifically:** a peer that tries to write mid-conversation
+can end up holding finished, correct work it cannot deliver — refused by a write
+guard, then refused permission to stop by a gate demanding the delivery evidence
+that guard just made impossible. That happened on 2026-08-14 and cost a complete
+negotiation result. **Your reasoning in the reply is always deliverable. A file
+write may not be.**
+
+---
+
 ## What you owe BACK — your responsibilities
 
 ### 1. Answer in the required format. Nothing outside it.
@@ -51,27 +70,26 @@ not an evasion.
 If the dispatch gives you a contract, use it verbatim. Prose around the blocks
 is not helpful — it is what the format exists to remove.
 
-**Negotiate — one block per point:**
+**One block per point:**
 
 ```
 POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE
-EDIT: <the exact section and change you will make, or NONE>
+EDIT: <the exact section and change that SHOULD be made, or NONE — describe it, do not make it>
 REASON: <one sentence — only if AMENDMENT or DISAGREE>
 ```
 
-**Delegate:**
+**For a factual question rather than a proposal:**
 
 ```
-STATUS: DONE | PARTIAL | BLOCKED
-CHANGED: <file paths, or NONE>
+FINDING <n>: <the answer, one sentence>
 EVIDENCE: <command run + literal result — exit code, row count, probe status>
-BLOCKED: <what stopped you, or NONE>
+CONFIDENCE: VERIFIED | INFERRED | UNKNOWN
 ```
 
 **Always close with:**
 
 ```
-OWNER: <who writes the change — exactly one agent>
+OWNER: <who lands the resulting Decision or work item — exactly one agent>
 BLOCKED: <what you cannot do from where you are, or NONE>
 ```
 
@@ -87,11 +105,11 @@ answer in the reply body. Do not let it die inside a failed tool call.
 
 ### 3. Do not write outside your own lane or scope.
 
-- **Codex:** you must be running in a Codex-owned lane (`x-codex-N`, `x-codex-sv`).
-  If the initiator invoked you with its own cwd, every write will be refused with
+- **Codex:** if you were started by `codex exec` (headless), you CANNOT write in any lane — your managed identity was never minted and `-C` does not create it. Report `BLOCKED: headless codex exec has no lane claim` and put your answer in the reply. If you were started by the launcher in a Codex-owned lane (`x-codex-N`, `x-codex-sv`), you can write, but not during a collab.
+  A session created in the wrong cwd is poisoned for its whole life — `resume` replays the recorded identity. Writes are refused with
   `CODEX MANAGED LANE: App Local must use an owned managed Codex lane`. That is a
-  **dispatch defect, not your failure** — report it as `BLOCKED: wrong lane
-  attachment, re-dispatch with -C <my-lane>` and do not attempt a workaround.
+  **dispatch defect, not your failure** — report it as `BLOCKED: poisoned session identity, start a NEW session in
+  my lane` — `-C` will NOT repair it. Do not attempt a workaround.
 - **Claude agents:** if you will commit, you must have been given
   `isolation: "worktree"` as a real tool parameter. A sentence in your prompt
   claiming isolation is inert.
@@ -155,6 +173,7 @@ cannot act on a guess it has to verify.
 | Filing a settled agreement as a lesson | Buries a queryable Decision |
 | Going silent when blocked | Indistinguishable from being dead |
 | Editing a document you do not own | Lost work, no error, no trace |
+| Writing ANY file during a collab | Not your job here — the reply is the deliverable |
 | Committing to whatever branch you happen to be on | The change strands where nobody looks for it |
 | Answering an easier adjacent question | The real point stays open and looks settled |
 | Attempting a workaround for a guard block | The guard is usually right; the dispatch is usually wrong |

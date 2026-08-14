@@ -1,6 +1,6 @@
 ---
 name: rdc:collab
-description: "Usage `rdc:collab <collaborator> [mode] <topic>` — Structured collaboration with another agent: Codex, a local LLM, a Claude agent, or a claude.ai session. Modes: negotiate (converge on a decision), delegate (hand off work), listen (claude.ai relay). Every dispatch carries a response contract."
+description: "Usage `rdc:collab <collaborator> [inbound] <topic>` — Structured agent-to-agent CONVERSATION with Codex, a local LLM, a Claude agent, or a claude.ai session. Converges on a decision and never writes to the repo — work that needs writing becomes a work item for rdc:build. Every dispatch carries a response contract."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -11,9 +11,50 @@ description: "Usage `rdc:collab <collaborator> [mode] <topic>` — Structured co
 
 # /rdc:collab — Structured Agent-to-Agent Collaboration
 
-> `rdc:collab <collaborator> [mode] <topic>`
+> `rdc:collab <collaborator> [inbound] <topic>`
 > Collaborators: `codex` · `local-llm` · `claude-agent` · `claude-ai`
-> Modes: `negotiate` (default for a decision) · `delegate` · `listen`
+> Direction: outbound (default, you dispatch) · `inbound` (claude.ai relay, peer initiates)
+
+---
+
+## Collab is CONVERSATION. It never writes to the repo.
+
+**There is one mode, because there was only ever one.** v0.27.0 shipped a
+`delegate` mode whose contract asked the peer for `CHANGED: <file paths>` — an
+instruction to go mutate the repo and report back. Handing work off is a real
+need; routing it through a *conversation channel* is a category error. Work goes
+to `rdc:build`, to an `Agent` with `isolation: "worktree"` as a real parameter, or
+to a launcher-started session working its own lane against a work item. Those have
+isolation, a work item, review, and landing. A chat channel has none of them.
+
+**This is a design boundary, not a workaround for a broken door.** A separate,
+real constraint exists — a headless `codex exec` peer currently cannot write at
+all (see the note under Step 1) — but that constraint is a **bug being fixed**,
+not the reason for this rule. Even once headless Codex can write, work handoff
+still goes through the build path. Do not read the boundary as "collab can't
+write"; read it as "collab isn't where writing belongs."
+
+**The boundary:**
+
+| Collab does | Collab never does |
+|---|---|
+| Ask, answer, converge, disagree | Edit a file |
+| Produce a **Decision** for the governing document | Commit or push |
+| Produce a **work item** when writing is required | Build, deploy, or land |
+| Return findings, verdicts, evidence *as text* | Claim to have changed anything |
+
+**When code must be written, collab is over.** Its output is a work item, and the
+writing happens where writing belongs — `rdc:build`, an `Agent` with
+`isolation: "worktree"` as a real parameter, or the peer working its own lane
+against that item. A conversation channel is not a build channel.
+
+**Why this is structural, not a style rule.** Because collab never mutates, a
+collab session is non-mutating *by definition* — there is no mode to select
+wrongly and no flag to leave on. Delivery gates (truth-gate, completion gate,
+CodeFlow preflight) have nothing to gate, and safety guards (credential exposure,
+cross-tree write, push-main, lane identity) remain fully live because nothing
+here goes near them. The peer that tries to write is not blocked by policy; it is
+simply doing something this skill never asks for.
 
 ---
 
@@ -98,8 +139,10 @@ rdc:collab --session <id>          ← legacy form, implies `claude-ai listen`
 ```
 
 - No collaborator → list active chitchat sessions and available engines, then stop.
-- No mode → `negotiate` if the topic names a document, decision, plan, or review;
-  `delegate` if it names work to perform; `listen` for `claude-ai` with `--session`.
+- `inbound` (or the legacy `--session <id>` form) → the peer initiates; see the
+  claude.ai relay section. Same conversation, opposite direction.
+- **If the topic names work to be performed rather than a question to settle, this
+  is the wrong skill.** Create the work item and use `rdc:build` / `rdc:fixit`.
 
 ---
 
@@ -110,7 +153,28 @@ most common failure and it fails at the guard layer, not the prompt layer.
 
 | Collaborator | Invocation | Isolation requirement | Known failure mode |
 |---|---|---|---|
-| **`codex`** | `codex exec -C <its-lane> "<msg>"` · resume: `codex exec -C <its-lane> resume <session-id> "<msg>"` | **MUST run with `-C` pointing at a Codex-owned lane** (`x-codex-N` or `x-codex-sv`) | Inheriting your cwd attaches Codex to *your* lane; `managedAppAttachmentDecision()` refuses every write with `CODEX MANAGED LANE: App Local must use an owned managed Codex lane`. The guard is correct — fix the `-C`, never the guard. |
+| **`codex`** | `codex exec [-C <dir>] "<msg>"` · resume: `codex exec resume <session-id> "<msg>"` | **A headless `codex exec` peer is READ-ONLY. It cannot write to any lane — see below.** Never dispatch it from your own lane. | Its managed identity is fixed at session creation and `-C` does **not** change it. Dispatch from your lane and every write is refused with `CODEX MANAGED LANE: App Local must use an owned managed Codex lane` — permanently, for that session's whole life. |
+
+> **`-C` does not establish lane identity — verified 2026-08-14, and an earlier
+> version of this table said the opposite.** Managed identity is an 8-field record
+> (`lane, role, repoIdentity, ownerPid, ownerStartFingerprint, sessionId,
+> leaseEpoch, ownerToken`) built by `buildStartupIdentity()` in
+> [`pool/codex-topology.mjs`](file:///C:/Dev/lifeai-env/pool/codex-topology.mjs)
+> and minted **only by the interactive launcher**, which also claims the lease.
+> `codex exec` has no lane-claim path, so it cannot produce that record — which
+> means **a headless Codex peer cannot write in any lane, including its own**.
+>
+> Two consequences: (1) `resume` replays the session's *recorded* identity, so a
+> session created in the wrong cwd is poisoned for life and `-C` will not repair
+> it — start a new session instead; (2) treat a `codex exec` peer as a
+> conversational participant only. Writing work belongs to a launcher-started
+> Codex session, `rdc:build`, or an isolated-worktree agent.
+>
+> Beware the error text: `App Local denied: <lane> has a foreign live lease` also
+> fires when there is **no lease at all** (`ownerMatchesLease` returns false for a
+> null lease), so it will send you hunting a conflicting owner that does not exist.
+
+file:///C:/Dev/lifeai-env/pool/codex-topology.mjs
 | **`local-llm`** | local endpoint per `.claude/context/clauth.md`; credential via `curl -s http://127.0.0.1:52437/v/<service>` | none (no repo attachment) | Small context windows: send the contract and the open points, never the whole document. Link paths instead of pasting files. |
 | **`claude-agent`** | `Agent` tool, or `claude -p --bare` / `claude --bg` | **`isolation: "worktree"` as an actual tool parameter** if it will commit — a prose claim of isolation is inert | Parallel agents on a shared checkout race on `git stash` and `.git/index`. See `.claude/rules/subagent-credentials.md`. |
 | **`claude-ai`** | chitchat MCP (`chitchat_send` / `chitchat_poll` / `chitchat_reply`) + SSE | session-scoped | Messages evaporate when the session stops — export durable decisions to TinTin. |
@@ -122,31 +186,28 @@ behind a `timeout` guess. A truncated call looks like a failure and is not one.
 
 ## Step 2 — Compose the response contract (mandatory)
 
-Every dispatch in `negotiate` or `delegate` mode carries an explicit answer
-format. The contract is not politeness — it is what makes the reply *checkable*.
+Every dispatch carries an explicit answer format. The contract is not politeness —
+it is what makes the reply *checkable*.
 
-**Negotiate contract — one block per open point:**
+**Every field returns information. No field asks the peer what it changed** — if a
+contract invites `CHANGED: <file paths>`, it has invited the peer to mutate the
+repo mid-conversation, which is the v0.27.0 defect this version removes.
+
+**The contract — one block per open point:**
 
 ```
 POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE
-EDIT: <the exact section and change you will make, or NONE>
+EDIT: <the exact section and change that SHOULD be made, or NONE — describe it, do not make it>
 REASON: <one sentence — only if AMENDMENT or DISAGREE>
 ```
 
-Plus one closing block, always:
+**When the point is a factual question rather than a proposal**, the peer answers
+with findings — still text, still no repo mutation:
 
 ```
-OWNER: <who writes the change — exactly one agent>
-BLOCKED: <what you cannot do from where you are, or NONE>
-```
-
-**Delegate contract:**
-
-```
-STATUS: DONE | PARTIAL | BLOCKED
-CHANGED: <file paths, or NONE>
+FINDING <n>: <the answer, one sentence>
 EVIDENCE: <command run + literal result — exit code, row count, probe status>
-BLOCKED: <what stopped you, or NONE>
+CONFIDENCE: VERIFIED | INFERRED | UNKNOWN
 ```
 
 Rules that make the contract hold:
@@ -161,7 +222,7 @@ Rules that make the contract hold:
 
 ---
 
-## Step 3 — Converge (negotiate mode)
+## Step 3 — Converge
 
 ```
 open_points = [all points]
@@ -189,18 +250,20 @@ negotiation becomes a loop that never terminates.
 
 ---
 
-## Step 4 — Single-writer rule
+## Step 4 — Single-writer rule (for the OUTCOME, not the conversation)
 
-Before round 1, name **one** agent as the writer of the document or code under
-discussion, and say so in the dispatch.
+Nobody writes during a collab. The single-writer rule governs **who lands the
+settled Decision afterward** — name that agent before round 1 and say so in the
+dispatch.
 
 > Two active writers on one surface is forbidden — the same rule the fleet plans
 > state as *"never run two active writers for one effect."*
 
 If the named writer turns out to be **structurally blocked** (wrong lane, no
 credentials, read-only mount), ownership transfers to the other agent *for that
-artifact only*, and the transfer is recorded in the change itself with
-attribution. A blocked writer does not mean the agreed work is abandoned.
+artifact only*, recorded in the change itself with attribution. A blocked writer
+never means the agreed work is abandoned — the reasoning already exists in the
+reply, which is exactly why the reply, not a file, is the deliverable.
 
 ---
 
@@ -283,6 +346,8 @@ and avoids acting on a misread premise (lesson
 | Wrapping dispatch in a `timeout` guess | A still-running call reads as a failure |
 | Escalating a transcript | The human has to find the question themselves |
 | Two agents editing one document | Lost work, no error |
+| Writing to the repo during a collab | Your answer may be guard-blocked and stranded; the reply is always deliverable, a write may not be |
+| Using collab to hand off WORK | Wrong skill. Create a work item and use rdc:build or an isolated-worktree agent |
 
 ---
 
