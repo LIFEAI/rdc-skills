@@ -1,288 +1,239 @@
 ---
 name: rdc:collab
-description: "Usage `rdc:collab <collaborator> [mode] <topic>` — Structured collaboration with another agent: Codex, a local LLM, a Claude agent, or a claude.ai session. Modes: negotiate (converge on a decision), delegate (hand off work), listen (claude.ai relay). Every dispatch carries a response contract."
+description: "Usage `rdc:collab --session <session_id>` — Bidirectional relay with a claude.ai session — read inbox, do work, write outbox, loop. Use when coordinating with a parallel claude.ai conversation."
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
-> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag. Chitchat relay writes (`chitchat_reply`), engine dispatch, and git push are skipped under `RDC_TEST=1`.
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag. Chitchat relay writes (`chitchat_reply`) and git push are skipped under `RDC_TEST=1`.
 
-# /rdc:collab — Structured Agent-to-Agent Collaboration
 
-> `rdc:collab <collaborator> [mode] <topic>`
-> Collaborators: `codex` · `local-llm` · `claude-agent` · `claude-ai`
-> Modes: `negotiate` (default for a decision) · `delegate` · `listen`
-
----
-
-## The rule this skill exists to enforce
-
-**Never dispatch to another agent without a response contract.**
-
-An agent asked an open question answers in whatever shape is habitual to it — a
-file write, a plan, a lesson, a wall of prose. It is not being unhelpful; you
-did not tell it how to answer. A dispatch without a contract produces output you
-then have to parse, argue with, or discard, and it costs a full round every time.
-
-**Corollary: an agreement is a Decision, not an episode.** When collaboration
-settles a question, the output belongs in the governing document (and therefore
-in AKG) as a decision/constraint/policy — never filed as a lesson. Lessons are
-for *episodes*: something was learned the hard way. A settled negotiation filed
-as a lesson buries a queryable constraint in an append-only pile nobody
-traverses.
+# /rdc:collab — Claude Code Collab Session Listener
+> Invoked as: `/rdc:collab --session <session_id>`
+> You are the build/execute half of a live collab session with claude.ai.
+> Transport: chitchat MCP tools (`chitchat_poll` / `chitchat_reply`) + SSE stream
+> Dave is watching this terminal and can interject at any time.
 
 ---
 
-## Two clocks: the reply drives, a watchdog bounds
+## When to Use
+- Project lead wants to delegate a task to a claude.ai session
+- You need bidirectional relay between this CLI agent and a claude.ai coworker
+- An async work handoff is in progress via the chitchat relay
 
-Both are required, and they do different jobs. Running either alone is a known
-failure:
+## Arguments
 
-| | Driver | Watchdog |
-|---|---|---|
-| What it is | the collaborator's reply | a `/loop` or `Monitor`, armed at dispatch |
-| Fires on | completion | **silence past the expected envelope** |
-| Job | advance the negotiation | **diagnose why nothing came back** |
-| Cadence | none — event-driven | ~2–3× the peer's normal reply time |
+- `rdc:collab --session <id>` — start or resume a collab relay with the given session ID
 
-**Driver alone → you wait forever.** A background dispatch with no timeout is
-correct about not guessing a duration and wrong about liveness: if the peer dies,
-is guard-blocked, or its session id has expired, nothing ever wakes you. This is
-the failure the watchdog exists to catch.
+## What This Is
 
-**Watchdog alone → you fire on top of live calls.** A wall-clock cadence has no
-relationship to the work: if the peer answers in 30s you idle the remainder, if
-it takes 8 minutes you stack a second call onto the first.
-
-### The watchdog does NOT retry. It investigates.
-
-Re-dispatching a silent peer is the wrong reflex — it doubles the load on
-something already failing and destroys the evidence of why. On wake, run the
-diagnosis ladder in order and stop at the first hit:
-
-1. **Is the process alive?** Check the background task's status. Still running is
-   a legitimate answer — re-arm the watchdog with a longer envelope and stop.
-2. **Did it exit, and with what?** A non-zero exit or exit 143 (killed) is a
-   result, not silence. Read it.
-3. **Was it guard-blocked?** Grep the output for a `deny`/`Blocked` line. The
-   `CODEX MANAGED LANE` block is the common one and is a *dispatch* defect
-   (wrong `-C`), not a peer failure — fix and re-dispatch once.
-4. **Is the session still addressable?** A stale `resume <session-id>`, a stopped
-   chitchat session, or a dead local-LLM endpoint all present as silence.
-5. **Did it answer somewhere you are not reading?** A peer that cannot write its
-   intended target often reports into stdout, a log, or an error body instead.
-   The answer may already exist.
-6. **None of the above** → the peer is genuinely stuck. Escalate per Step 6 with
-   the ladder's findings attached. Do not silently retry.
-
-Arm the watchdog **at dispatch**, disarm it **on reply**. An armed watchdog
-outliving its dispatch is noise, and noise is how a real stall gets ignored.
+claude.ai writes tasks into your inbox via `chitchat_send`. The clauth daemon
+queues them and — if you are connected to the SSE stream — pushes the event
+immediately (zero-latency). You read, act, commit, reply via `chitchat_reply`,
+and loop. Dave can watch everything in this terminal and interject by typing —
+treat anything Dave types as a high-priority override.
 
 ---
 
-## Step 0 — Parse arguments
+## Step 1 — Parse session ID
 
+Extract `--session <uuid>` from args.
+
+If no `--session`, call `chitchat_list` and show all active sessions.
+
+---
+
+## Step 2 — Initialize (chitchat-native)
+
+Call `chitchat_list` to verify the session exists in the daemon.
+
+If the session is not found:
 ```
-rdc:collab <collaborator> [mode] <topic…>
-rdc:collab --session <id>          ← legacy form, implies `claude-ai listen`
+Session <id> not found in clauth daemon.
+Start a session from claude.ai first:
+  chitchat_start(name: "<session-slug>")
+Then pass the returned session_id here.
 ```
 
-- No collaborator → list active chitchat sessions and available engines, then stop.
-- No mode → `negotiate` if the topic names a document, decision, plan, or review;
-  `delegate` if it names work to perform; `listen` for `claude-ai` with `--session`.
+Send the ready signal via MCP:
+```
+chitchat_reply(session_id, "Claude Code connected. Ready to receive tasks.\ncwd: <rootPath>")
+```
+
+Print to terminal:
+```
+[rdc:collab] Session <id> active (chitchat transport).
+SSE stream: http://127.0.0.1:52437/chitchat/<id>/stream
+Waiting for messages from claude.ai... (Ctrl+C to end)
+```
+
+Note: File relay at `.rdc/relay/sessions/` is kept for backwards compatibility
+but is no longer the primary transport. Chitchat MCP + SSE is the default.
 
 ---
 
-## Step 1 — Collaborator matrix
+## Step 3 — Wait for message (SSE-first, poll-fallback)
 
-Resolve the transport BEFORE composing the message. Getting this wrong is the
-most common failure and it fails at the guard layer, not the prompt layer.
+### Primary path — SSE (zero-latency)
 
-| Collaborator | Invocation | Isolation requirement | Known failure mode |
-|---|---|---|---|
-| **`codex`** | `codex exec -C <its-lane> "<msg>"` · resume: `codex exec -C <its-lane> resume <session-id> "<msg>"` | **MUST run with `-C` pointing at a Codex-owned lane** (`x-codex-N` or `x-codex-sv`) | Inheriting your cwd attaches Codex to *your* lane; `managedAppAttachmentDecision()` refuses every write with `CODEX MANAGED LANE: App Local must use an owned managed Codex lane`. The guard is correct — fix the `-C`, never the guard. |
-| **`local-llm`** | local endpoint per `.claude/context/clauth.md`; credential via `curl -s http://127.0.0.1:52437/v/<service>` | none (no repo attachment) | Small context windows: send the contract and the open points, never the whole document. Link paths instead of pasting files. |
-| **`claude-agent`** | `Agent` tool, or `claude -p --bare` / `claude --bg` | **`isolation: "worktree"` as an actual tool parameter** if it will commit — a prose claim of isolation is inert | Parallel agents on a shared checkout race on `git stash` and `.git/index`. See `.claude/rules/subagent-credentials.md`. |
-| **`claude-ai`** | chitchat MCP (`chitchat_send` / `chitchat_poll` / `chitchat_reply`) + SSE | session-scoped | Messages evaporate when the session stops — export durable decisions to TinTin. |
+Connect to the SSE stream and wait for the daemon to push a message:
 
-**Dispatch is long-running.** Run engine dispatch as a **background task**, not
-behind a `timeout` guess. A truncated call looks like a failure and is not one.
+```bash
+curl -s -N --max-time 30 http://127.0.0.1:52437/chitchat/<session_id>/stream
+```
+
+The stream emits:
+- `event: message` lines with `data: <JSON>` when `chitchat_send` fires from claude.ai
+- `: keepalive` comment lines every 15s (ignore these)
+
+**When a `data:` event arrives:** parse the JSON directly — it contains the
+message. The SSE stream drains the inbox as it delivers; do NOT call
+`chitchat_poll` after receiving via SSE. Proceed directly to Step 4 with the
+parsed message body.
+
+**If 30s elapses with no message event (only keepalives or silence):**
+Print `[rdc:collab] Still listening...` and retry SSE immediately. After 10
+consecutive 30s timeouts (5 min idle), print a longer heartbeat but keep
+looping.
+
+**⛔ curl exit 28 (`--max-time`) is SUCCESS, not failure, on an SSE read.**
+`curl --max-time 30` ALWAYS exits 28 at the timeout boundary — that is normal for
+a long-lived SSE stream and says nothing about delivery. If a `data:` event was
+received in the output, process it and proceed to Step 4 — do NOT treat exit 28 as
+a curl failure (lesson 2026-06-08-collab-sse-exit-28-is-success: exit 28 arrived
+together with a full `event: message` / `data: {...}` payload, and reading it as a
+failure misclassified a zero-latency delivery). Only **connection-refused or a
+non-200** is a real curl failure that triggers the polling fallback.
+
+**If curl fails (daemon restart, connection refused, non-200 — NOT a bare exit 28
+with a delivered `data:` event):** fall back to polling path below.
+
+### Fallback path — polling (2s interval)
+
+Use this path only when SSE is unavailable:
+
+```
+loop:
+  result = chitchat_poll(session_id)
+  if result.status == "ready":
+    → proceed to Step 4 with result.message
+  else (status == "idle"):
+    wait 2 seconds
+    continue loop
+```
+
+**`chitchat_poll` return shapes:**
+- `{ status: "idle" }` — inbox empty, keep polling
+- `{ status: "ready", message: "..." }` — message waiting, consume it
 
 ---
 
-## Step 2 — Compose the response contract (mandatory)
+## Step 4 — Process message
 
-Every dispatch in `negotiate` or `delegate` mode carries an explicit answer
-format. The contract is not politeness — it is what makes the reply *checkable*.
+You now have the message body (from SSE `data:` JSON or `chitchat_poll` result).
 
-**Negotiate contract — one block per open point:**
+Check if the message begins with `type: stop` (literal prefix) or contains a
+`type` field equal to `"stop"` in the JSON.
 
+**`type: stop`** → go to Step 7.
+
+**Anything else (default: task/message):**
+
+Print to terminal:
 ```
-POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE
-EDIT: <the exact section and change you will make, or NONE>
-REASON: <one sentence — only if AMENDMENT or DISAGREE>
+[rdc:collab] Turn <N> from claude.ai:
+──────────────────────────────────────
+<message body>
+──────────────────────────────────────
 ```
-
-Plus one closing block, always:
-
-```
-OWNER: <who writes the change — exactly one agent>
-BLOCKED: <what you cannot do from where you are, or NONE>
-```
-
-**Delegate contract:**
-
-```
-STATUS: DONE | PARTIAL | BLOCKED
-CHANGED: <file paths, or NONE>
-EVIDENCE: <command run + literal result — exit code, row count, probe status>
-BLOCKED: <what stopped you, or NONE>
-```
-
-Rules that make the contract hold:
-
-1. **State the format before the content.** Contract first, then the points.
-2. **Say what NOT to produce** when the peer has a known default — e.g. *"do not
-   write a lesson; this is a Decision and belongs in the plan."*
-3. **Number the points.** Unnumbered points get answered in aggregate.
-4. **Name the single writer before round 1** (see Step 4).
-5. **Ask for `BLOCKED` explicitly.** Without it, a peer that cannot act reports
-   success or silence.
 
 ---
 
-## Step 3 — Converge (negotiate mode)
+## Step 5 — Do the work
+
+Act on the message. Full Claude Code capabilities:
+- File edits, git commits to `develop`
+- Supabase RPC queries
+- Type-checks: `npx tsc --noEmit` (never `pnpm build`)
+- Run skills: `/rdc:plan`, `/rdc:fixit`, etc.
+- Answer questions directly
+
+Follow `.rdc/guides/agent-bootstrap.md` rules throughout.
+
+For long tasks, stream progress updates mid-work:
+```
+chitchat_reply(session_id, "Turn <N> in progress: <what you've done so far>...")
+```
+This lets claude.ai see progress immediately rather than waiting for the full
+response.
+
+---
+
+## Step 6 — Send response
+
+When work is done, send the response via MCP:
 
 ```
-open_points = [all points]
-round = 0
-while open_points and round < MAX_ROUNDS (default 4):
-    round += 1
-    dispatch(open_points, contract)          ← background task, no timeout guess
-    arm_watchdog(envelope = 2-3x expected reply time)
-    reply = await completion                 ← OR watchdog fires first
-    if watchdog fired: run the diagnosis ladder; do NOT re-dispatch blindly
-    disarm_watchdog()
-    if reply does not match the contract:
-        re-dispatch ONCE restating the format only — never re-argue the content
-    settle: AGREE and accepted AGREE-WITH-AMENDMENT leave open_points
-    if open_points did not shrink this round:
-        STOP — escalate (Step 6). A non-shrinking round means the disagreement
-        is real, and further rounds spend tokens without moving it.
+chitchat_reply(session_id, "<response body>")
 ```
 
-**Never re-send a settled point.** Each round carries only what is still open,
-plus a one-line record of what was settled. Re-sending settled points is how a
-negotiation becomes a loop that never terminates.
-
-**Convergence is the termination condition, not a timer.**
-
----
-
-## Step 4 — Single-writer rule
-
-Before round 1, name **one** agent as the writer of the document or code under
-discussion, and say so in the dispatch.
-
-> Two active writers on one surface is forbidden — the same rule the fleet plans
-> state as *"never run two active writers for one effect."*
-
-If the named writer turns out to be **structurally blocked** (wrong lane, no
-credentials, read-only mount), ownership transfers to the other agent *for that
-artifact only*, and the transfer is recorded in the change itself with
-attribution. A blocked writer does not mean the agreed work is abandoned.
-
----
-
-## Step 5 — Land the outcome
-
-An agreement is a **Decision**. Route it by kind:
-
-| Outcome | Home |
-|---|---|
-| Settled decision, constraint, or policy | The governing document — plan / ARCHITECTURE.md / rule. AKG ingests from there. |
-| Work to perform | `insert_work_item` via RPC, per `.claude/rules/work-items-rpc.md` |
-| A genuine hard-won episode (a wrong theory, a surprising infra behaviour) | `.rdc/lessons/` per `guides/lessons-learned-spec.md` |
-| A stated, unresolved disagreement | Escalate — Step 6 |
-
-**Do not file a settled agreement as a lesson.** That is the single most common
-misroute this skill exists to prevent.
-
----
-
-## Step 6 — Escalate (only after convergence fails)
-
-Escalation is the last step, never the first. It happens when a round fails to
-shrink the open set, the round cap is hit, or both agents are blocked.
-
-Escalate as **one packet**, not a transcript:
-
+Response body format:
 ```
-UNRESOLVED: <the point, in one sentence>
-POSITION A (<agent>): <claim + its evidence>
-POSITION B (<agent>): <claim + its evidence>
-WHAT WOULD SETTLE IT: <the measurement, probe, or decision needed>
-COST OF EACH BRANCH: <one line each>
+Turn <N> complete.
+Commits: <sha1, sha2 or none>
+
+<what you did, what you found, any questions or decisions needed from claude.ai>
 ```
 
-A transcript is not an escalation. If the human has to read the argument to find
-the question, the packet was not written.
+Print to terminal:
+```
+[rdc:collab] Turn <N> done. Response sent via chitchat_reply.
+Waiting for next message...
+```
+
+Return to Step 3.
 
 ---
 
-## `listen` mode — claude.ai relay
+## Step 7 — End session
 
-Legacy behaviour, unchanged and still correct for `claude-ai`. Transport is
-chitchat MCP + SSE; you are the build half of a live session.
+Received `type: stop` message, or Dave pressed Ctrl+C.
 
-- `chitchat_list` to verify the session; `chitchat_reply` to signal ready.
-- SSE first: `curl -s -N --max-time 30 http://127.0.0.1:52437/chitchat/<id>/stream`.
-  **⛔ curl exit 28 is SUCCESS on an SSE read** — `--max-time` always exits 28 at
-  the boundary. If a `data:` event arrived, process it. Only connection-refused
-  or a non-200 is a real failure (lesson `2026-06-08-collab-sse-exit-28-is-success`).
-- Poll fallback: `chitchat_poll` at 2s — `{status:"idle"}` keep polling,
-  `{status:"ready", message}` consume.
-- `type: stop` ends the session; send a final summary, then `chitchat_stop`.
-- Stream progress mid-work with `chitchat_reply` on long tasks.
+Send final summary via MCP:
+```
+chitchat_reply(session_id, "Session complete.\nTurns: <N>\nCommits: <list or none>\nOpen items: <anything unresolved>")
+```
 
----
+Then call:
+```
+chitchat_stop(session_id)
+```
 
-## Dave interjections
-
-Anything Dave types is a high-priority override, in every mode.
-
-⛔ **When an interjection appears to CONTRADICT the task premise, restate your
-understanding in ONE sentence and confirm before branching into a wide
-`AskUserQuestion` menu.** A tight "I read this as X — correct?" reconciles faster
-and avoids acting on a misread premise (lesson
-`2026-06-08-collab-premise-contradicting-interjection`).
+Print:
+```
+[rdc:collab] Session ended.
+```
 
 ---
 
-## Anti-patterns
+## Dave Interjections
 
-| Anti-pattern | Why it costs a round |
-|---|---|
-| Dispatching prose with no response contract | The peer answers in its habitual shape; you parse or discard it |
-| Filing a settled agreement as a lesson | Buries a queryable Decision in an append-only pile |
-| Driving a negotiation with `/loop` | The clock has no relationship to the reply |
-| Dispatching with no watchdog armed | A dead peer is indistinguishable from a slow one; you wait forever |
-| Watchdog re-dispatches instead of diagnosing | Doubles load on a failing peer and destroys the evidence of why |
-| `codex exec` without `-C <its-lane>` | Codex inherits your lane; every write is guard-blocked |
-| Re-sending settled points each round | The negotiation cannot terminate |
-| Wrapping dispatch in a `timeout` guess | A still-running call reads as a failure |
-| Escalating a transcript | The human has to find the question themselves |
-| Two agents editing one document | Lost work, no error |
-
----
+If Dave types in this terminal during a turn:
+- Treat it as an override injected into the current task
+- Acknowledge it in your `chitchat_reply` response
+- If it changes direction mid-task, note what you stopped and why
+- ⛔ **When an interjection appears to CONTRADICT the task premise, restate your
+  understanding in ONE sentence and confirm before branching into a wide
+  `AskUserQuestion` menu.** A tight "I read this as X — correct?" reconciles faster
+  than a multiple-choice and avoids acting on a misread premise (lesson
+  2026-06-08-collab-premise-contradicting-interjection: "there is no pm2 this
+  replaces it" was read as "PM2 is abolished as the transport" and triggered a
+  3-option transport menu, when it meant "there was no dev *site* yet — push to
+  the unchanged PM2 path"; the wide menu over-committed to one interpretation and
+  cost a round).
 
 ## Capture lessons (exit step)
 
-Before the final verdict line, follow `guides/lessons-learned-spec.md` § Capture
-procedure. Write a lesson only for a genuine **episode** — a first root-cause
-theory that proved wrong, a documented path that did not work, a surprising
-tool/infra behaviour. **A settled agreement is not a lesson** (see Step 5). Set
-`scope` and `status`; commit alongside the run's other commits; note "N lessons
-captured" in the verdict. A run that taught nothing writes nothing.
+Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — write one `.rdc/lessons/<YYYY-MM-DD>-collab-<short-slug>.md` per lesson using the schema in that spec. Set `scope` (`simple` | `architectural`) and `status` (`open`, or `applied` if you shipped the fix in this same run, with the commit linked). Commit the lesson file(s) on `develop` alongside the run's other commits, and note "N lessons captured" in your verdict/summary. A run that taught nothing writes nothing — absence is the default.
