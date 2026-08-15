@@ -253,6 +253,42 @@ file:///C:/Dev/lifeai-env/pool/codex-topology.mjs
 **Dispatch is long-running.** Run engine dispatch as a **background task**, not
 behind a `timeout` guess. A truncated call looks like a failure and is not one.
 
+### Step 1b — Pick the model for the work
+
+**If the invocation names a model, use it. Otherwise choose one — do not silently
+take the engine default.** The default is whatever that engine was last
+configured with, which has no relationship to the task in front of it, and a
+reasoning-heavy negotiation run on a small model produces confident agreement
+that does not survive contact with the code.
+
+Model is a **per-invocation** flag on both engines, so it applies to a resumed
+conversation exactly as it does to a new one — a long-running collab lane can
+change model between sittings without starting over:
+
+| Engine | Flag |
+|---|---|
+| `codex` | `codex -m <model>` · with resume: `codex resume <id> -m <model>` |
+| `claude` | `claude --model <model>` |
+| interactive collab lane | `collab-launch.ps1 -Name <lane> -Model <model>` |
+
+Choose by the KIND of work, not by the size of the diff:
+
+| Work | Model tier | Why |
+|---|---|---|
+| Negotiating a design, architecture review, adversarial verification, root-causing a defect that resisted one fix | **most capable** (Opus-class / `gpt-5`-class) | The output is a decision that other work is built on. A wrong one is not caught by tests. |
+| Implementing an agreed plan, mechanical refactor, test authoring, doc sweep | **mid tier** (Sonnet-class) | The shape is already decided; the cost of a retry is one run. |
+| Formatting, lint fixes, transcription, extracting fields from output | **fast/cheap** (Haiku-class) | No judgment involved. |
+
+Two rules that override the table:
+
+1. **Escalate on a repeat.** If a task has already failed once — a fix that did
+   not hold, a round that did not shrink the open set — the next attempt goes up
+   a tier, not sideways. Re-running the same tier on the same problem is how a
+   loop starts.
+2. **State the choice in the dispatch.** One line: *"running this on `<model>`
+   because it is an architecture decision."* A model choice nobody can see is a
+   model choice nobody can correct.
+
 ---
 
 ## Step 2 — Compose the response contract (mandatory)
@@ -267,10 +303,20 @@ repo mid-conversation, which is the v0.27.0 defect this version removes.
 **The contract — one block per open point:**
 
 ```
-POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE
+POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE | UNKNOWN | DEFER
 EDIT: <the exact section and change that SHOULD be made, or NONE — describe it, do not make it>
-REASON: <one sentence — only if AMENDMENT or DISAGREE>
+REASON: <one sentence — required for AMENDMENT, DISAGREE, UNKNOWN and DEFER>
 ```
+
+`UNKNOWN` and `DEFER` are first-class answers, not failures. A three-value
+contract forces a peer that lacks the evidence to invent a position, and an
+invented position is indistinguishable from a settled one in the next round —
+which is how a negotiation converges on something nobody actually checked. Adopted
+from Codex, 2026-08-15: *"binary agreement forces invented certainty."*
+
+**Every handshake carries `AS_OF` and `PROBE_STATE`** — when the peer last
+observed the thing it is describing, and whether that observation was live,
+cached, or absent. A claim with no as-of is a claim about an unknown moment.
 
 **When the point is a factual question rather than a proposal**, the peer answers
 with findings — still text, still no repo mutation:
@@ -283,13 +329,54 @@ CONFIDENCE: VERIFIED | INFERRED | UNKNOWN
 
 Rules that make the contract hold:
 
-1. **State the format before the content.** Contract first, then the points.
+0. **Write like the peer, not like a memo.** An engine peer answers in dense,
+   structured blocks; address it the same way. Contract, numbered points, the
+   facts each point turns on — no preamble, no restating what was settled last
+   round in prose, no explaining your reasoning for a position the EDIT line
+   already states. Every sentence that is not a point, a constraint, or a fact
+   the peer needs is padding the peer must parse before it can answer. Prose
+   framing is for the human reading the transcript afterward, and it belongs in
+   the summary you write for them — not in the dispatch.
+1. **Name what to read, by path, before the points.** A peer does not go looking
+   on its own — it answers from what is in front of it, exactly like you do. A
+   dispatch that says "review the remediation plan" gets an answer about the peer's
+   memory of a plan; a dispatch that says `read
+   .rdc/areas/infra/fleet-throughput/plans/fleet-throughput-remediation.md §T1–T6
+   and pool/codex-topology.mjs sameOwner()` gets an answer about the code. List
+   the files, the sections, and the one thing to look for in each. If the peer
+   cannot reach a path, that is a `BLOCKED` you want stated early rather than an
+   answer quietly built on something else.
+
+   **A path beats a paraphrase. Never restate a document you can point at.** Both
+   engines share this filesystem, so pasting a plan into the dispatch buys
+   nothing and costs three ways: the peer answers your summary instead of the
+   source, your summary is stale the moment the file changes, and the context it
+   spends re-reading your prose is context it does not spend on the question. Link
+   the document, name the section, ask the question. The only text worth inlining
+   is what does NOT exist in a file yet — the open points themselves.
+2. **State the format before the content.** Contract first, then the points.
 2. **Say what NOT to produce** when the peer has a known default — e.g. *"do not
    write a lesson; this is a Decision and belongs in the plan."*
 3. **Number the points.** Unnumbered points get answered in aggregate.
 4. **Name the single writer before round 1** (see Step 4).
 5. **Ask for `BLOCKED` explicitly.** Without it, a peer that cannot act reports
    success or silence.
+6. **Mark a conversation-only collab as such, in the dispatch and in your own
+   turn.** A collab whose declared deliverable IS the reply produces no
+   repository artifact by design (Step 2's whole premise: the peer describes the
+   edit, it does not make it). An end-of-turn gate that demands a file, a commit,
+   or a lesson from such a turn is asking the protocol to violate itself, and the
+   peer's only honest answer becomes a repeated `BLOCKED` — which is exactly what
+   happened on 2026-08-15: a Codex peer returned a complete, contract-shaped,
+   four-point answer and then reported `BLOCKED: this conversation-only collab
+   cannot produce repository artifacts` twice more, because the gate would not
+   accept the reply as the deliverable.
+
+   State the deliverable explicitly — *"the deliverable of this turn is the reply
+   itself; no repository artifact is expected"* — so the completion gate has a
+   declared reason rather than an absence to interpret. The Decision that comes
+   OUT of the collab still lands in a governing document (Step 5); it is the
+   negotiation turns themselves that are conversation-only.
 
 ---
 
@@ -329,6 +416,12 @@ dispatch.
 
 > Two active writers on one surface is forbidden — the same rule the fleet plans
 > state as *"never run two active writers for one effect."*
+
+**Scope ownership to a named effect or artifact, never to an agent in general** —
+"Claude owns `fleet-throughput-remediation.md`", not "Claude is the writer".
+Transfer is explicit and acknowledged; **silence never transfers ownership**. A
+peer that has gone quiet is unobservable, not resigned, and treating those as the
+same thing is how two writers end up on one file.
 
 If the named writer turns out to be **structurally blocked** (wrong lane, no
 credentials, read-only mount), ownership transfers to the other agent *for that

@@ -41,6 +41,12 @@ not an evasion.
    It should not re-dispatch on top of a call you are still working.
 6. **Escalation, not blame,** when you disagree. A stated disagreement with
    evidence is a valid terminal state.
+7. **A model chosen for the work,** named in the dispatch — not whatever the
+   engine happened to be configured with. If you are asked to settle an
+   architecture question or verify a claim adversarially and you are running on
+   a tier below that, say so in your reply rather than answering anyway. A
+   confident answer from the wrong tier is the expensive failure here: it reads
+   exactly like a correct one and nothing downstream catches it.
 
 ---
 
