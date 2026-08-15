@@ -127,10 +127,28 @@ is not helpful — it is what the format exists to remove.
 **One block per point:**
 
 ```
-POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE
+POINT <n>: AGREE | AGREE-WITH-AMENDMENT | DISAGREE | UNKNOWN | DEFER
 EDIT: <the exact section and change that SHOULD be made, or NONE — describe it, do not make it>
-REASON: <one sentence — only if AMENDMENT or DISAGREE>
+REASON: <one sentence — required for AMENDMENT, DISAGREE, UNKNOWN and DEFER>
 ```
+
+**`UNKNOWN` and `DEFER` are answers, not failures.** If you lack the evidence to
+hold a position, say so. A three-value contract forces you to invent one, and an
+invented position is indistinguishable from a settled one in the next round —
+which is how a negotiation converges on something nobody checked. `UNKNOWN` = you
+cannot determine it. `DEFER` = it is determinable but belongs to another owner or
+another round.
+
+**Always carry `AS_OF` and `PROBE_STATE`:**
+
+```
+AS_OF: <timestamp of your last observation of what you are describing>
+PROBE_STATE: live | cached | absent
+```
+
+A claim with no as-of is a claim about an unknown moment. `live` = you probed it
+this turn; `cached` = you are reporting an earlier observation; `absent` = you
+could not observe it and are reasoning from something else. Say which.
 
 **For a factual question rather than a proposal:**
 
@@ -146,6 +164,43 @@ CONFIDENCE: VERIFIED | INFERRED | UNKNOWN
 OWNER: <who lands the resulting Decision or work item — exactly one agent>
 BLOCKED: <what you cannot do from where you are, or NONE>
 ```
+
+### 1b. A broken briefing is the HOST's defect. Report it; do not repair it.
+
+**You are a guest in this workspace.** Checking that everything you were handed is
+actually there is welcome — one quick pass, seconds, before you start reading. It
+catches the host's mistakes early, which is worth doing.
+
+**What is not yours is the RECOVERY.** If a path does not exist, a service is
+down, or the tree is not in the state the dispatch claims — say so, in one line,
+and stop. Do not go find the file. Do not search the filesystem, do not search git
+objects, do not resolve which branch really has it, do not reconcile the
+initiator's checkouts. Verifying takes seconds and helps; recovering takes minutes
+and hides the defect.
+
+This is not laziness, and it is the opposite of unhelpful. Measured 2026-08-15: a
+peer was handed six paths, two of which did not exist where stated. It did
+everything a capable agent would do — searched the tree, searched hidden files,
+searched `git ls-tree` across refs, found the real versions in `origin/develop`
+and a `v0.30.1` tag, read them from immutable git objects without touching either
+worktree, and reported the mismatch precisely. **The answer was correct and it
+cost 4m23s instead of 60s.** Worse, the initiator's two drifted checkouts stayed
+drifted, because the peer had quietly worked around them — the defect was
+absorbed instead of returned, so nothing got fixed and the next session hit it
+again.
+
+```
+BLOCKED: path 3 does not exist: C:/path/as/given. Not searching — fix the briefing.
+```
+
+One line, immediately, before reading anything else. The host can fix a wrong path
+in seconds; you cannot fix it at all, because you cannot know whether the path was
+mistyped, the file was renamed, or their checkout is stale. **Guessing which,
+correctly, still leaves their room broken.**
+
+The same applies to a service the dispatch told you to use: if CodeFlow or an MCP
+is unreachable, report it and stop. Do not restart it, do not route around it, do
+not substitute a different tool and carry on as though nothing happened.
 
 ### 2. Declare `BLOCKED` loudly. Silence is the worst answer.
 

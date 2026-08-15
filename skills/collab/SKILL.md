@@ -296,9 +296,22 @@ Two rules that override the table:
 Every dispatch carries an explicit answer format. The contract is not politeness —
 it is what makes the reply *checkable*.
 
-**Every field returns information. No field asks the peer what it changed** — if a
-contract invites `CHANGED: <file paths>`, it has invited the peer to mutate the
-repo mid-conversation, which is the v0.27.0 defect this version removes.
+**During a NEGOTIATION, the contract returns information — no field asks the peer
+what it changed.** A `CHANGED: <file paths>` field invites both sides to mutate the
+same artifact mid-argument, which is the v0.27.0 defect this version removes.
+
+**This is not a read-only peer, and never say it is.** The constraint is
+SINGLE-WRITER-PER-ARTIFACT (Step 4), not "the guest may not touch anything". A
+peer that is the named writer for an artifact writes it — that is the whole
+mechanism by which an agreed change gets made. What it must not do is edit the
+artifact under negotiation while the negotiation is still open, or edit one it
+does not own.
+
+Telling a capable peer it is read-only when the workspace imposes no such rule is
+an invented constraint, and inventing constraints on someone else's behalf costs
+exactly what a wrong constraint always costs: work that could have been done in
+the same turn gets deferred to another round, or gets done anyway and now
+contradicts what you told them. In `delegate` mode the peer is expected to write.
 
 **The contract — one block per open point:**
 
@@ -416,6 +429,16 @@ dispatch.
 
 > Two active writers on one surface is forbidden — the same rule the fleet plans
 > state as *"never run two active writers for one effect."*
+
+> **The single-writer rule is a stopgap, and it is worth knowing what it stands
+> in for.** Per-artifact version numbers solved this in the 1970s — VMS gave every
+> file a generation (`FILE.TXT;1`, `;2`), so two writers produced two versions and
+> the collision was *detected* instead of silently losing one. Git is that
+> mechanism, better: content-addressed versions plus a merge base that says
+> exactly where two lines of work diverged. A rule that forbids concurrent writing
+> is a rule that declines to use it. Keep single-writer for now — it is cheap and
+> it holds — but do not mistake it for the right answer to two agents on one file.
+> GitHub already handles most of it.
 
 **Scope ownership to a named effect or artifact, never to an agent in general** —
 "Claude owns `fleet-throughput-remediation.md`", not "Claude is the writer".
