@@ -209,6 +209,14 @@ Located in `guides/agents/` — plain markdown playbooks spawned as sub-agents:
 ### Reporting
 - rdc:help, rdc:housekeeping, rdc:report, rdc:status, rdc:watch
 
+### Operating mode
+- rdc:mode — show or set the operating mode. `HotFix` relaxes ceremony gates
+  (full-build, polling-loops, persistent-cd, truth-gate, completion-gate, …) for
+  a bounded, reasoned window. It **cannot** relax a safety guard: push-main,
+  push-force, rm-rf, credential exposure, cross-lane writes and the authority
+  check stay armed in every mode, enforced as an allowlist so a guard added
+  tomorrow is essential by default.
+
 ### Tooling
 - rdc:channel-formatter — channel-native formatting and content repurposing for LinkedIn, Twitter/X, Slack/Teams, email, decks, Word/PDF structure, web copy, and content packs
 - rdc:brochure — HTML/folder/zip/URL/Markdown to print-quality PDF
