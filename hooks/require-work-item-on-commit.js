@@ -17,10 +17,23 @@
  * fabrication class (FMEA #1) at the source — WP-2's closure gate then asserts a
  * report's codeflow_post.commit is one of these captured, session-authored SHAs.
  *
- * PreToolUse (intent) behavior is unchanged:
+ * PreToolUse (intent) behavior (2026-08-16 — real teeth, flow-gated):
+ *   - flow does NOT require a work item (rdc-flow.mjs: plan/design/collab,
+ *     or a relaxed mode — hotfix/maintenance) -> pass silently, no nag
  *   - fixit.marker present                  -> pass
  *   - conventional type / UUID / #issue ref -> pass
- *   - otherwise                             -> WARN (proceed anyway)
+ *   - otherwise, flow DOES require one (build/refactor/overnight, or no
+ *     flow declared at all — fail-closed default)
+ *                                            -> BLOCK (was: warn, proceed anyway)
+ *
+ * Was advisory-only unconditionally ("never hard-block commits... proceeding
+ * anyway") — Dave, 2026-08-16, on seeing that exact text fire with no
+ * enforcement behind it: the model declares its own flow (rdc-flow.mjs,
+ * lifeai-env), and THIS is where that declaration gets teeth. A
+ * conversational flow (plan/design/collab) never needed a work item and
+ * still doesn't — silently, not even a warning. A code-shipping flow
+ * (build/refactor/overnight) now actually stops the commit instead of
+ * printing a sentence nobody reads.
  *
  * PostToolUse (capture) behavior:
  *   - only fires on a `git commit` whose tool result indicates success
@@ -220,13 +233,41 @@ async function captureCommit(raw) {
 }
 
 // ---------------------------------------------------------------------------
-// PreToolUse intent check (unchanged legacy behavior)
+// PreToolUse intent check — flow-gated (2026-08-16)
 // ---------------------------------------------------------------------------
 
-function preToolUse(raw) {
+/**
+ * Does the CURRENT model-declared flow (rdc-flow.mjs, lifeai-env) require a
+ * work item right now? Dynamic import because this file is CommonJS and
+ * rdc-flow.mjs is ESM; resolved via $LIFEAI_ENV so this works identically on
+ * whichever machine/lane the hook actually runs from.
+ *
+ * FAILS CLOSED: any error (lifeai-env not on this box, module not found,
+ * whatever) returns true — "requires a work item" — the exact behavior this
+ * file had before flow-state existed. Introducing this mechanism can only
+ * EXEMPT a case that used to warn, never silently add a requirement that
+ * was not already effectively there.
+ */
+async function requiresWorkItemNow() {
+  const hub = process.env.LIFEAI_ENV || 'C:/Dev/lifeai-env';
+  try {
+    const mod = await import(`file://${path.join(hub, 'hooks', 'lib', 'rdc-flow.mjs').replace(/\\/g, '/')}`);
+    return mod.requiresWorkItem();
+  } catch (e) {
+    hookLog('require-work-item', 'PreToolUse', 'flow-check-error-fail-closed', { error: e.message });
+    return true;
+  }
+}
+
+async function preToolUse(raw) {
   if (raw.tool_name !== 'Bash') return process.exit(0);
   const command = raw.tool_input?.command || '';
   if (!command.includes('git commit')) return process.exit(0);
+
+  if (!(await requiresWorkItemNow())) {
+    hookLog('require-work-item', 'PreToolUse', 'pass-flow-exempt', {});
+    return process.exit(0);
+  }
 
   if (fs.existsSync(MARKER_FILE)) {
     hookLog('require-work-item', 'PreToolUse', 'pass-fixit', {});
@@ -239,12 +280,16 @@ function preToolUse(raw) {
     return process.exit(0);
   }
 
-  hookLog('require-work-item', 'PreToolUse', 'warn', { msg: msg.slice(0, 80) });
-  // Warn only — never hard-block commits. Conventional commit format is
-  // sufficient self-documentation.
+  // BLOCK, not warn (2026-08-16). The current flow (build/refactor/overnight,
+  // or none declared at all) requires a work item and none was referenced —
+  // this used to print a sentence and let the commit through regardless.
+  hookLog('require-work-item', 'PreToolUse', 'block', { msg: msg.slice(0, 80) });
   process.stdout.write(JSON.stringify({
-    systemMessage: `⚠️ Commit has no work item reference or conventional commit type.\n` +
-      `Preferred format: fix(<scope>): <message> — proceeding anyway.`,
+    decision: 'block',
+    reason: '⛔ [require-work-item] No work item reference or conventional commit type, and the current '
+      + 'flow requires one (build/refactor/overnight, or no flow declared). Add a Work-Item UUID or '
+      + '#issue ref to the message, use fix(<scope>): ..., or declare a flow that does not need one '
+      + '(rdc-flow.mjs: plan/design/collab) if this genuinely ships no trackable work.',
   }));
   return process.exit(0);
 }
@@ -276,7 +321,7 @@ async function main() {
   }
 
   // Default / PreToolUse intent path.
-  preToolUse(raw);
+  await preToolUse(raw);
 }
 
 // Run when executed as a hook; export pure pieces when required by a test.

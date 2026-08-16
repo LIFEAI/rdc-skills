@@ -125,29 +125,45 @@ function runHook(payload, extraEnv = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. PreToolUse legacy behavior preserved (warn-only, never blocks)
-//    Uses a fresh temp dir as HOME/USERPROFILE so no fixit.marker is visible
-//    regardless of real machine state — makes the warn-path assertion deterministic.
+// 4. PreToolUse — flow-gated (2026-08-16): BLOCKS when the current flow
+//    requires a work item, exempt SILENTLY when it doesn't. Uses a fresh temp
+//    dir as HOME/USERPROFILE so no fixit.marker is visible regardless of real
+//    machine state, and real RDC_FLOW_STATE/RDC_MODE_STATE temp files so the
+//    test exercises the ACTUAL cross-repo dynamic-import path against
+//    whatever $LIFEAI_ENV resolves to on this box — not a mock.
 // ---------------------------------------------------------------------------
 {
   const fakeHome = mkdtempSync(join(tmpdir(), 'wic-home-'));
+  const flowState = join(fakeHome, 'flow.json');
+  const modeState = join(fakeHome, 'mode.json');
   try {
-    const preEnv = { HOME: fakeHome, USERPROFILE: fakeHome };
+    const preEnv = { HOME: fakeHome, USERPROFILE: fakeHome, RDC_FLOW_STATE: flowState, RDC_MODE_STATE: modeState };
 
-    const res = runHook({
+    // No flow declared -> fail-closed default -> requires a work item -> BLOCK.
+    const blocked = runHook({
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
       tool_input: { command: 'git commit -m "no convention and no uuid"' },
     }, preEnv);
-    assert('pre: warn exits zero (never blocks)', res.status === 0, res.stderr);
-    assert('pre: emits warn systemMessage', /no work item reference/.test(res.stdout), res.stdout);
+    assert('pre: no-flow-declared BLOCKS (was: warn, never blocked)',
+      JSON.parse(blocked.stdout || '{}').decision === 'block', blocked.stdout || blocked.stderr);
 
+    // Conventional format still passes even when a work item IS required.
     const ok = runHook({
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
       tool_input: { command: 'git commit -m "feat(x): conventional"' },
     }, preEnv);
-    assert('pre: conventional passes silently', ok.status === 0 && ok.stdout.trim() === '', ok.stdout);
+    assert('pre: conventional passes silently even when required', ok.status === 0 && ok.stdout.trim() === '', ok.stdout);
+
+    // A conversational flow (plan) exempts — silently, no message at all.
+    writeFileSync(flowState, JSON.stringify({ flow: 'plan', setBy: 'test', setAt: new Date().toISOString() }));
+    const exempt = runHook({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'git commit -m "no convention and no uuid"' },
+    }, preEnv);
+    assert('pre: plan flow exempts silently', exempt.status === 0 && exempt.stdout.trim() === '', exempt.stdout);
   } finally {
     rmSync(fakeHome, { recursive: true, force: true });
   }
