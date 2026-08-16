@@ -1,5 +1,4 @@
 ---
-name: rpms-filemap
 description: "Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root manifest."
 slash: "rdc:rpms-filemap"
 category: "tooling"
@@ -13,9 +12,6 @@ triggers:
   - "where should pm artifacts go"
 ---
 # RPMS File Map
-> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
-> Return the requested file-map guidance directly; do not dump raw manifests or logs.
-
 > GENERATED FILE - DO NOT HAND-EDIT.
 > Source of truth: `docs/architecture/rpms.locations.json`
 > Regenerate: `pnpm rpms:gen-filemap`
@@ -92,7 +88,8 @@ If you are touching an entity, read its generated `_context.md` before any local
 
 | Artifact | Home | RW | Law | Enforcement | Owner | Status |
 |----------|------|----|-----|-------------|-------|--------|
-| `operational-door.rdc.plans` | `.rdc/plans/**` | `authored` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance` | RDC planning workflow | `active` |
+| `operational-door.rdc.plans` | `.rdc/areas/**/plans/**` | `authored` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance` | RDC planning workflow | `staged` |
+| `operational-door.rdc.plans.compatibility` | `.rdc/plans/**` | `authored` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance`<br />Retire only through the approved area-first-v1 activation receipt. | RDC path migration compiler | `deprecated` |
 | `operational-door.rdc.reports` | `.rdc/reports/**` | `generated` | One Direction | `allow_declared_home`<br />`path_conformance` | rdc:report | `active` |
 | `operational-door.rdc.lessons` | `.rdc/lessons/**` | `append_only` | One Direction, One Home Per Fact | `allow_declared_home`<br />`path_conformance` | RDC lesson capture workflow | `active` |
 | `operational-door.rpms-filemap.rule` | `.claude/rules/rpms-filemap.md`<br />created_by: `scripts/rpms/gen-filemap.ts` | `generated` | One Home Per Fact, One Direction, One Door | `block_manual_edit`<br />`projection_drift` | scripts/rpms/gen-filemap.ts | `active` |
