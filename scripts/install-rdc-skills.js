@@ -474,6 +474,42 @@ function flushOldCaches(cacheBase /* keepVersion intentionally unused */) {
   return flushed;
 }
 
+// ── Marketplace checkout sync ────────────────────────────────────────────────
+// The marketplace directory is a git CLONE, and this installer historically only
+// rewrote `.claude-plugin/marketplace.json` inside it. The rest of the working
+// tree stayed at whatever commit it was cloned at — and since the plugin loader
+// registers every directory it finds, that stale tree is a second, older copy of
+// every command sitting in the menu beside the current one.
+//
+// Fetching is not installing. On 2026-08-16 this clone had a same-day FETCH_HEAD
+// and a working tree 77 commits behind, still serving the pre-rename
+// `name: rdc:<x>` commands that rendered /rdc:rdc:plan next to /rdc:plan.
+//
+// PRESERVE-DIRTY: a clone with local modifications is never reset. It is a
+// consumer copy, so uncommitted content there is unexpected — which is exactly
+// why it gets reported rather than destroyed.
+function syncMarketplaceCheckout(mktDir) {
+  const gitDir = path.join(mktDir, '.git');
+  if (!fs.existsSync(gitDir)) return; // manifest-only directory; nothing to sync
+  const git = (...args) =>
+    execSync(`git -C "${mktDir}" ${args.join(' ')}`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+  try {
+    if (git('status', '--porcelain')) {
+      warn(`marketplace clone has local changes at ${mktDir} — left untouched; it may serve stale commands`);
+      return;
+    }
+    const branch = git('rev-parse', '--abbrev-ref', 'HEAD') || 'master';
+    const ref = branch === 'HEAD' ? 'master' : branch;
+    git('fetch', 'origin', ref, '--quiet');
+    const behind = Number(git('rev-list', '--count', `HEAD..origin/${ref}`)) || 0;
+    if (behind === 0) return;
+    git('reset', '--hard', `origin/${ref}`, '--quiet');
+    info(`       marketplace: advanced ${behind} commit(s) -> ${git('rev-parse', '--short', 'HEAD')}`);
+  } catch (e) {
+    warn(`marketplace clone could not be synced (${String(e.message).split('\n')[0]}) — it may serve stale commands`);
+  }
+}
+
 // ── Step 2: CLI plugin registration (→ ~/.claude/plugins/) ───────────────────
 function registerCLI(version, gitSha) {
   const pluginDir  = path.join(claudeHome, 'plugins');
@@ -485,6 +521,24 @@ function registerCLI(version, gitSha) {
   // 1. Marketplace manifest
   fs.mkdirSync(mktPlugDir, { recursive: true });
   fs.copyFileSync(path.join(repoRoot, '.claude-plugin', 'marketplace.json'), path.join(mktPlugDir, 'marketplace.json'));
+
+  // 1b. The marketplace dir is a CLONE, and this installer only ever rewrote the
+  // manifest inside it. Everything else — commands/, skills/, hooks/ — stayed at
+  // whatever commit it was cloned at, and the plugin loader registers every dir
+  // it finds (see the note on cache flushing below). So a stale clone is a
+  // second, older copy of every command, live in the menu next to the current
+  // one.
+  //
+  // Observed 2026-08-16: this clone sat at v0.24.36, SEVENTY-SEVEN commits
+  // behind master, with a FETCH_HEAD from the same day. Fetched and never
+  // checked out — the identical failure the environment harness had, where a
+  // bare hub advanced its ref while the files consumers actually execute never
+  // moved. Its stale commands still declared the old `name: rdc:<x>`, so the
+  // menu showed /rdc:rdc:plan beside /rdc:plan, one entry per source.
+  //
+  // A fetch is not an install. Bring the working tree to the ref, or do not
+  // treat the directory as installed.
+  syncMarketplaceCheckout(mktDir);
 
   // 2. known_marketplaces.json
   const kmpPath = path.join(pluginDir, 'known_marketplaces.json');
