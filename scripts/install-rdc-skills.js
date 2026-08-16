@@ -928,6 +928,31 @@ function reportMcpConnector() {
   info(`       claude.ai / MCP clients: ${PUBLIC_MCP_URL} (Auth: none)`);
 }
 
+/**
+ * Live cross-surface proof, run at the end of every install.
+ *
+ * Everything above this line WRITES config files and TRUSTS they took effect.
+ * On 2026-08-16 that trust was wrong for one whole surface — the production
+ * MCP endpoint answered {"skills":0} while origin/master carried 36 — and
+ * nothing in this installer had ever asked it. This is the ask: ADVISORY
+ * only (never blocks a Claude CLI / Codex install that IS correct just
+ * because a shared remote service is stale), but it prints in every run so
+ * the gap cannot go quiet again.
+ */
+function runLiveProof() {
+  const script = path.join(repoRoot, 'scripts', 'verify-live-install.mjs');
+  if (!fs.existsSync(script)) return;
+  console.log('');
+  console.log('  \x1b[36mLive cross-surface proof:\x1b[0m');
+  try {
+    execSync(`node "${script}"`, { stdio: 'inherit', cwd: repoRoot });
+  } catch {
+    // Non-zero = a surface is stale. Already printed by the script itself;
+    // advisory here on purpose — see docstring.
+    warn('       one or more live surfaces do not match origin/master — see table above');
+  }
+}
+
 // ── Preflight ─────────────────────────────────────────────────────────────────
 function runPreflight() {
   const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
@@ -1262,6 +1287,9 @@ async function main() {
   console.log('');
   console.log('  \x1b[36mMCP connector:\x1b[0m');
   reportMcpConnector();
+
+  // 7.5 Live cross-surface proof — advisory, never blocks install exit code
+  runLiveProof();
 
   // Done
   console.log('');
