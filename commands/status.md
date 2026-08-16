@@ -1,5 +1,5 @@
 ---
-name: rdc:status
+name: status
 description: >-
   Usage `rdc:status` — open epics, work items by project, Coolify health, blockers, next recommended action. Read-only situational awareness.
 ---

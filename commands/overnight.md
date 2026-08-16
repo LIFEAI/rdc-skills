@@ -1,5 +1,5 @@
 ---
-name: rdc:overnight
+name: overnight
 description: >-
   Usage `rdc:overnight [epic-id|label=X]` — unattended overnight supervisor, chains preplan → plan → build → review → report across all high-priority epics in --unattended mode. Use for "run overnight", "build while I sleep".
 ---

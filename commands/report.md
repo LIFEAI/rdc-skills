@@ -1,5 +1,5 @@
 ---
-name: rdc:report
+name: report
 description: >-
   Usage `rdc:report [--unattended]` — nightly markdown report, writes to .rdc/reports/YYYY-MM-DD.md. Covers completed/open work items, per-project progress, infra status, git stats, test counts.
 ---

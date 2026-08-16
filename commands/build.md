@@ -1,5 +1,5 @@
 ---
-name: rdc:build
+name: build
 description: >-
   Usage `rdc:build <epic-id|topic> [--unattended]` — dispatch typed agents from an epic, commit, push, update work items. The build engine. Use after rdc:plan or when the project lead says "build it".
 ---

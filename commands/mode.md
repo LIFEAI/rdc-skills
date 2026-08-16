@@ -1,5 +1,5 @@
 ---
-name: rdc:mode
+name: mode
 description: >-
   Usage `rdc:mode [status|hotfix "<reason>" [minutes]|normal]` — show or set the operating mode. HotFix relaxes ceremony gates for a bounded window; it never relaxes a safety guard.
 ---

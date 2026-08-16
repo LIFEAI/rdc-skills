@@ -1,5 +1,5 @@
 ---
-name: rdc:collab
+name: collab
 description: >-
   Usage `rdc:collab --session <id>` — bidirectional relay with claude.ai. Read inbox, do work, write outbox, loop. Dave watches terminal and can interject.
 ---

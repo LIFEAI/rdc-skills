@@ -1,5 +1,5 @@
 ---
-name: rdc:handoff
+name: handoff
 description: >-
   Usage `rdc:handoff <topic>` — structured handoff from planning session to CLI agents. Produces plan doc in .rdc/plans/, work items in DB, prototype registry entry if applicable. Use when plan/prototype is finalized and ready for implementation.
 ---

@@ -1,5 +1,5 @@
 ---
-name: rdc:help
+name: help
 description: >-
   Usage `rdc:help` or `rdc` — manifest-driven menu of all MCP skills with
   argument syntax, requirements, decision hints, and direct MCP/curl access.

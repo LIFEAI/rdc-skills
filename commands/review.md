@@ -1,5 +1,5 @@
 ---
-name: rdc:review
+name: review
 description: >-
   Usage `rdc:review [--unattended]` — tests, typecheck, stale docs, export conflicts across modified packages. Fixes issues found. Use after a build session or before merging to main.
 ---

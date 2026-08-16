@@ -1,5 +1,5 @@
 ---
-name: rdc:deploy
+name: deploy
 description: >-
   Coolify ops. Usage `rdc:deploy <slug> [build-id]`, `rdc:deploy new <slug>`, `rdc:deploy maintenance <service>`, `rdc:deploy diagnose <slug>`, or `rdc:deploy audit [--fix]` — typed checklists, private-service controls, DNS decision tree, and mandatory post-deploy gates. Checklist-only output.
 ---
