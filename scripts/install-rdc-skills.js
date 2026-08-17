@@ -8,8 +8,8 @@
  *   node scripts/install-rdc-skills.js --profile core       ← clean-box portable hooks
  *   node scripts/install-rdc-skills.js --profile lifeai     ← LIFEAI/regen-root hooks
  *   node scripts/install-rdc-skills.js --claude-home <path> ← custom CLI home
- *   node scripts/install-rdc-skills.js --codex-root <path>  ← also install to .agents/skills/user/
- *   node scripts/install-rdc-skills.js --codex-skill-dir <path> ← also install to a Codex skill dir
+ *   node scripts/install-rdc-skills.js --codex-root <path>  ← purge legacy project-local rdc skill copies
+ *   node scripts/install-rdc-skills.js --codex-skill-dir <path> ← purge one legacy Codex skill dir
  *   node scripts/install-rdc-skills.js --project-root <path> --write-startup-blocks
  *   node scripts/install-rdc-skills.js --migrate <path>     ← migrate docs/ → .rdc/
  *
@@ -17,7 +17,7 @@
  *   1. git pull (latest commands + guides)
  *   2. CLI plugin  — registers in ~/.claude/plugins/ + settings.json
  *   3. Cowork      — registers in Desktop cowork_plugins/ + cowork_settings.json
- *   3.5 Codex      — copies skills to detected Codex skill dirs
+ *   3.5 Codex      — removes stale file-based copies; Codex loads RDC skills through MCP
  *   4. Hook files  — copies hooks/*.js → ~/.claude/hooks/
  *   5. Hook wiring — wires hooks into ~/.claude/settings.json
  *   6. Zip         — builds dist/rdc-skills-plugin.zip for claude.ai / distribution
@@ -101,6 +101,12 @@ function run(cmd, options = {}) {
 }
 
 function updateCodexMcpToml(toml, mcpUrl) {
+  // RDC skills are MCP-only in Codex. Older installs also registered an RDC
+  // marketplace/plugin, which Codex now rejects as an unsupported source and
+  // reports during every startup. Remove only those exact legacy blocks.
+  toml = toml
+    .replace(/(^|\n)\[marketplaces\.rdc-skills\]\n[\s\S]*?(?=\n\[|\s*$)/g, '$1')
+    .replace(/(^|\n)\[plugins\."rdc-skills@rdc-skills"\]\n[\s\S]*?(?=\n\[|\s*$)/g, '$1');
   const blockRe = /(^|\n)(\[mcp_servers\.rdc-skills\]\n)([\s\S]*?)(?=\n\[|\s*$)/;
   const desiredLine = `url = '${mcpUrl}'`;
   if (blockRe.test(toml)) {
@@ -117,10 +123,11 @@ function updateCodexMcpToml(toml, mcpUrl) {
 
 function selfTestCodexMcpToml() {
   const url = 'https://rdc-skills.regendevcorp.com/mcp';
-  const stale = "[mcp_servers.clauth]\nurl = 'https://clauth.regendevcorp.com/mcp'\n\n[mcp_servers.rdc-skills]\nurl = 'https://rdc-skills.dev.regendevcorp.com/mcp'\n\n[mcp_servers.web-research]\nurl = 'https://research.regendevcorp.com/mcp'\n";
+  const stale = "[mcp_servers.clauth]\nurl = 'https://clauth.regendevcorp.com/mcp'\n\n[mcp_servers.rdc-skills]\nurl = 'https://rdc-skills.dev.regendevcorp.com/mcp'\n\n[marketplaces.rdc-skills]\nsource_type = 'git'\nsource = 'https://github.com/LIFEAI/rdc-skills.git'\n\n[plugins.\"rdc-skills@rdc-skills\"]\nenabled = true\n\n[mcp_servers.web-research]\nurl = 'https://research.regendevcorp.com/mcp'\n";
   const updated = updateCodexMcpToml(stale, url);
   if (!updated.includes(`url = '${url}'`)) throw new Error('did not write production rdc-skills URL');
   if (updated.includes('rdc-skills.dev.regendevcorp.com')) throw new Error('stale dev URL survived');
+  if (updated.includes('[marketplaces.rdc-skills]') || updated.includes('[plugins."rdc-skills@rdc-skills"]')) throw new Error('legacy Codex plugin state survived');
   if (!updated.includes('[mcp_servers.clauth]') || !updated.includes('[mcp_servers.web-research]')) throw new Error('neighbor MCP blocks were damaged');
 
   const missing = updateCodexMcpToml("[mcp_servers.clauth]\nurl = 'https://clauth.regendevcorp.com/mcp'\n", url);
@@ -765,19 +772,11 @@ function registerCodexTarget(targetDir) {
     }
   }
 
-  // Copy: each source skill dir that has a SKILL.md → rdc-<name>/
-  const skillsSrc = path.join(repoRoot, 'skills');
-  let copied = 0;
-  for (const entry of fs.readdirSync(skillsSrc, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const skillFile = path.join(skillsSrc, entry.name, 'SKILL.md');
-    if (!fs.existsSync(skillFile)) continue;
-    const dst = path.join(targetDir, `rdc-${entry.name}`);
-    copyDirRecursive(path.join(skillsSrc, entry.name), dst);
-    copied++;
-  }
-
-  return { removed, copied };
+  // Do not reinstall file-based copies. Codex discovers the live catalog via
+  // [mcp_servers.rdc-skills]. Keeping the same skills in ~/.codex and ~/.agents
+  // registers every skill two or three times, exhausts Codex's skill metadata
+  // budget, and emits a red startup error on every session.
+  return { removed, copied: 0 };
 }
 
 // ── Step 6: Zip for claude.ai / distribution ─────────────────────────────────
@@ -1130,7 +1129,7 @@ async function main() {
     warn('[2/6] Cowork     — no Desktop workspaces found (open Claude Desktop once to create them)');
   }
 
-  // 2.5. Codex registration
+  // 2.5. Codex migration: MCP is authoritative; purge legacy file copies.
   const codexTargets = findCodexTargets();
   if (codexTargets.length > 0) {
     let copiedTotal = 0;
@@ -1139,9 +1138,9 @@ async function main() {
       const { removed, copied } = registerCodexTarget(target.targetDir);
       copiedTotal += copied;
       removedTotal += removed;
-      info(`       ${target.label.padEnd(15)}: ${target.targetDir} (${copied} installed, ${removed} stale removed)`);
+      info(`       ${target.label.padEnd(15)}: ${target.targetDir} (${removed} stale removed; MCP authoritative)`);
     }
-    ok(`[2.5] Codex      — ${copiedTotal} skill install(s), ${removedTotal} stale removed across ${codexTargets.length} target(s)`);
+    ok(`[2.5] Codex      — ${removedTotal} stale file-based skill(s) removed across ${codexTargets.length} target(s); MCP authoritative`);
   } else {
     info('[2.5] Codex      — skipped (no Codex skill dirs found; use --codex-root or --codex-skill-dir)');
   }
@@ -1320,7 +1319,7 @@ async function main() {
 // scripts/probe-installed-hooks.mjs verify the real install path instead of
 // re-implementing it — a probe that copies its own way proves nothing about what
 // ships. Without this guard, requiring the module would run a full install.
-module.exports = { copyHookFiles, assertHooksLoadable, RDC_ENV_HOOK_TIMEOUT_SEC };
+module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, RDC_ENV_HOOK_TIMEOUT_SEC };
 
 if (require.main === module) {
   main().catch(e => { fail(e.message); process.exit(1); });

@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const script = join(REPO_ROOT, 'scripts', 'install-rdc-skills.js');
+const require = createRequire(import.meta.url);
 
 const syntax = spawnSync(process.execPath, ['--check', script], { encoding: 'utf8' });
 assert.equal(syntax.status, 0, syntax.stderr);
@@ -45,5 +48,22 @@ assert.match(
   /no plugin upload needed for MCP/,
   'installer should not imply claude.ai MCP usage requires uploading an artifact',
 );
+
+const { registerCodexTarget } = require(script);
+const codexSkills = mkdtempSync(join(tmpdir(), 'rdc-codex-skills-'));
+try {
+  mkdirSync(join(codexSkills, 'rdc-build'), { recursive: true });
+  writeFileSync(join(codexSkills, 'rdc-build', 'SKILL.md'), '---\nname: rdc:build\n---\n');
+  mkdirSync(join(codexSkills, 'legacy-name'), { recursive: true });
+  writeFileSync(join(codexSkills, 'legacy-name', 'SKILL.md'), '---\nname: rdc:plan\n---\n');
+  mkdirSync(join(codexSkills, 'keep-me'), { recursive: true });
+  writeFileSync(join(codexSkills, 'keep-me', 'SKILL.md'), '---\nname: local:keep\n---\n');
+
+  const migrated = registerCodexTarget(codexSkills);
+  assert.deepEqual(migrated, { removed: 2, copied: 0 });
+  assert.equal(readFileSync(join(codexSkills, 'keep-me', 'SKILL.md'), 'utf8').includes('local:keep'), true);
+} finally {
+  rmSync(codexSkills, { recursive: true, force: true });
+}
 
 console.log('install-rdc-skills tests — PASS');

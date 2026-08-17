@@ -122,7 +122,7 @@ function checkClaudeCli(truth) {
   };
 }
 
-// ── Surface 2: Codex (file-based skill dirs) ────────────────────────────────
+// ── Surface 2: Codex (MCP-only; no stale file-based skill dirs) ─────────────
 function findCodexTargets(codexRoot) {
   const targets = [];
   const add = (label, dir) => {
@@ -150,28 +150,11 @@ function checkCodex(truth) {
   for (const t of targets) {
     const dirs = fs.readdirSync(t.dir, { withFileTypes: true }).filter((e) => e.isDirectory());
     const rdcDirs = dirs.filter((e) => /^rdc-/.test(e.name) || readFrontmatterName(path.join(t.dir, e.name, 'SKILL.md'))?.startsWith('rdc:'));
-    // Content check, not just count: hash one arbitrary skill's SKILL.md and
-    // compare against the SAME file at origin/master. A stale copy with the
-    // right COUNT (nothing added/removed) but old CONTENT would pass a count
-    // check and still be wrong — this is what a plain file-count gate misses.
-    let staleSample = null;
-    if (rdcDirs.length > 0) {
-      const sample = rdcDirs[0].name.replace(/^rdc-/, '');
-      const localFile = path.join(t.dir, rdcDirs[0].name, 'SKILL.md');
-      let localBody = null;
-      try { localBody = fs.readFileSync(localFile, 'utf8'); } catch {}
-      let truthBody = null;
-      try { truthBody = execSync(`git show origin/master:skills/${sample}/SKILL.md`, { cwd: repoRoot, encoding: 'utf8' }); } catch {}
-      if (localBody != null && truthBody != null && localBody.replace(/\r\n/g, '\n') !== truthBody.replace(/\r\n/g, '\n')) {
-        staleSample = sample;
-      }
-    }
-    const countMatch = rdcDirs.length === truth.skillCount;
-    results.push({ label: t.label, dir: t.dir, count: rdcDirs.length, countMatch, staleSample });
+    results.push({ label: t.label, dir: t.dir, count: rdcDirs.length });
   }
-  const pass = results.every((r) => r.countMatch && !r.staleSample);
+  const pass = results.every((r) => r.count === 0);
   const detail = results.map((r) =>
-    `${r.label}: ${r.count}/${truth.skillCount} skills${r.countMatch ? '' : ' [COUNT MISMATCH]'}${r.staleSample ? ` [STALE CONTENT: ${r.staleSample}]` : ''}`
+    `${r.label}: ${r.count} legacy file-based rdc skill(s)${r.count === 0 ? '' : ' [MCP DUPLICATES PRESENT]'}`
   ).join('; ');
   return { surface: 'Codex', pass, detail };
 }
