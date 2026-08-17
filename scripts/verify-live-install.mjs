@@ -22,6 +22,7 @@
  *   node scripts/verify-live-install.mjs                  human table, exit 1 on any FAIL
  *   node scripts/verify-live-install.mjs --json            machine-readable
  *   node scripts/verify-live-install.mjs --mcp-url <url>   override (default: production)
+ *   node scripts/verify-live-install.mjs --codex-root <dir> consuming project root
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +35,8 @@ const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const mcpUrlIdx = args.indexOf('--mcp-url');
 const MCP_URL = mcpUrlIdx >= 0 ? args[mcpUrlIdx + 1] : 'https://rdc-skills.regendevcorp.com';
+const codexRootIdx = args.indexOf('--codex-root');
+const CODEX_ROOT = codexRootIdx >= 0 ? path.resolve(args[codexRootIdx + 1]) : null;
 
 const repoRoot = path.resolve(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), '..');
 const claudeHome = path.join(os.homedir(), '.claude');
@@ -138,9 +141,11 @@ function findCodexTargets(codexRoot) {
 
 function checkCodex(truth) {
   const codexRootCandidates = [
+    CODEX_ROOT,
+    process.env.REGEN_ROOT ? path.resolve(process.env.REGEN_ROOT) : null,
     path.resolve(repoRoot, '..', 'regen-root'),
     process.cwd(),
-  ];
+  ].filter(Boolean);
   const codexRoot = codexRootCandidates.find((c) => fs.existsSync(path.join(c, '.agents')));
   const targets = findCodexTargets(codexRoot);
   if (targets.length === 0) {
@@ -186,7 +191,7 @@ function checkCodexMcpConfig() {
   if (!fs.existsSync(codexToml)) {
     return { surface: 'Codex MCP', pass: false, detail: `${codexToml} does not exist` };
   }
-  const toml = fs.readFileSync(codexToml, 'utf8');
+  const toml = fs.readFileSync(codexToml, 'utf8').replace(/\r\n/g, '\n');
   const blockRe = /\[mcp_servers\.rdc-skills\]\n([\s\S]*?)(?=\n\[|\s*$)/;
   const m = toml.match(blockRe);
   if (!m) return { surface: 'Codex MCP', pass: false, detail: 'no [mcp_servers.rdc-skills] block in config.toml' };

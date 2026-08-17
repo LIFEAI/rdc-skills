@@ -101,6 +101,8 @@ function run(cmd, options = {}) {
 }
 
 function updateCodexMcpToml(toml, mcpUrl) {
+  const eol = toml.includes('\r\n') ? '\r\n' : '\n';
+  toml = toml.replace(/\r\n/g, '\n');
   // RDC skills are MCP-only in Codex. Older installs also registered an RDC
   // marketplace/plugin, which Codex now rejects as an unsupported source and
   // reports during every startup. Remove only those exact legacy blocks.
@@ -110,15 +112,16 @@ function updateCodexMcpToml(toml, mcpUrl) {
   const blockRe = /(^|\n)(\[mcp_servers\.rdc-skills\]\n)([\s\S]*?)(?=\n\[|\s*$)/;
   const desiredLine = `url = '${mcpUrl}'`;
   if (blockRe.test(toml)) {
-    return toml.replace(blockRe, (match, prefix, header, body) => {
+    const updated = toml.replace(blockRe, (match, prefix, header, body) => {
       if (/^url\s*=.*$/m.test(body)) {
         return `${prefix}${header}${body.replace(/^url\s*=.*$/m, desiredLine)}`;
       }
       const trimmed = body.replace(/\s*$/, '');
       return `${prefix}${header}${trimmed}${trimmed ? '\n' : ''}${desiredLine}\n`;
     });
+    return updated.replace(/\n/g, eol);
   }
-  return toml.replace(/\s*$/, '\n') + `\n[mcp_servers.rdc-skills]\n${desiredLine}\n`;
+  return (toml.replace(/\s*$/, '\n') + `\n[mcp_servers.rdc-skills]\n${desiredLine}\n`).replace(/\n/g, eol);
 }
 
 function selfTestCodexMcpToml() {
@@ -135,6 +138,10 @@ function selfTestCodexMcpToml() {
 
   const noUrl = updateCodexMcpToml('[mcp_servers.rdc-skills]\nstartup_timeout_sec = 30\n', url);
   if (!noUrl.includes("startup_timeout_sec = 30") || !noUrl.includes(`url = '${url}'`)) throw new Error('url-less block was not repaired');
+
+  const crlf = updateCodexMcpToml(stale.replace(/\n/g, '\r\n'), url);
+  if (crlf.includes('[marketplaces.rdc-skills]') || crlf.includes('[plugins."rdc-skills@rdc-skills"]')) throw new Error('CRLF legacy Codex plugin state survived');
+  if (!crlf.includes(`url = '${url}'`) || !crlf.includes('\r\n')) throw new Error('CRLF MCP config was not preserved');
 
   console.log('install-rdc-skills codex MCP TOML self-test — PASS');
 }
@@ -698,6 +705,8 @@ function addCodexTarget(targets, label, targetDir) {
 // connector add in its UI (no programmatic API).
 function registerMcpEndpoints() {
   const out = [];
+  let codexReady = false;
+  let codexError = null;
 
   // Claude Code — user-level ~/.claude.json mcpServers (covers EVERY project).
   try {
@@ -717,17 +726,27 @@ function registerMcpEndpoints() {
   // Codex — ensure [mcp_servers.rdc-skills] exists and points at the live shared endpoint.
   try {
     const codexToml = path.join(os.homedir(), '.codex', 'config.toml');
-    if (fs.existsSync(codexToml)) {
-      const toml = fs.readFileSync(codexToml, 'utf8');
-      const next = updateCodexMcpToml(toml, PUBLIC_MCP_URL);
-      if (next !== toml) {
-        fs.writeFileSync(codexToml, next);
-        out.push('codex(~/.codex/config.toml)');
-      }
+    fs.mkdirSync(path.dirname(codexToml), { recursive: true });
+    const toml = fs.existsSync(codexToml) ? fs.readFileSync(codexToml, 'utf8') : '';
+    const next = updateCodexMcpToml(toml, PUBLIC_MCP_URL);
+    if (next !== toml) {
+      const tmp = `${codexToml}.tmp-${process.pid}`;
+      fs.writeFileSync(tmp, next);
+      fs.renameSync(tmp, codexToml);
+      out.push('codex(~/.codex/config.toml)');
     }
-  } catch (e) { out.push(`codex WARN:${e.message}`); }
+    const verified = fs.readFileSync(codexToml, 'utf8').replace(/\r\n/g, '\n');
+    const block = verified.match(/\[mcp_servers\.rdc-skills\]\n([\s\S]*?)(?=\n\[|\s*$)/)?.[1] || '';
+    codexReady = new RegExp(`^url\\s*=\\s*['\"]${PUBLIC_MCP_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]$`, 'm').test(block)
+      && !verified.includes('[marketplaces.rdc-skills]')
+      && !verified.includes('[plugins."rdc-skills@rdc-skills"]');
+    if (!codexReady) throw new Error('Codex MCP endpoint did not verify after write');
+  } catch (e) {
+    codexError = e.message;
+    out.push(`codex ERROR:${e.message}`);
+  }
 
-  return out;
+  return { updates: out, codexReady, codexError };
 }
 
 function findCodexTargets() {
@@ -944,7 +963,8 @@ function runLiveProof() {
   console.log('');
   console.log('  \x1b[36mLive cross-surface proof:\x1b[0m');
   try {
-    execSync(`node "${script}"`, { stdio: 'inherit', cwd: repoRoot });
+    const codexRootArg = codexRoot ? ` --codex-root "${codexRoot}"` : '';
+    execSync(`node "${script}"${codexRootArg}`, { stdio: 'inherit', cwd: repoRoot });
   } catch {
     // Non-zero = a surface is stale. Already printed by the script itself;
     // advisory here on purpose — see docstring.
@@ -1129,7 +1149,18 @@ async function main() {
     warn('[2/6] Cowork     — no Desktop workspaces found (open Claude Desktop once to create them)');
   }
 
-  // 2.5. Codex migration: MCP is authoritative; purge legacy file copies.
+  // 2.5. Establish and verify the MCP replacement BEFORE purging file copies.
+  const mcpReg = registerMcpEndpoints();
+  if (!mcpReg.codexReady) {
+    throw new Error(`Codex MCP registration failed; retaining file-based skills: ${mcpReg.codexError || 'unknown error'}`);
+  }
+  if (mcpReg.updates.length > 0) {
+    ok(`[2.5] MCP        — registered rdc-skills endpoint: ${mcpReg.updates.join(', ')}`);
+  } else {
+    info('[2.5] MCP        — rdc-skills endpoint verified (claude + codex)');
+  }
+
+  // 2.6. Codex migration: MCP is authoritative; purge legacy file copies.
   const codexTargets = findCodexTargets();
   if (codexTargets.length > 0) {
     let copiedTotal = 0;
@@ -1140,18 +1171,9 @@ async function main() {
       removedTotal += removed;
       info(`       ${target.label.padEnd(15)}: ${target.targetDir} (${removed} stale removed; MCP authoritative)`);
     }
-    ok(`[2.5] Codex      — ${removedTotal} stale file-based skill(s) removed across ${codexTargets.length} target(s); MCP authoritative`);
+    ok(`[2.6] Codex      — ${removedTotal} stale file-based skill(s) removed across ${codexTargets.length} target(s); MCP authoritative`);
   } else {
-    info('[2.5] Codex      — skipped (no Codex skill dirs found; use --codex-root or --codex-skill-dir)');
-  }
-
-  // 2.6. Register the rdc-skills MCP endpoint globally (Claude Code + Codex) so
-  // EVERY agent can reach the skills via MCP, not only where a project .mcp.json exists.
-  const mcpReg = registerMcpEndpoints();
-  if (mcpReg.length > 0) {
-    ok(`[2.6] MCP        — registered rdc-skills endpoint: ${mcpReg.join(', ')}`);
-  } else {
-    info('[2.6] MCP        — rdc-skills endpoint already registered (claude + codex)');
+    info('[2.6] Codex      — skipped (no Codex skill dirs found; use --codex-root or --codex-skill-dir)');
   }
 
   // 2.7. Symlinks in regen-root/.claude/skills/ (FS MCP + claude.ai access)

@@ -48,6 +48,15 @@ assert.match(
   /no plugin upload needed for MCP/,
   'installer should not imply claude.ai MCP usage requires uploading an artifact',
 );
+assert.ok(
+  source.indexOf('const mcpReg = registerMcpEndpoints();') < source.indexOf('const codexTargets = findCodexTargets();'),
+  'installer must establish the Codex MCP endpoint before removing file-based skills',
+);
+assert.match(
+  source,
+  /if \(!mcpReg\.codexReady\)[\s\S]*retaining file-based skills/,
+  'installer must fail closed and retain file-based skills when MCP registration fails',
+);
 
 const { registerCodexTarget } = require(script);
 const codexSkills = mkdtempSync(join(tmpdir(), 'rdc-codex-skills-'));
