@@ -265,7 +265,7 @@ function resolveAppRoot(slug) {
 // Validation logic for a single app row
 // ---------------------------------------------------------------------------
 
-function validateApp(slug) {
+function validateApp(slug, { deployed = true } = {}) {
   const appRoot = resolveAppRoot(slug);
 
   if (!appRoot) {
@@ -353,8 +353,11 @@ function validateApp(slug) {
     }
   }
 
-  // DEPLOY block — mandatory as of 2026-07-05. Always a hard FAIL (not mode-gated).
-  if (!validateDeployBlock(slug, content, publishPath)) ok = false;
+  // DEPLOY block — mandatory as of 2026-07-05 for a DEPLOYED target. Always a
+  // hard FAIL (not mode-gated) when applicable. A package (deployed=false)
+  // is consumed, not deployed — it has no runtime/port/health_path to
+  // declare, so this check does not apply to it.
+  if (deployed && !validateDeployBlock(slug, content, publishPath)) ok = false;
 
   if (ok) {
     emit('PASS', slug, 'PUBLISH.md valid', `${surfaceIds.length} surface(s): ${surfaceIds.join(', ')}`);
@@ -436,15 +439,28 @@ async function main() {
     process.exit(1);
   }
 
-  // 2b. Query apps for monorepo_path (authoritative slug→dir; fixes slug≠dir).
+  // 2b. Query apps for monorepo_path (authoritative slug→dir; fixes slug≠dir)
+  // AND to discover package-type slugs. A package (e.g. @regen/ui) is
+  // CONSUMED, not deployed — it has no app_deployments row and was
+  // previously invisible to this validator entirely (not failed, just never
+  // considered, since discovery below used to be driven solely by
+  // app_deployments). Fixed 2026-08-17 (Dave, direct: "not all things are
+  // deployed some things are consumed"): every `apps` row with
+  // runtime = 'package' is now discovered here too, deduped against the
+  // app_deployments-driven set below.
+  const packageSlugs = new Set();
   try {
-    const apps = await supabaseGet(anonKey, '/rest/v1/apps?select=slug,monorepo_path');
+    const apps = await supabaseGet(anonKey, '/rest/v1/apps?select=slug,monorepo_path,runtime,status');
     for (const a of apps) {
       if (a.monorepo_path) dirBySlug.set(a.slug, a.monorepo_path);
+      if (a.runtime === 'package' && a.status === 'active' && (!slugFilter || a.slug === slugFilter)) {
+        packageSlugs.add(a.slug);
+      }
     }
   } catch (err) {
-    // Non-fatal: fall back to slug-name probing in resolveAppRoot.
-    if (!jsonOutput) console.log(`(note: apps monorepo_path lookup failed — ${err.message}; using slug-name fallback)`);
+    // Non-fatal: fall back to slug-name probing in resolveAppRoot, and skip
+    // package discovery for this run (a deploy-scoped validation still works).
+    if (!jsonOutput) console.log(`(note: apps lookup failed — ${err.message}; using slug-name fallback, package discovery skipped)`);
   }
 
   // Index all deployment rows by slug for port resolvability checks.
@@ -453,28 +469,36 @@ async function main() {
     rowsBySlug.get(r.app_slug).push(r);
   }
 
-  if (!Array.isArray(rows) || rows.length === 0) {
+  if ((!Array.isArray(rows) || rows.length === 0) && packageSlugs.size === 0) {
     if (!jsonOutput) {
-      console.log(slugFilter ? `No active app_deployments row found for slug: ${slugFilter}` : 'No active app_deployments rows found.');
+      console.log(slugFilter ? `No active app_deployments row or package found for slug: ${slugFilter}` : 'No active app_deployments rows or packages found.');
     }
     process.exit(0);
   }
 
   // Deduplicate slugs (same app_slug may have dev + prod rows)
   const slugsSeen = new Set();
-  const uniqueRows = rows.filter((r) => {
+  const uniqueRows = (rows || []).filter((r) => {
     if (slugsSeen.has(r.app_slug)) return false;
     slugsSeen.add(r.app_slug);
     return true;
   });
+  const deployedSlugs = new Set(uniqueRows.map((r) => r.app_slug));
+  // A package slug that ALSO has an app_deployments row (unusual, but not
+  // impossible) is validated once, via the deploy path — packageSlugs here
+  // is only the ones with NO deploy row, i.e. genuinely consumption-only.
+  const consumptionOnlySlugs = [...packageSlugs].filter((s) => !deployedSlugs.has(s));
 
   if (!jsonOutput) {
-    console.log(`Checking ${uniqueRows.length} unique app slug(s) from ${rows.length} active app_deployments row(s)...\n`);
+    console.log(`Checking ${uniqueRows.length} unique deployed slug(s) from ${rows.length} active app_deployments row(s), plus ${consumptionOnlySlugs.length} consumption-only package slug(s)...\n`);
   }
 
   // 3. Validate each slug
   for (const row of uniqueRows) {
     validateApp(row.app_slug);
+  }
+  for (const slug of consumptionOnlySlugs) {
+    validateApp(slug, { deployed: false });
   }
 
   // 4. Summary
