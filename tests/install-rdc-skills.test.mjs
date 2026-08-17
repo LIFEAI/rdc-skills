@@ -57,6 +57,11 @@ assert.match(
   /if \(!mcpReg\.codexReady\)[\s\S]*retaining file-based skills/,
   'installer must fail closed and retain file-based skills when MCP registration fails',
 );
+assert.match(
+  source,
+  /const mode = fs\.existsSync\(codexToml\)[\s\S]*fs\.chmodSync\(tmp, mode\)[\s\S]*finally[\s\S]*fs\.unlinkSync\(tmp\)/,
+  'Codex config replacement must preserve permissions and remove failed temporary copies',
+);
 
 const { registerCodexTarget } = require(script);
 const codexSkills = mkdtempSync(join(tmpdir(), 'rdc-codex-skills-'));

@@ -731,8 +731,14 @@ function registerMcpEndpoints() {
     const next = updateCodexMcpToml(toml, PUBLIC_MCP_URL);
     if (next !== toml) {
       const tmp = `${codexToml}.tmp-${process.pid}`;
-      fs.writeFileSync(tmp, next);
-      fs.renameSync(tmp, codexToml);
+      const mode = fs.existsSync(codexToml) ? (fs.statSync(codexToml).mode & 0o777) : 0o600;
+      try {
+        fs.writeFileSync(tmp, next, { mode });
+        fs.chmodSync(tmp, mode);
+        fs.renameSync(tmp, codexToml);
+      } finally {
+        if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+      }
       out.push('codex(~/.codex/config.toml)');
     }
     const verified = fs.readFileSync(codexToml, 'utf8').replace(/\r\n/g, '\n');
