@@ -1,5 +1,5 @@
 ---
-name: rdc:brochure
+name: brochure
 description: "Usage `rdc:brochure <input> [--out <path>] [--template <name>] [--format Letter|A4]` — Turn a zip, folder, HTML file, URL, or markdown folder into a print-quality PDF brochure via Puppeteer. Auto-detects print-variant HTML, honors @page CSS, falls back to a Studio-token-aware template when no HTML exists."
 ---
 

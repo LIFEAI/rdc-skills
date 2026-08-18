@@ -1,5 +1,5 @@
 ---
-name: rdc:prototype
+name: prototype
 description: "Usage `rdc:prototype <description>` — Build a JSX/TSX mockup for visual review before implementation. Saves to docs/source/, registers in prototype_registry. Use when asked to mock something up or show what it looks like. Not production code."
 ---
 

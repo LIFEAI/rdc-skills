@@ -1,5 +1,5 @@
 ---
-name: rdc:fixit
+name: fixit
 description: "Usage `rdc:fixit <description>` — Quick fix under 5 files / 30 min that does not warrant a full plan→build cycle. Creates a minimal work item, makes the change, commits, runs a mandatory code-review pass (pr-review-toolkit:code-reviewer), DELIVERS the change to where it is consumed (publish/deploy/land) and verifies it, then closes. The only sanctioned bypass of rdc:build."
 ---
 

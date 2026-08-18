@@ -115,7 +115,7 @@ function unitTests() {
   check('unit: resolves bare skill name', resolveSkillName('build') === 'build');
   check('unit: resolves rdc slash skill name', resolveSkillName('rdc:build') === 'build');
   check('unit: resolves leading slash command form', resolveSkillName('/rdc:build') === 'build');
-  check('unit: resolves specialist slash alias', resolveSkillName('rdc:brochurify') === 'rdc-brochurify');
+  check('unit: resolves specialist slash alias', resolveSkillName('rdc:brochurify') === 'brochurify');
   check('unit: resolves non-rdc specialist name', resolveSkillName('lifeai-brochure-author') === 'lifeai-brochure-author');
 
   // Searchability gate — the dimension the first "100% coverage" missed. Every

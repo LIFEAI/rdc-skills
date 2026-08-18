@@ -152,7 +152,7 @@ function inspectFormatterBody(body, prefix) {
 function unitChecks() {
   const names = listSkills().map((skill) => skill.name);
   check('unit: channel-formatter in local catalog', names.includes('channel-formatter'));
-  for (const specialist of ['convert', 'brochure', 'rdc-brochurify', 'lifeai-brochure-author']) {
+  for (const specialist of ['convert', 'brochure', 'brochurify', 'lifeai-brochure-author']) {
     check(`unit: specialist present ${specialist}`, names.includes(specialist));
   }
   const results = searchSkills('turn this article into social posts');
@@ -181,7 +181,7 @@ async function endpointChecks(url, label) {
   const catalog = JSON.parse(list.text || '{"skills":[]}');
   const names = catalog.skills.map((skill) => skill.name);
   check(`${label}: list includes channel-formatter`, names.includes('channel-formatter'));
-  for (const specialist of ['convert', 'brochure', 'rdc-brochurify', 'lifeai-brochure-author']) {
+  for (const specialist of ['convert', 'brochure', 'brochurify', 'lifeai-brochure-author']) {
     check(`${label}: list includes ${specialist}`, names.includes(specialist));
   }
 

@@ -1,5 +1,5 @@
 ---
-name: rdc:co-develop
+name: co-develop
 description: "Usage `rdc:co-develop <ask|reply|inbox|start|resume|status>` — peer-aware Claude/Codex co-development over clauth, with ask --wait as the default delegation pattern."
 ---
 

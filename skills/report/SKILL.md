@@ -1,5 +1,5 @@
 ---
-name: rdc:report
+name: report
 description: "Usage `rdc:report` — Write the nightly session summary to .rdc/reports/YYYY-MM-DD.md covering completed work, open items, per-project progress, and infra status. Call at session end."
 ---
 

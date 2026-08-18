@@ -1,5 +1,5 @@
 ---
-name: rdc:self-test
+name: self-test
 description: "Usage `rdc:self-test [--strict]` — Validate all rdc:* skills, plugin manifest, and tooling consistency. Use after editing skills, upgrading the plugin, or when a skill behaves unexpectedly."
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: rdc:housekeeping
+name: housekeeping
 description: "Usage `rdc:housekeeping [--fix]` — Weekly maintenance audit: directory structure verification, PUBLISH.md URL validation, CLAUDE.md freshness, orphan detection, places compliance, and stale version scan. Produces `.rdc/reports/YYYY-MM-DD-housekeeping.md`. With `--fix`, auto-remediate safe issues."
 ---
 

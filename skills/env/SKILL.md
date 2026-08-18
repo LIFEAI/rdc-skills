@@ -1,5 +1,5 @@
 ---
-name: rdc:env
+name: env
 description: "Usage `rdc:env [status|install|repair|update]` — Manage the LIFEAI environment harness: check status, install on a fresh box, repair broken services, or pull updates. Reads $LIFEAI_ENV/manifest.json as the source of truth. Use when: 'check the environment', 'install environment', 'repair environment', 'update environment', 'setup env', 'fix env', 'env status', or after a reboot/GPU crash."
 ---
 

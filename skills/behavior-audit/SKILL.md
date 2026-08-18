@@ -1,5 +1,5 @@
 ---
-name: rdc:behavior-audit
+name: behavior-audit
 description: "Usage `rdc:behavior-audit <report-dir> [--since-days N] [--latest N] [--reprocess]` — produces a bounded, redacted Claude/Codex transcript evidence bundle, incrementally skips completed transcript hashes, and aligns candidate behavior problems to shared truth-governance rules."
 ---
 

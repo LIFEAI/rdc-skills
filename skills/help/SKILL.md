@@ -1,5 +1,5 @@
 ---
-name: rdc:help
+name: help
 description: "Usage `rdc:help` — Show all MCP skills with usage, requirements, slash forms, and codeflow status. Reads `.claude-plugin/plugin.json` skills_meta (single source of truth). Call when unsure which skill to use or what args it takes."
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: rdc:workitems
+name: workitems
 description: "Usage `rdc:workitems [add|done|status|list|query]` — Manual work item CRUD outside the normal build flow: add to backlog, mark done, update status, list open epics, query by label."
 ---
 

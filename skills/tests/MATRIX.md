@@ -31,8 +31,8 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:plan` | `rdc-plan.test.json` | Health-endpoint planning prompt | `exit_code`, `stdout_contains` | Design-decision, decomposition-matrix, work-package, and coarse-check negative checks |
 | `rdc:preplan` | `rdc-preplan.test.json` | Rate-limiter research prompt | `commits_made`, `exit_code`, `stdout_contains` | Research artifact, comparison, unknowns, recommendation, and research-tool routing checks |
 | `rdc:prototype` | `rdc-prototype.test.json` | Tiny component prototype prompt | `exit_code`, `stdout_contains` | Local TSX prototype artifact, registry, test-mode, and production-write negative checks |
-| `rdc:brochurify` | `rdc-rdc-brochurify.test.json` | Read-only markdown Brochurify fixture | `exit_code`, `stdout_contains` | Sandbox output and no-follow-up negative checks |
-| `rdc:extract-verifier-rules` | `rdc-rdc-extract-verifier-rules.test.json` | Enhancement-log verifier fixture | `exit_code`, `stdout_contains` | Candidate, false-positive, known-good, recall, and no-auto-merge/PR negative checks |
+| `rdc:brochurify` | `rdc-brochurify.test.json` | Read-only markdown Brochurify fixture | `exit_code`, `stdout_contains` | Sandbox output and no-follow-up negative checks |
+| `rdc:extract-verifier-rules` | `rdc-extract-verifier-rules.test.json` | Enhancement-log verifier fixture | `exit_code`, `stdout_contains` | Candidate, false-positive, known-good, recall, and no-auto-merge/PR negative checks |
 | `rdc:release` | `rdc-release.test.json` | Dry-run package release | `commits_made`, `exit_code`, `stdout_contains` | Dry-run release checklist and force/bypass negative checks |
 | `rdc:regen-media` | `rdc-regen-media.test.json` | Image generation path selection | `commits_made`, `exit_code`, `stdout_contains` | Local keyless Codex gpt-image-2 default, test-mode no-generation, and server-side fallback negative checks |
 | `rdc:report` | `rdc-report.test.json` | Unattended report generation | `exit_code`, `stdout_contains` | Report status block, counts, next recommendation, and dump/push negative checks |

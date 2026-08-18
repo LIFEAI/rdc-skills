@@ -1,5 +1,5 @@
 ---
-name: rdc-extract-verifier-rules
+name: extract-verifier-rules
 version: 0.1.0
 description: |
   Read recent enhancement-log entries, cluster failures by pattern, generate candidate verifier rules, test them against the known-good corpus and the failure corpus, and propose pull requests adding the highest-confidence rules to forbidden-patterns.json. Use this skill on a nightly cadence (3 AM PT), or manually when the user says "extract verifier rules", "promote enhancement log", "what new rules should we add", or after a significant brochure run produced many failures.
