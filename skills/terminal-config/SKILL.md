@@ -1,5 +1,5 @@
 ---
-name: rdc:terminal-config
+name: terminal-config
 description: "Usage `rdc:terminal-config <task>` — read and safely modify Windows Terminal settings, shell profiles, and agent startup sequencing without relying on machine-specific paths."
 ---
 

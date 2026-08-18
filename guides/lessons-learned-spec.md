@@ -30,7 +30,7 @@ gate, a tooling gotcha) used to survive only if someone hand-wrote a memory. Thi
 makes capture a **routine exit step** of every long skill, and triage a **routine phase**
 of the weekly housekeeping. Capture is cheap and append-only; triage is where fixes happen.
 
-Precedent: brochurify's `rdc-extract-verifier-rules` already does read-log → cluster →
+Precedent: brochurify's `extract-verifier-rules` already does read-log → cluster →
 propose-rule for one domain. This generalizes that pattern fleet-wide.
 
 ---

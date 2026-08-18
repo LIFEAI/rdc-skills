@@ -1,5 +1,5 @@
 ---
-name: rdc:overnight
+name: overnight
 description: "Usage `rdc:overnight [epic-id|label=<label>]` — Unattended end-to-end: drain the entire work queue autonomously (preplan → plan → build → review → report). Inherits mandatory per-wave code-review (pr-review-toolkit:code-reviewer) from rdc:build and rdc:review. Use when leaving Claude to run unsupervised for an extended session."
 ---
 

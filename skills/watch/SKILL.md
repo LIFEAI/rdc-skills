@@ -1,5 +1,5 @@
 ---
-name: rdc:watch
+name: watch
 description: "Usage `rdc:watch` — Initialize a live session-log viewer and report its path; open it only during attended, non-test use. Zero infrastructure — pure filesystem + static HTML."
 ---
 

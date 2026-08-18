@@ -1,5 +1,5 @@
 ---
-name: rdc:convert
+name: convert
 description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI from npm `regen.mde`. Portable: runs in any session that can reach npm — Claude Code CLI, Codex, and claude.ai can fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or open the report in the regen-mde editor on Windows."
 ---
 

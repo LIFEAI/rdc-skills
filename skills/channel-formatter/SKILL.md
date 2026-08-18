@@ -1,5 +1,5 @@
 ---
-name: rdc:channel-formatter
+name: channel-formatter
 description: "Usage `rdc:channel-formatter <channel|pack> [content]` — Apply precise, channel-native formatting and content repurposing to any output: LinkedIn, Twitter/X, Slack/Teams, Email (external/internal), Pitch Deck slides, Word/DOCX, PDF Report, Web/Landing Page, and multi-output content packs. Use EVERY TIME the user names an output channel/platform/document type, asks to 'write a post', 'draft an email', 'format this for', 'make this a slide', 'send to LinkedIn', 'write a tweet', 'social media post', 'turn this article into posts', 'make a content pack', 'make a social pack', or 'repurpose this article'. Each channel has its own Unicode strategy, emphasis system, length limits, and structure — never apply generic markdown to channel-specific output. This skill FORMATS, STRUCTURES, and REPURPOSES text only — for actual .docx/.pptx ↔ Markdown FILE conversion (either direction) use `rdc:convert` (build-corpus), not this skill. Self-contained: all channel and pack rules are inlined below (no external reference files)."
 ---
 

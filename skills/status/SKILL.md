@@ -1,5 +1,5 @@
 ---
-name: rdc:status
+name: status
 description: "Usage `rdc:status` — Read-only snapshot of open epics, work items, Coolify health, blockers, and next recommended action. Safe to call anytime. Start here when disoriented or resuming a session."
 ---
 

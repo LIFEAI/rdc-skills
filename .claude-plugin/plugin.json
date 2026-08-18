@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.31.2",
+  "version": "0.32.0",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -78,7 +78,7 @@
       "leads_to": [
         "convert",
         "brochure",
-        "rdc-brochurify",
+        "brochurify",
         "lifeai-brochure-author"
       ],
       "sandbox_aware": true,
@@ -158,8 +158,8 @@
       "enabled_default": true,
       "codeflow_required": false
     },
-    "rdc-brochurify": {
-      "name": "rdc-brochurify",
+    "brochurify": {
+      "name": "brochurify",
       "slash": "rdc:brochurify",
       "category": "tooling",
       "usage": "rdc:brochurify <source|job-payload>",
@@ -234,7 +234,7 @@
       ],
       "follows": [],
       "leads_to": [
-        "rdc-brochurify"
+        "brochurify"
       ],
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
@@ -999,8 +999,8 @@
       "enabled_default": true,
       "codeflow_required": true
     },
-    "rdc-extract-verifier-rules": {
-      "name": "rdc-extract-verifier-rules",
+    "extract-verifier-rules": {
+      "name": "extract-verifier-rules",
       "slash": "rdc:extract-verifier-rules",
       "category": "tooling",
       "usage": "rdc:extract-verifier-rules [enhancement-log]",
@@ -1032,7 +1032,7 @@
         "nightly cron at 3:00 AM PT"
       ],
       "follows": [
-        "rdc-brochurify"
+        "brochurify"
       ],
       "leads_to": [
         "review"

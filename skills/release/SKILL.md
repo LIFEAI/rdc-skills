@@ -1,5 +1,5 @@
 ---
-name: rdc:release
+name: release
 description: "Usage `rdc:release <repo> [version|--patch|--minor|--major|--dry-run]` — bump, commit, tag, push, wait for CI/publish, install, and verify a package or project using repo-local release metadata."
 ---
 

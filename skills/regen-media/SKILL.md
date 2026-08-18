@@ -1,5 +1,5 @@
 ---
-name: rdc:regen-media
+name: regen-media
 description: "Usage `rdc:regen-media <generate|edit|upscale|upload> <brief-or-path>` - Primary image-generation and Regen Media asset workflow. Use for image generation, image editing/upscaling, GPT Image/gpt-image-2 requests, Codex built-in image_gen, and uploading finished images to regen-media/R2. The default path is keyless local Codex gpt-image-2 via the built-in image_gen tool; server-side regen-media MCP/API generation is fallback only."
 ---
 

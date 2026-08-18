@@ -1,5 +1,5 @@
 ---
-name: rdc:preplan
+name: preplan
 description: "Usage `rdc:preplan <topic>` — Before committing to an architecture, research unknowns first. Codebase scan + web search, no code written, no work items created. Output feeds rdc:plan. Use for open-ended approach questions."
 ---
 
