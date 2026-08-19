@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const script = join(REPO_ROOT, 'scripts', 'install-rdc-skills.js');
+const liveVerifier = join(REPO_ROOT, 'scripts', 'verify-live-install.mjs');
 const require = createRequire(import.meta.url);
 
 const syntax = spawnSync(process.execPath, ['--check', script], { encoding: 'utf8' });
@@ -84,6 +85,31 @@ try {
   assert.equal(readFileSync(join(codexSkills, 'keep-me', 'SKILL.md'), 'utf8').includes('local:keep'), true);
 } finally {
   rmSync(codexSkills, { recursive: true, force: true });
+}
+
+const packagedRoot = mkdtempSync(join(tmpdir(), 'rdc-packaged-truth-'));
+try {
+  writeFileSync(join(packagedRoot, 'package.json'), JSON.stringify({ version: '9.9.9' }));
+  mkdirSync(join(packagedRoot, 'skills', 'first'), { recursive: true });
+  writeFileSync(join(packagedRoot, 'skills', 'first', 'SKILL.md'), '---\nname: rdc:first\n---\n');
+  mkdirSync(join(packagedRoot, 'skills', 'second'), { recursive: true });
+  writeFileSync(join(packagedRoot, 'skills', 'second', 'SKILL.md'), '---\nname: rdc:second\n---\n');
+
+  const packagedTruth = spawnSync(process.execPath, [liveVerifier, '--self-test-source-of-truth'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, RDC_SKILLS_ROOT: packagedRoot },
+  });
+  assert.equal(packagedTruth.status, 0, `${packagedTruth.stdout}\n${packagedTruth.stderr}`);
+  assert.deepEqual(JSON.parse(packagedTruth.stdout), {
+    sha: null,
+    shortSha: 'package',
+    version: '9.9.9',
+    skillCount: 2,
+    authority: 'installed npm package',
+  });
+} finally {
+  rmSync(packagedRoot, { recursive: true, force: true });
 }
 
 console.log('install-rdc-skills tests — PASS');

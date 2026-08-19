@@ -38,7 +38,10 @@ const MCP_URL = mcpUrlIdx >= 0 ? args[mcpUrlIdx + 1] : 'https://rdc-skills.regen
 const codexRootIdx = args.indexOf('--codex-root');
 const CODEX_ROOT = codexRootIdx >= 0 ? path.resolve(args[codexRootIdx + 1]) : null;
 
-const repoRoot = path.resolve(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), '..');
+const installedRoot = path.resolve(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), '..');
+// Tests and package consumers can supply an unpacked package root.  A global npm
+// installation has no .git directory, so it must never be treated as a checkout.
+const repoRoot = process.env.RDC_SKILLS_ROOT ? path.resolve(process.env.RDC_SKILLS_ROOT) : installedRoot;
 const claudeHome = path.join(os.homedir(), '.claude');
 const PLUGIN_KEY = 'rdc-skills@rdc-skills';
 
@@ -73,11 +76,24 @@ function httpGetJson(url, timeoutMs = 8000) {
   });
 }
 
-// ── Source of truth — origin/master, FRESHLY FETCHED. Never local disk: a
-// checkout can silently sit behind origin (this is the exact failure the
-// "canonical fallback" repo had this session — 31 commits behind while being
-// treated as the source of truth). ──────────────────────────────────────────
+function packagedTruth() {
+  const pkg = readJson(path.join(repoRoot, 'package.json'));
+  if (!pkg.version) throw new Error(`package.json version missing at ${repoRoot}`);
+  const skillsRoot = path.join(repoRoot, 'skills');
+  const skillCount = fs.existsSync(skillsRoot)
+    ? fs.readdirSync(skillsRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(skillsRoot, entry.name, 'SKILL.md'))).length
+    : 0;
+  return { sha: null, shortSha: 'package', version: pkg.version, skillCount, authority: 'installed npm package' };
+}
+
+// ── Source of truth — origin/master when this is a checkout, otherwise the
+// installed npm package. A global npm install is intentionally not a Git repo;
+// requiring `git fetch` there made every successful install emit a false error.
+// Checkout mode remains fresh-remote authoritative to catch stale source trees.
+// ───────────────────────────────────────────────────────────────────────────
 function sourceOfTruth() {
+  if (!fs.existsSync(path.join(repoRoot, '.git'))) return packagedTruth();
   execSync('git fetch origin master', { cwd: repoRoot, stdio: 'pipe' });
   const sha = execSync('git rev-parse origin/master', { cwd: repoRoot, encoding: 'utf8' }).trim();
   const pkgRaw = execSync('git show origin/master:package.json', { cwd: repoRoot, encoding: 'utf8' });
@@ -93,7 +109,12 @@ function sourceOfTruth() {
       skillCount++;
     } catch { /* not a real skill dir */ }
   }
-  return { sha, shortSha: sha.slice(0, 7), version, skillCount };
+  return { sha, shortSha: sha.slice(0, 7), version, skillCount, authority: 'origin/master' };
+}
+
+if (args.includes('--self-test-source-of-truth')) {
+  console.log(JSON.stringify(sourceOfTruth()));
+  process.exit(0);
 }
 
 // ── Surface 1: Claude CLI ────────────────────────────────────────────────────
@@ -110,7 +131,7 @@ function checkClaudeCli(truth) {
     ? fs.readdirSync(cacheSkillsDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && fs.existsSync(path.join(cacheSkillsDir, e.name, 'SKILL.md'))).length
     : -1;
-  const shaMatch = entry.gitCommitSha === truth.sha;
+  const shaMatch = !truth.sha || entry.gitCommitSha === truth.sha;
   const versionMatch = entry.version === truth.version;
   const countMatch = cacheCount === truth.skillCount;
   const pass = shaMatch && versionMatch && countMatch;
@@ -118,7 +139,7 @@ function checkClaudeCli(truth) {
     surface: 'Claude CLI',
     pass,
     detail: pass
-      ? `v${entry.version} @ ${truth.shortSha}, ${cacheCount} skills — matches origin/master`
+      ? `v${entry.version} @ ${truth.shortSha}, ${cacheCount} skills — matches ${truth.authority}`
       : `v${entry.version || '?'} @ ${(entry.gitCommitSha || '?').slice(0, 7)}, ${cacheCount} skills`
         + ` — expected v${truth.version} @ ${truth.shortSha}, ${truth.skillCount} skills`
         + `${shaMatch ? '' : ' [SHA MISMATCH]'}${versionMatch ? '' : ' [VERSION MISMATCH]'}${countMatch ? '' : ' [COUNT MISMATCH]'}`,
@@ -171,17 +192,18 @@ async function checkClaudeMcp(truth) {
     return { surface: 'Claude MCP', pass: false, detail: `${MCP_URL}/health unreachable — ${res.error}` };
   }
   const { skills, git_sha, version, status } = res.json;
-  const shaMatch = git_sha === truth.sha;
+  const shaMatch = !truth.sha || git_sha === truth.sha;
   const countMatch = skills === truth.skillCount;
-  const pass = status === 'ok' && shaMatch && countMatch;
+  const versionMatch = version === truth.version;
+  const pass = status === 'ok' && shaMatch && versionMatch && countMatch;
   return {
     surface: 'Claude MCP',
     pass,
     detail: pass
-      ? `${MCP_URL}/health — v${version}, ${skills} skills @ ${truth.shortSha} — matches origin/master`
+      ? `${MCP_URL}/health — v${version}, ${skills} skills @ ${truth.shortSha} — matches ${truth.authority}`
       : `${MCP_URL}/health — status=${status} v${version} skills=${skills} sha=${(git_sha || '?').slice(0, 7)}`
-        + ` — expected ${truth.skillCount} skills @ ${truth.shortSha}`
-        + `${shaMatch ? '' : ' [SHA MISMATCH]'}${countMatch ? '' : ' [COUNT MISMATCH]'}`,
+        + ` — expected v${truth.version}, ${truth.skillCount} skills @ ${truth.shortSha}`
+        + `${shaMatch ? '' : ' [SHA MISMATCH]'}${versionMatch ? '' : ' [VERSION MISMATCH]'}${countMatch ? '' : ' [COUNT MISMATCH]'}`,
   };
 }
 
@@ -221,7 +243,7 @@ async function main() {
     console.log(JSON.stringify({ truth, rows, allPass }, null, 2));
   } else {
     console.log('');
-    console.log(`  Source of truth: origin/master @ ${truth.shortSha}, v${truth.version}, ${truth.skillCount} skills`);
+    console.log(`  Source of truth: ${truth.authority} @ ${truth.shortSha}, v${truth.version}, ${truth.skillCount} skills`);
     console.log('');
     for (const r of rows) {
       const mark = r.pass ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
