@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +30,16 @@ assert.equal(
   plugin.version,
   packageJson.version,
   'plugin manifest version must match the published package version',
+);
+const packageLockPath = join(REPO_ROOT, 'package-lock.json');
+assert.equal(existsSync(packageLockPath), true, 'systemd deployment requires a committed package-lock.json for npm ci');
+const packageLock = JSON.parse(readFileSync(packageLockPath, 'utf8'));
+assert.equal(packageLock.version, packageJson.version, 'package-lock version must match package.json');
+const systemdInstaller = readFileSync(join(REPO_ROOT, 'deploy', 'install-systemd.sh'), 'utf8');
+assert.match(
+  systemdInstaller,
+  /npm ci --omit=dev --no-audit --no-fund/,
+  'systemd installer must install the locked production dependency graph before starting the MCP',
 );
 const skillCount = Array.isArray(plugin.skills_meta)
   ? plugin.skills_meta.length

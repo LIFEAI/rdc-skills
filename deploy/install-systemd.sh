@@ -10,6 +10,12 @@ if [[ "$repo_root" != "/srv/regen/rdc-skills" ]]; then
   exit 1
 fi
 
+cd "$repo_root"
+# The MCP imports declared runtime dependencies (including express).  A Git
+# checkout alone cannot satisfy those imports after a clean host or dependency
+# cleanup, so install the committed production graph before the unit is enabled.
+npm ci --omit=dev --no-audit --no-fund
+
 install -m 0644 "$unit_source" "$unit_target"
 systemctl daemon-reload
 systemctl enable --now rdc-skills-mcp.service
