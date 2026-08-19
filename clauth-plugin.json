@@ -1,0 +1,73 @@
+{
+  "schema": "lifeai.plugin.v1",
+  "id": "rdc-skills",
+  "version": "1.0.0",
+  "publisher": "LIFEAI",
+  "core": true,
+  "documentation": {
+    "architecture": "docs/systems/rdc/ARCHITECTURE.md",
+    "operator_guide": ".rdc/guides/rdc-skills-startup.md",
+    "tool_reference": ".claude/context/mcp-endpoint-design.md",
+    "agent_context": ".claude/context/mcp-endpoint-design.md"
+  },
+  "destination": "local/clauth/pm2",
+  "lifecycle_owner": "clauth",
+  "enable_default": true,
+  "credentials": [],
+  "surfaces": [
+    {
+      "id": "local",
+      "name": "rdc-skills local surface",
+      "destination": "local/clauth/pm2",
+      "lifecycle_owner": "clauth",
+      "health": "http://127.0.0.1:3110/health",
+      "routes": [
+        {
+          "id": "localhost",
+          "kind": "localhost",
+          "url": "http://127.0.0.1:3110/health",
+          "public": false
+        }
+      ],
+      "port": 3110,
+      "cwd": "C:/Dev/rdc-skills",
+      "start": ["pm2", "start", "bin/rdc-skills-mcp.mjs", "--name", "rdc-skills-mcp"],
+      "restart": ["pm2", "restart", "rdc-skills-mcp"],
+      "stop": ["pm2", "stop", "rdc-skills-mcp"]
+    },
+    {
+      "id": "remote",
+      "name": "rdc-skills remote surface",
+      "destination": "vultr/clauth/pm2",
+      "lifecycle_owner": "external",
+      "health": null,
+      "routes": [
+        {
+          "id": "provider",
+          "kind": "external",
+          "url": "https://rdc-skills.regendevcorp.com/mcp",
+          "public": true
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "id": "localhost",
+      "kind": "localhost",
+      "url": "http://127.0.0.1:3110/health",
+      "public": false
+    },
+    {
+      "id": "provider",
+      "kind": "external",
+      "url": "https://rdc-skills.regendevcorp.com/mcp",
+      "public": true
+    }
+  ],
+  "test": {
+    "port": "auto",
+    "health": "http://127.0.0.1:3110/health",
+    "selfTest": []
+  }
+}
