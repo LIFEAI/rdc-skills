@@ -24,6 +24,12 @@ assert.match(toml.stdout, /PASS/);
 
 const source = readFileSync(script, 'utf8');
 const plugin = JSON.parse(readFileSync(join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8'));
+const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
+assert.equal(
+  plugin.version,
+  packageJson.version,
+  'plugin manifest version must match the published package version',
+);
 const skillCount = Array.isArray(plugin.skills_meta)
   ? plugin.skills_meta.length
   : Object.keys(plugin.skills_meta || {}).length;
