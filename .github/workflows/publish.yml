@@ -1,5 +1,32 @@
 name: Publish to npm
 
+# TRUSTED PUBLISHING (OIDC) — no stored npm credential.
+#
+# WHY THIS CHANGED. npm retired the token model this fleet was built on:
+#   2025-12-09  every classic token permanently revoked
+#   2025-11     granular tokens capped at 90 days; any expiring after 2026-02-03
+#               were forcibly moved to that date
+#   2026-08     tokens with Bypass-2FA stop working entirely
+# So `secrets.NPM_TOKEN` is a credential that expires on npm's schedule regardless of
+# how carefully it is managed, and a release pipeline that depends on one is a pipeline
+# that silently stops working. This job proves its identity to npm per-run instead, and
+# there is nothing to rotate.
+#
+# It also publishes provenance automatically — cryptographic proof of the commit and
+# workflow that built the tarball — which a token publish does not.
+#
+# ONE-TIME SETUP ON NPMJS, per package (this cannot be done from CI):
+#   npmjs.com -> package -> Settings -> Trusted Publisher
+#     organization/user : LIFEAI
+#     repository        : rdc-skills
+#     workflow filename : publish.yml      (filename only, not a path)
+#     allowed actions   : must select at least one (required for configs created
+#                         after 2026-05-20)
+#
+# A package that does not exist yet cannot be configured this way — npm requires the
+# package to exist before its settings page does. Publish the first version with a
+# short-lived token, then switch here.
+
 on:
   push:
     tags:
@@ -7,6 +34,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write        # REQUIRED — without it npm gets no OIDC identity to trust
 
 jobs:
   publish:
@@ -19,10 +47,14 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      # npm >= 11.5.1 is the first release that understands trusted publishing. The
+      # node-24 image ships an older npm, and the failure mode without this is an
+      # ordinary-looking auth error rather than anything naming OIDC.
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest && npm --version
+
       - name: Publish
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Notify clauth channel
         if: always()
@@ -31,4 +63,4 @@ jobs:
           STATUS="${{ job.status }}"
           curl -s -X POST "${{ secrets.CLAUTH_CHANNEL_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{\"event\":\"npm-publish\",\"package\":\"rdc-skills\",\"version\":\"${VERSION}\",\"status\":\"${STATUS}\",\"source\":\"github-actions\"}"
+            -d "{\"event\":\"npm-publish\",\"package\":\"rdc-skills\",\"version\":\"${VERSION}\",\"status\":\"${STATUS}\",\"source\":\"github-actions-oidc\"}"
