@@ -88,3 +88,45 @@ truth when they are not choosing what to assert.
   guess a seam that doesn't exist in production.
 - This skill recommends; it does not write the test. Pair with the actual
   build task.
+
+## Mechanical test-smell scoring — a separate, lower layer
+
+Everything above answers "what SHAPE should this test be" before it's
+written. `scripts/lib/test-smell-scoring.mjs` answers a different question
+once a test exists: does its own construction show a known smell? Same
+distinction as `solid-validator`/`architecture-reviewer` — this is FORM
+applied to test code, not FIT or FUNCTION, and it runs mechanically over
+existing `.test.mjs`/`.test.ts`/`*.spec.*` files, not as a pre-write
+recommendation.
+
+Language-independent in shape (pure functions over text/AST facts, same
+discipline as `language-plugin.mjs` — no ts-morph import in the scoring file
+itself). Rule IDs and several thresholds are reused from
+[OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit)
+(MIT) — see the file header for exact file:line citations and what was
+adapted vs. reused verbatim.
+
+| Rule | Detects | Threshold |
+|---|---|---|
+| T1 Insufficient Tests | fewer test() blocks than exported functions/methods in the paired source file | `testCount < exportedUnitCount` (source count via the `NormalizedUnit` plugin contract, not a regex) |
+| T2 Ignored Tests | `test.skip`/`it.skip`/`xit`/`xdescribe` | any occurrence |
+| T5 Exhaustive Testing | too many assertions in one test() block | >10 per block |
+| T6 Long Tests | oversized test() block body | >30 lines |
+| T7 Slow Tests | literal `setTimeout`/`setInterval`/`sleep`/`delay` calls INSIDE a test's own body | any occurrence in-block |
+| T8 Fragile Tests | `Date.now()`, bare `new Date()`, `Math.random()`, `process.env.*` referenced directly inside a test body | any occurrence in-block |
+| T9 Duplicated Setup | near-identical `beforeEach`/`beforeAll` bodies ACROSS test files | ≥0.75 Jaccard similarity over normalized 3-token shingles (literals collapsed, identifiers not — see file header) |
+| FIRST-Independent | a `let` declared outside test() and mutated inside 2+ separate test() blocks | requires both the declaration site AND ≥2 distinct mutation sites, not presence alone |
+
+T3 (Test Per Class) and T4 (Untested Method) are deliberately not
+implemented — see the file header's "Skipped" section for why faking them
+would have been a weak check invented to fill a slot. Fast/Repeatable/
+SelfValidating/Timely are likewise skipped as either duplicating T7/T8 or
+not being smell checks at all.
+
+Dogfooded against `rdc-harness`'s 47 real `*.test.mjs` files (2026-08-20):
+71 findings (T5/T6/T8), plus T1 flagged `packages/core` (28 exported
+members, 16 tests — the same `Harness` god-object `solid-score.mjs` already
+flags on SOLID grounds) and three other packages. T2/T7(in-block)/T9/
+Independent had zero real hits in that corpus — confirmed as true negatives
+via grep positive-control before trusting the absence, and each rule was
+separately proven to fire against a synthetic fixture exercising it.
