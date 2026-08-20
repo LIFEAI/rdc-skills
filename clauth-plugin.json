@@ -31,9 +31,21 @@
       ],
       "port": 3110,
       "cwd": "C:/Dev/rdc-skills",
-      "start": ["pm2", "start", "bin/rdc-skills-mcp.mjs", "--name", "rdc-skills-mcp"],
-      "restart": ["pm2", "restart", "rdc-skills-mcp"],
-      "stop": ["pm2", "stop", "rdc-skills-mcp"]
+      "start": [
+        "pm2",
+        "start",
+        "rdc-skills-mcp"
+      ],
+      "restart": [
+        "pm2",
+        "restart",
+        "rdc-skills-mcp"
+      ],
+      "stop": [
+        "pm2",
+        "stop",
+        "rdc-skills-mcp"
+      ]
     },
     {
       "id": "remote",
