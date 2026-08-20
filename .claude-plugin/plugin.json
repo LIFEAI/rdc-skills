@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.33.0",
+  "version": "0.34.1",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -1728,6 +1728,289 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true
+    },
+    "solid-validator": {
+      "name": "solid-validator",
+      "slash": "rdc:solid-validator",
+      "category": "build",
+      "usage": "rdc:solid-validator <path> [--diff <ref>] [--config <file>]",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "file or directory to score",
+            "accepts": "path"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--diff",
+            "type": "string",
+            "default": null,
+            "description": "regression-gate against this git ref"
+          },
+          {
+            "name": "--config",
+            "type": "string",
+            "default": null,
+            "description": "path to .solid-score.yml"
+          }
+        ]
+      },
+      "requires": [
+        "git"
+      ],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "solid score",
+        "architecture score",
+        "form fit function",
+        "clean architecture check"
+      ],
+      "follows": [
+        "build"
+      ],
+      "leads_to": [
+        "review"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "architecture-reviewer": {
+      "name": "architecture-reviewer",
+      "slash": "rdc:architecture-reviewer",
+      "category": "build",
+      "usage": "rdc:architecture-reviewer <path> [--diff <ref>]",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "target to review",
+            "accepts": "path"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--diff",
+            "type": "string",
+            "default": null,
+            "description": "new/changed code only"
+          }
+        ]
+      },
+      "requires": [
+        "git",
+        "agent-dispatch"
+      ],
+      "produces": [],
+      "default_model": "opus",
+      "triggers": [
+        "layering review",
+        "dependency direction",
+        "boundary violation"
+      ],
+      "follows": [
+        "solid-validator"
+      ],
+      "leads_to": [
+        "pattern-refactoring-guide"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "testing-strategy": {
+      "name": "testing-strategy",
+      "slash": "rdc:testing-strategy",
+      "category": "build",
+      "usage": "rdc:testing-strategy <path>",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "surface to recommend a test level/shape for",
+            "accepts": "path"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "what test level",
+        "assertion vs golden capture",
+        "test shape"
+      ],
+      "follows": [],
+      "leads_to": [
+        "build"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "clean-code-analyzer": {
+      "name": "clean-code-analyzer",
+      "slash": "rdc:check-clean-code",
+      "category": "build",
+      "usage": "rdc:check-clean-code <path> [--diff <ref>]",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "target to analyze",
+            "accepts": "path"
+          }
+        ],
+        "flags": [
+          {
+            "name": "--diff",
+            "type": "string",
+            "default": null,
+            "description": "new/changed code only"
+          }
+        ]
+      },
+      "requires": [
+        "agent-dispatch"
+      ],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "dead code",
+        "naming smell",
+        "cyclomatic complexity"
+      ],
+      "follows": [
+        "solid-validator"
+      ],
+      "leads_to": [
+        "pattern-refactoring-guide"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "package-design": {
+      "name": "package-design",
+      "slash": "rdc:check-packages",
+      "category": "build",
+      "usage": "rdc:check-packages <path>",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "package to review",
+            "accepts": "path"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "agent-dispatch"
+      ],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "package boundary",
+        "export surface",
+        "module too big"
+      ],
+      "follows": [],
+      "leads_to": [
+        "pattern-refactoring-guide"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "pattern-advisor": {
+      "name": "pattern-advisor",
+      "slash": "rdc:suggest-patterns",
+      "category": "build",
+      "usage": "rdc:suggest-patterns <path>",
+      "args": {
+        "positional": [
+          {
+            "name": "path",
+            "required": true,
+            "description": "code to recommend a pattern for",
+            "accepts": "path"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "sonnet",
+      "triggers": [
+        "design pattern",
+        "which pattern",
+        "strategy vs switch"
+      ],
+      "follows": [
+        "solid-validator"
+      ],
+      "leads_to": [
+        "pattern-refactoring-guide"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
+    },
+    "pattern-refactoring-guide": {
+      "name": "pattern-refactoring-guide",
+      "slash": "rdc:get-refactoring-plan",
+      "category": "build",
+      "usage": "rdc:get-refactoring-plan <finding>",
+      "args": {
+        "positional": [
+          {
+            "name": "finding",
+            "required": true,
+            "description": "a finding from another surface to plan a fix for",
+            "accepts": "text"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": [],
+      "default_model": "opus",
+      "triggers": [
+        "refactor plan",
+        "before after",
+        "how do I fix this finding"
+      ],
+      "follows": [
+        "architecture-reviewer",
+        "clean-code-analyzer",
+        "package-design",
+        "pattern-advisor",
+        "solid-validator"
+      ],
+      "leads_to": [
+        "build",
+        "fixit"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false
     }
   }
 }

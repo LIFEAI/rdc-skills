@@ -106,6 +106,35 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
 
    Under `RDC_TEST=1`: echo `[RDC_TEST] skipping code-review dispatch` and continue.
 
+8c. **Form/fit/function gate — solid-validator + architecture-reviewer:**
+
+   ⛔ **No CLEAN verdict without this pass either.** Step 8b catches logic,
+   security, and convention drift. This step catches a different failure
+   shape entirely: code that is logically correct and convention-clean but
+   architecturally wrong — the `Harness` case (a use-case orchestrator that
+   reimplements what sibling packages exist to do, scoring fine on every
+   generic metric while failing the one check that names the actual rule).
+
+   ```bash
+   rdc-solid-score <modified-package-path> --diff origin/main --config <repo>/.solid-score.yml --format json
+   ```
+   Read `regressions` (SOLID score dropped vs `origin/main`) and
+   `boundaryViolations` (the `satisfied: false` subset of `boundaryFindings`
+   — named Clean Architecture rule failures) from the
+   output. Either non-empty is a FORM/FIT failure — dispatch
+   `architecture-reviewer` (skill: "architecture-reviewer") for the judgment
+   half if a boundary finding needs a suggested fix, not just a named
+   violation.
+
+   **Severity gate:**
+   - Any regression, or any boundary violation → verdict cannot be CLEAN.
+   - No `.solid-score.yml` present in the target repo → note it and skip,
+     do not fabricate a config; a repo with no boundary rules configured has
+     nothing wrong to report, but say so explicitly rather than silently
+     passing.
+
+   Under `RDC_TEST=1`: echo `[RDC_TEST] skipping form/fit/function gate` and continue.
+
 9. **Verification gate — dispatch the verify agent:**
    After any fixes land, run the verify gate on every touched package. See `guides/agents/verify.md`.
    Apply `guides/engineering-behavior.md` while reviewing: flag unnecessary abstraction, drive-by refactors, missing assumptions, hidden uncertainty, out-of-scope edits, and prose-only verification.
