@@ -3,7 +3,7 @@
   "id": "rdc-skills",
   "version": "1.0.0",
   "publisher": "LIFEAI",
-  "core": true,
+  "core": false,
   "documentation": {
     "architecture": "docs/systems/rdc/ARCHITECTURE.md",
     "operator_guide": ".rdc/guides/rdc-skills-startup.md",
@@ -12,7 +12,7 @@
   },
   "destination": "local/clauth/pm2",
   "lifecycle_owner": "clauth",
-  "enable_default": true,
+  "enable_default": false,
   "credentials": [],
   "surfaces": [
     {
@@ -30,10 +30,22 @@
         }
       ],
       "port": 3110,
-      "cwd": "C:/Dev/rdc-skills",
-      "start": ["pm2", "start", "bin/rdc-skills-mcp.mjs", "--name", "rdc-skills-mcp"],
-      "restart": ["pm2", "restart", "rdc-skills-mcp"],
-      "stop": ["pm2", "stop", "rdc-skills-mcp"]
+      "cwd": "${PACKAGE_ROOT}",
+      "start": [
+        "pm2",
+        "start",
+        "rdc-skills-mcp"
+      ],
+      "restart": [
+        "pm2",
+        "restart",
+        "rdc-skills-mcp"
+      ],
+      "stop": [
+        "pm2",
+        "stop",
+        "rdc-skills-mcp"
+      ]
     },
     {
       "id": "remote",
