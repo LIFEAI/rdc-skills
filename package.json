@@ -27,7 +27,12 @@
     "rdc-skills-self-test": "scripts/self-test.mjs",
     "rdc-skills-mcp": "bin/rdc-skills-mcp.mjs",
     "rdc-solid-score": "scripts/solid-score.mjs",
-    "rdc-clean-code-score": "scripts/clean-code-score.mjs"
+    "rdc-clean-code-score": "scripts/clean-code-score.mjs",
+    "rdc-package-metrics": "scripts/package-metrics-cli.mjs",
+    "rdc-architecture-score": "scripts/architecture-score.mjs",
+    "rdc-pattern-score": "scripts/pattern-score.mjs",
+    "rdc-refactoring-score": "scripts/refactoring-score.mjs",
+    "rdc-test-smell-score": "scripts/lib/test-smell-scoring.mjs"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js",

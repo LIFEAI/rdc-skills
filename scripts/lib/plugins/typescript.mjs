@@ -136,6 +136,193 @@ function deadConditionalsOf(m) {
   return found;
 }
 
+// ── Refactoring facts (extract-method/class/param-object/magic-number,
+// consolidate-duplicate-code, decompose-conditional, strategy/factory/
+// null-object transforms) — ADDED for refactoring-scoring.mjs (2026-08-20),
+// additive-only. Real detection logic ported from architecture-toolkit's
+// src/agents/pattern-refactoring-guide/tools/{refactoring-analyzer,
+// code-smell-refactoring-guide,pattern-transformation-guide}.ts (MIT,
+// github.com/OnSightTeam/architecture-toolkit) — same discipline as the
+// Clean Code facts above: their checks are whole-file text regexes, ours
+// walk the real AST so context is known directly. extract-method/extract-
+// class/introduce-parameter-object reuse statementCount/members.length/
+// paramCount already on the contract; magic-number reuses `magicNumbers`.
+// Only the facts below are genuinely new.
+
+// consolidate-duplicate-code raw material — architecture-toolkit's real
+// check (code-smell-refactoring-guide.ts:41,49) is whole-FILE line-text
+// repetition (trimmed line length > 10 chars, repeated > 3 times, > 3 such
+// patterns). Ours captures the same shape (normalized statement text, same
+// length filter) per real statement NODE instead of per raw source line, so
+// a duplicate spread across multiple physical lines by formatting still
+// matches. Grouping/threshold logic lives in refactoring-scoring.mjs, which
+// is the pure-function layer — this only supplies the raw per-member facts.
+function statementTextsOf(m) {
+  const found = [];
+  for (const k of STATEMENT_KINDS) {
+    for (const node of m.getDescendantsOfKind(k)) {
+      const text = node.getText().replace(/\s+/g, ' ').trim();
+      if (text.length > 10) found.push({ text, line: node.getStartLineNumber() });
+    }
+  }
+  return found;
+}
+
+// null-object-transform raw material — architecture-toolkit's real pattern
+// (pattern-transformation-guide.ts:158, `/if\s*\(\s*\w+\s*[!=]==\s*null/g`)
+// is a whole-file regex counting occurrences of the text shape. AST form:
+// an `if` whose condition contains a top-level `===`/`!==` comparison
+// against the `null` keyword, counted once per `if` (matches the regex's
+// per-match count for the common one-comparison-per-if case).
+function nullChecksOf(m) {
+  const found = [];
+  for (const ifStmt of m.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+    const expr = ifStmt.getExpression();
+    // Walk every BinaryExpression in the condition, not just a lone
+    // top-level one — a chained `a === null && b === null` condition's own
+    // top-level node is the `&&` BinaryExpression, so a self-or-descendants
+    // walk is required to reach the `=== null` comparisons nested inside it.
+    const bins = [expr, ...expr.getDescendantsOfKind(SyntaxKind.BinaryExpression)].filter((n) => n.getKind() === SyntaxKind.BinaryExpression);
+    for (const b of bins) {
+      const op = b.getOperatorToken().getText();
+      if (op !== '===' && op !== '!==') continue;
+      if (b.getLeft().getKind() === SyntaxKind.NullKeyword || b.getRight().getKind() === SyntaxKind.NullKeyword) {
+        found.push({ line: ifStmt.getStartLineNumber() });
+        break;
+      }
+    }
+  }
+  return found;
+}
+
+// strategy-transform / factory-transform raw material — architecture-
+// toolkit's real patterns are whole-file regexes: switch-on-behavior
+// (pattern-transformation-guide.ts:42, `/switch\s*\([^)]*\)\s*{[^}]*
+// (calculate|process|validate|format)/i`) and switch-on-type-creating
+// (`:100`, `/switch\s*\([^)]*type[^)]*\)\s*{[^}]*new\s+/i`). AST form: per
+// real SwitchStatement node, test the same word list against the switch's
+// own text (not the whole file), so a match is attributable to a specific
+// switch instead of "somewhere in this file".
+const STRATEGY_BEHAVIOR_RE = /(calculate|process|validate|format)/i;
+function switchStatementsOf(m) {
+  const found = [];
+  for (const sw of m.getDescendantsOfKind(SyntaxKind.SwitchStatement)) {
+    const discriminantText = sw.getExpression().getText();
+    const swText = sw.getText();
+    found.push({
+      line: sw.getStartLineNumber(),
+      hasBehaviorCall: STRATEGY_BEHAVIOR_RE.test(swText),
+      hasTypeCreation: /type/i.test(discriminantText) && /\bnew\s+/.test(swText),
+    });
+  }
+  return found;
+}
+
+// decompose-conditional raw material — architecture-toolkit's real pattern
+// (code-smell-refactoring-guide.ts:111, `/if\s*\([^)]{50,}\)/g`) is a
+// whole-file regex on parenthesized condition length. AST form: the real
+// `if` condition expression's own source text length, per `if`.
+function complexConditionalsOf(m) {
+  const found = [];
+  for (const ifStmt of m.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+    const condText = ifStmt.getExpression().getText();
+    if (condText.length >= 50) found.push({ line: ifStmt.getStartLineNumber(), length: condText.length });
+  }
+  return found;
+}
+
+// ── pattern-advisor facts (Factory Method/Builder/Singleton/Decorator/
+// Adapter/Facade/Strategy/Observer/Command/Template Method) — ADDED for
+// pattern-scoring.mjs (2026-08-20), additive-only. Real detection heuristics
+// ported from architecture-toolkit's src/agents/pattern-advisor/tools/
+// {creational,structural,behavioral}-pattern-analyzer.ts (MIT,
+// github.com/OnSightTeam/architecture-toolkit, raw source fetched and read in
+// full this task) — same discipline as every other fact block in this file:
+// their checks are whole-file text regexes with no scoping to which
+// switch/if/call the signal came from; ours walk the real AST per node.
+//
+// Factory Method's switch-on-type-constructs-new signal
+// (creational-pattern-analyzer.ts:43-44, `/switch\s*\([^)]*type[^)]*\)\s*{
+// [^}]*new\s+/i`) is the IDENTICAL regex shape already captured by
+// `switchStatements[].hasTypeCreation` above (added for
+// refactoring-scoring.mjs's factory-transform, itself ported from
+// pattern-transformation-guide.ts:100 — the same regex, different toolkit
+// tool) — pattern-scoring.mjs reuses that existing field directly rather
+// than duplicating the switch walk. Strategy's behavior-call word list
+// (behavioral-pattern-analyzer.ts:44) is `calculate|process|execute|
+// validate|format` — a SUPERSET of `switchStatements[].hasBehaviorCall`'s
+// list (`calculate|process|validate|format`, no "execute", ported from a
+// different toolkit file, pattern-transformation-guide.ts:42) — rather than
+// editing that shared field's regex (refactoring-scoring.mjs already
+// consumes it), `switchBehaviorCallLine` below is a small separate fact with
+// the exact word list this task's source citation requires.
+const PATTERN_ADVISOR_BEHAVIOR_RE = /(calculate|process|execute|validate|format)/i;
+function switchBehaviorCallLineOf(m) {
+  for (const sw of m.getDescendantsOfKind(SyntaxKind.SwitchStatement)) {
+    if (PATTERN_ADVISOR_BEHAVIOR_RE.test(sw.getText())) return sw.getStartLineNumber();
+  }
+  return null;
+}
+
+// Factory Method's "scattered instantiation" signal
+// (creational-pattern-analyzer.ts:68-83): >5 total `new` calls, >3 unique
+// constructor names. UNFILTERED (includes stdlib targets), matching the
+// original's blind regex — deliberately NOT the same as `concreteInstantiations`
+// (computed elsewhere in this file), which counts only project-local classes
+// for DIP and would under-count this check.
+function constructorNewCallTargetsOf(m) {
+  return m.getDescendantsOfKind(SyntaxKind.NewExpression).map((n) => n.getExpression().getText());
+}
+
+// Decorator's conditional-feature-addition signal
+// (structural-pattern-analyzer.ts:39-43, `/if\s*\([^)]*\)\s*{[^}]*(wrap|add|
+// extend|enhance)/i`): an if-statement whose THEN block calls a function
+// named wrap/add/extend/enhance. AST form scopes the keyword search to the
+// if's own consequent block, not "anywhere after an if in the file".
+const FEATURE_CALL_RE = /(wrap|add|extend|enhance)/i;
+function trailingCallName(callExpr) {
+  const expr = callExpr.getExpression();
+  return expr.getKind() === SyntaxKind.PropertyAccessExpression ? expr.getName() : expr.getText().replace(/^this\./, '');
+}
+function conditionalFeatureCallLineOf(m) {
+  for (const ifStmt of m.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+    const then = ifStmt.getThenStatement();
+    if (!then) continue;
+    if (then.getDescendantsOfKind(SyntaxKind.CallExpression).some((c) => FEATURE_CALL_RE.test(trailingCallName(c)))) {
+      return ifStmt.getStartLineNumber();
+    }
+  }
+  return null;
+}
+
+// Facade's complex-subsystem-interaction signal
+// (structural-pattern-analyzer.ts:104-105, `code.match(/\w+\.\w+\.\w+\(/g)`,
+// threshold >5): a call shaped `a.b.c(...)` — the callee is a property
+// access whose OWN receiver is itself a property access (two dots before the
+// paren). AST form counts real call expressions of that shape instead of a
+// regex that also matches inside strings/comments.
+function deepChainCallCountOf(m) {
+  let n = 0;
+  for (const c of m.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const expr = c.getExpression();
+    if (expr.getKind() === SyntaxKind.PropertyAccessExpression && expr.getExpression().getKind() === SyntaxKind.PropertyAccessExpression) n++;
+  }
+  return n;
+}
+
+// General-purpose bare trailing call name for every call in this member —
+// used by pattern-scoring.mjs for Adapter (convert/transform/adapt),
+// Observer (notify/update/inform/broadcast), Command (undo/redo/history/
+// queue/execute), and Template Method (initialize/process/cleanup) keyword
+// scans. Distinct from the existing `calls` fact (which keeps the
+// `this.`-stripped but otherwise full receiver-qualified text, e.g.
+// "obj.notify") — these callers need just the trailing method/function name
+// regardless of receiver, matching the original regexes'
+// `\.(notify|update|...)\w*\(` shape (any receiver, bare trailing name).
+function calleeNamesOf(m) {
+  return m.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => trailingCallName(c));
+}
+
 /**
  * `cls.getMethods()` alone misses constructors, getters/setters, and
  * arrow-function property members ("class ArrowGod { greet = () => {} }") —
@@ -202,6 +389,17 @@ function normalizedMember({ name, paramsNode, bodyNode, isPublicNode }, { baseMe
     magicNumbers: magicNumbersOf(bodyNode),
     emptyCatches: emptyCatchesOf(bodyNode),
     deadConditionals: deadConditionalsOf(bodyNode),
+    // ADDED for refactoring-scoring.mjs (2026-08-20), additive-only:
+    statementTexts: statementTextsOf(bodyNode),
+    nullChecks: nullChecksOf(bodyNode),
+    switchStatements: switchStatementsOf(bodyNode),
+    complexConditionals: complexConditionalsOf(bodyNode),
+    // ADDED for pattern-scoring.mjs (2026-08-20), additive-only:
+    switchBehaviorCallLine: switchBehaviorCallLineOf(bodyNode),
+    constructorNewCallTargets: constructorNewCallTargetsOf(bodyNode),
+    conditionalFeatureCallLine: conditionalFeatureCallLineOf(bodyNode),
+    deepChainCallCount: deepChainCallCountOf(bodyNode),
+    calleeNames: calleeNamesOf(bodyNode),
   };
 }
 
@@ -246,9 +444,16 @@ function unitsFromSourceFile(sourceFile) {
       const members = memberEntries(cls).map((e) => normalizedMember(e, { baseMethods }));
       const [ctor] = cls.getConstructors();
       const dep = concreteDependencyCounts(cls, sourceFile, localClassNames, ctor ?? null);
+      // Singleton signal (creational-pattern-analyzer.ts:124-146,
+      // `/private\s+static\s+instance|getInstance\s*\(\)/i`) — ADDED for
+      // pattern-scoring.mjs (2026-08-20), additive-only. A real static
+      // property (not a text match) plus a real method named 'getInstance'.
+      const staticPropertyNames = cls.getProperties().filter((p) => p.isStatic()).map((p) => p.getName());
       return {
         name: cls.getName() ?? '(anonymous)', kind: 'class', members,
         hasBaseClass: Boolean(heritage), ...dep,
+        staticPropertyNames,
+        hasGetInstanceMethod: members.some((mm) => mm.name === 'getInstance'),
       };
     });
   }
@@ -293,7 +498,14 @@ function unitsFromSourceFile(sourceFile) {
     })),
   ];
   const dep = concreteDependencyCounts(sourceFile, sourceFile, localClassNames);
-  return [{ name: sourceFile.getBaseName(), kind: 'module', members, hasBaseClass: false, ...dep }];
+  // ADDED for pattern-scoring.mjs (2026-08-20), additive-only — a module has
+  // no static properties; hasGetInstanceMethod still checked for a top-level
+  // `getInstance` function, the module-shaped analog of the class case above.
+  return [{
+    name: sourceFile.getBaseName(), kind: 'module', members, hasBaseClass: false, ...dep,
+    staticPropertyNames: [],
+    hasGetInstanceMethod: members.some((mm) => mm.name === 'getInstance'),
+  }];
 }
 
 const projectCache = new Map();
@@ -362,6 +574,38 @@ export function deadExportsOf(filePath, projectFilePaths = []) {
   return results;
 }
 
+/**
+ * refactoring effort estimation's call-site-count / package-boundary
+ * criteria — ADDED for refactoring-scoring.mjs (2026-08-20), additive-only.
+ * Same `findReferencesAsNodes()` mechanism as `deadExportsOf` above (same
+ * shared project, same declaration-node-vs-name-node resolution, same
+ * "exclude the declaration's own occurrence" dedup) — deliberately NOT a
+ * second implementation, just targeted at one named export and returning
+ * file paths alongside the count so a caller can test package-boundary
+ * crossing without a second AST walk.
+ */
+export function referenceSitesOf(filePath, exportName, projectFilePaths = []) {
+  const project = sharedProject();
+  for (const p of new Set([filePath, ...projectFilePaths])) {
+    if (!project.getSourceFile(p)) {
+      try { project.addSourceFileAtPath(p); } catch { /* unreadable/binary — not a TS/JS file, skip */ }
+    }
+  }
+  const sourceFile = project.getSourceFile(filePath) ?? project.addSourceFileAtPath(filePath);
+  const decls = sourceFile.getExportedDeclarations().get(exportName);
+  const decl = decls?.[0];
+  if (!decl) return { referenceCount: -1, files: [], kind: null };
+  const referable = typeof decl.findReferencesAsNodes === 'function' ? decl : (decl.getNameNode?.() ?? null);
+  if (!referable || typeof referable.findReferencesAsNodes !== 'function') {
+    return { referenceCount: -1, files: [], kind: decl.getKindName() };
+  }
+  let refs = [];
+  try { refs = referable.findReferencesAsNodes(); } catch { refs = []; }
+  const usageRefs = refs.filter((r) => !(r.getSourceFile() === sourceFile && r.getStart() === referable.getStart()));
+  const files = [...new Set(usageRefs.map((r) => r.getSourceFile().getFilePath()))];
+  return { referenceCount: usageRefs.length, files, kind: decl.getKindName() };
+}
+
 export const typescriptPlugin = {
   id: 'typescript',
   canHandle: (filePath) => /\.(mjs|ts|tsx|js|cjs)$/.test(filePath),
@@ -386,4 +630,5 @@ export const typescriptPlugin = {
     return sourceFile.getImportDeclarations().map((d) => d.getModuleSpecifierValue());
   },
   deadExportsOf,
+  referenceSitesOf, // ADDED for refactoring-scoring.mjs (2026-08-20), additive-only
 };

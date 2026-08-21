@@ -14,24 +14,54 @@ description: >-
 
 ## Input contract
 
-Takes a finding from one of the other five surfaces — a `pattern-advisor`
-recommendation, a `solid-validator` low-score criterion, or an
-`architecture-reviewer` boundary violation — and produces a step-ordered plan
-a build agent can execute. It does not invent new findings; it does not
-apply the refactor itself.
+Takes a finding from one of two sources — an upstream surface (a
+`pattern-advisor` recommendation, a `solid-validator` low-score criterion, an
+`architecture-reviewer` boundary violation), OR this skill's own mechanical
+detection layer, `rdc-refactoring-score` (`scripts/refactoring-score.mjs`) —
+and produces a step-ordered plan a build agent can execute. It does not
+invent new findings beyond what a cited detector reported; it does not apply
+the refactor itself.
 
 ## Procedure
 
-1. **Restate the finding** exactly as reported by the upstream skill —
-   file:line, the score/violation, the evidence.
+1. **Find or receive the finding.** Two paths, either is a valid start:
+   - **Upstream finding already exists** — an emitted `pattern-advisor` /
+     `solid-validator` / `architecture-reviewer` result. Skip to step 2.
+   - **No finding yet — detect candidates directly.** Run
+     `node scripts/refactoring-score.mjs <path> --format json` (installed
+     bin: `rdc-refactoring-score`). It is a real, deterministic, AST-based
+     scanner — NOT this skill reasoning about the code — covering nine
+     refactoring types: `extract-method`, `extract-class`,
+     `introduce-parameter-object`, `replace-magic-number`,
+     `consolidate-duplicate-code`, `decompose-conditional`,
+     `strategy-transform`, `factory-transform`, `null-object-transform`.
+     Detection logic: `scripts/lib/refactoring-scoring.mjs`. Every finding
+     carries a real file:line and a mechanical effort signal (see step 5).
+     A "zero findings" result on a real target is only trustworthy once the
+     tool's own positive control passed (it runs one automatically and
+     reports `effortScope.positiveControlOk` in JSON output / the "Effort
+     scan" line in text output — per
+     `.claude/rules/prove-absence-positive-control.md`, treat a failed
+     control as "unmeasured", never as "clean").
+     Two thresholds here are DELIBERATELY DIFFERENT from
+     `clean-code-analyzer`'s mechanical rules even though they read the same
+     underlying fact: `extract-method` fires at >25 statements (this tool)
+     vs. clean-code's F1 at >20 statements; `introduce-parameter-object`
+     fires at >4 params (this tool) vs. clean-code's F2 at >3 params. Both
+     numbers are architecture-toolkit's own real thresholds for their
+     respective domains (`refactoring-analyzer.ts:49,171`) — cite the
+     difference, do not silently merge the two tools' output.
 
-2. **Write the BEFORE** — the actual current code (a real excerpt, not a
+2. **Restate the finding** exactly as reported by the upstream skill or by
+   `rdc-refactoring-score` — file:line, the score/violation, the evidence.
+
+3. **Write the BEFORE** — the actual current code (a real excerpt, not a
    paraphrase).
 
-3. **Write the AFTER** — the concrete target shape, real code, not a
+4. **Write the AFTER** — the concrete target shape, real code, not a
    description of code.
 
-4. **Order the steps** so each one leaves the codebase in a working state:
+5. **Order the steps** so each one leaves the codebase in a working state:
    - Extract the new shape ALONGSIDE the old one first (new class/module,
      unused by anything yet).
    - Migrate ONE call site, verify.
@@ -40,27 +70,40 @@ apply the refactor itself.
      the same call-graph-with-positive-control method `clean-code-analyzer`
      uses for dead code, don't assume.
 
-5. **Estimate effort — low/medium/high — using named criteria, not a gut
+6. **Estimate effort — low/medium/high — using named criteria, not a gut
    call.** Adapted from the `estimatedEffort` field actually shipped in
    [OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit)'s
    `src/agents/pattern-refactoring-guide/tools/*.ts`, extended with the
-   criterion its own examples expose a gap in (see below):
+   criterion its own examples expose a gap in (see below). When the finding
+   came from `rdc-refactoring-score` (step 1), don't re-derive this table by
+   hand — the tool already computed the mechanical half of it: it re-walks
+   the SAME cross-file reference-graph mechanism `clean-code-scoring.mjs`'s
+   G9 dead-export check uses (`plugin.referenceSitesOf`, built on
+   `findReferencesAsNodes`, gated behind its own positive control) and
+   reports each unit's real call-site count and whether any reference
+   crosses a `packages/*`/`apps/*` boundary. The one criterion below it
+   CANNOT compute — a cross-cutting invariant that isn't locally checkable —
+   is always a human judgment call; the tool flags `invariantCheckRequired:
+   true` as a reminder wherever boundary-crossing or >15 call sites already
+   pushed it to High, but never claims to have evaluated the invariant
+   itself.
 
    | Effort | Criteria (any ONE qualifies) | toolkit precedent |
    |---|---|---|
    | **Low** | Single file, ≤3 call sites, no package-boundary crossing, mechanical (rename, extract-constant, extract-condition-to-named-method). | `introduce_parameter_object` (`refactoring-analyzer.ts:179`), `replace_magic_number` (`:234`), `decompose_conditional` (`code-smell-refactoring-guide.ts:121`) — all single-function, in-place edits. |
-   | **Medium** | 4-15 call sites within the SAME package, OR a new abstraction introduced but consumed only inside the current package/module. | `extract_method` (`refactoring-analyzer.ts:57`) — "may need to pass many parameters" but stays in one file. `consolidate_duplicate_code` (`code-smell-refactoring-guide.ts:59`), Strategy/Factory/Null-Object pattern transforms (`pattern-transformation-guide.ts:52,109,169`) — new types, but all call sites are local. |
+   | **Medium** | 4-15 call sites within the SAME package, OR a new abstraction introduced but consumed only inside the current package/module. | `extract_method` (`refactoring-analyzer.ts:57`) — "may need to pass many parameters" but stays in one file. `consolidate_duplicate_code` (`code-smell-refactoring-guide.ts:59`), Strategy/Factory/Null-Object pattern transforms (`pattern-transformation-guide.ts:52,110,168`) — new types, but all call sites are local. |
    | **High** | **Crosses a package boundary** (the extraction moves logic into or out of a different `packages/*`/`@regen/*` workspace), OR >15 call sites, OR — the criterion the toolkit's own field values don't cover — **the target carries a cross-cutting invariant that isn't locally checkable** (event ordering, transactional/append-only integrity, freeze-after-mutation semantics): call-site count alone UNDER-counts effort here, because migrating the invariant correctly matters more than how many call sites exist. | `extract_class` (`refactoring-analyzer.ts:116`) is the toolkit's own high-effort case — ">15 methods... requires careful dependency management" is the package-boundary risk stated in words even though the field only tracks method count. |
 
    **Call-site count is not sufficient on its own** — see the worked example
-   below, where a target with *zero* external call sites is still HIGH
-   effort because of the invariant clause.
+   below, where the real count (8) sits in the Medium range by call-site
+   count alone, yet the target is still HIGH effort because of the
+   package-boundary and invariant clauses.
 
-6. **Name the test that must go from red to green** (or the golden-capture
+7. **Name the test that must go from red to green** (or the golden-capture
    delta that must appear) at each step — route through `testing-strategy`
    for the right level/shape if the finding doesn't already specify one.
 
-7. **Every step names what proves it succeeded — no exceptions, including
+8. **Every step names what proves it succeeded — no exceptions, including
    intermediate steps.** This is stricter than the toolkit's own shipped
    examples: `refactoring-analyzer.ts`'s own `extract_method` plan has a
    `validation` field on steps 1, 3, 4 (`:69`, `:79`, `:84`) but step 2 — "extract
@@ -73,7 +116,7 @@ apply the refactor itself.
    call-site grep returning zero, or an explicit "no assertion possible,
    inspect manually" — never a bare code sample standing in for proof.
 
-8. **Report:**
+9. **Report:**
    ```
    ## Refactor Plan — <finding source>: <file:line>
    ### Before
@@ -103,8 +146,20 @@ Chained input: the `architecture-reviewer` worked example (see that skill's
 own SKILL.md) found `Harness` in
 [`C:/Dev/rdc-harness/packages/core/src/index.mjs`](file:///C:/Dev/rdc-harness/packages/core/src/index.mjs)
 reimplementing transaction/delivery/deploy/orchestration logic inline instead
-of delegating to the sibling packages that already exist for each. This is
-that finding turned into a plan.
+of delegating to the sibling packages that already exist for each. `rdc-
+refactoring-score` independently detects the SAME target via step 1's own
+mechanical path — a real run (`node scripts/refactoring-score.mjs
+C:/Dev/rdc-harness/packages/core/src/index.mjs`) reports:
+
+```
+[extract-class] [high] Harness — 24 methods (over 15) — violates Single
+Responsibility, candidate for Extract Class
+```
+
+24 methods, not the loose "+ 9 more methods" this example previously said —
+the real count once `memberEntries()` visits constructors, getters/setters,
+and arrow-property methods too, not just `cls.getMethods()`. This is that
+finding turned into a plan.
 
 ```
 ## Refactor Plan — architecture-reviewer: packages/core/src/index.mjs:49-394 (Harness)
@@ -119,7 +174,7 @@ class Harness {
     this.#adapters.writeArtifact({ from: src.path, to });   // inline delivery
     this.#emit({ type: 'deployed', ... });
   }
-  // + 9 more methods, same shape: inline logic that belongs to a sibling package
+  // + 23 more methods, same shape: inline logic that belongs to a sibling package
 }
 
 ### After
@@ -136,15 +191,38 @@ class Harness {
 }
 // packages/deploy/src/default-deploy-port.mjs — owns the artifact-path/approval logic
 
-### Effort: HIGH — package-boundary crossing (criterion 3), not call-site
-count (criterion 2 would say LOW: `grep -rn "new Harness(" packages/` outside
-`packages/core/test/` returns ZERO hits today — `Harness` isn't consumed
-anywhere else yet). The invariant clause is what actually drives this to
-HIGH: every method must keep emitting to the same append-only event log with
-the same monotonic `#seq`, and the file's own comments (`index.mjs:103-110`)
-document a prior real bug where a spread copy silently defeated a freeze
-invariant — this is exactly the "target carries a cross-cutting invariant
-that isn't locally checkable" case a call-site count would miss entirely.
+### Effort: HIGH — package-boundary crossing and the invariant clause, NOT
+call-site count. `rdc-refactoring-score`'s real reference-graph scan
+(`plugin.referenceSitesOf('packages/core/src/index.mjs', 'Harness', ...)`,
+positive control passed) reports **8 cross-file references**, all within
+`packages/core` itself: `index.mjs:75`'s own internal factory call
+(`new Harness(...)`), plus 7 in `packages/core/test/site-html-lifecycle.test.mjs`
+— the `import { Harness, ... }` statement (line 20), 4 `new Harness(...)`
+construction sites (lines 40/55/70/94), and 2 static-method calls,
+`Harness.resume(...)` (line 142) and `Harness.replay(...)` (line 296). This
+is a REAL demonstration of why the real reference-graph walk
+(`findReferencesAsNodes`) is used here instead of a text grep: a naive
+`grep -rn "new Harness(" --include="*.mjs"` finds only 5 of these 8 —
+the import statement and both static-method calls are invisible to that
+grep, and a `new Harness(...)` regex would silently undercount call sites on
+any class whose API includes static factory/replay methods. By call-site
+count alone (8, same package) criterion 2 says **Medium** — this example
+previously speculated a call-site count of zero and a resulting "criterion 2
+would say LOW", which the tool's real output does not bear out; correcting
+that here matters because it is exactly the trap this rule exists to prevent
+(see "Call-site count is not sufficient on its own" above). What actually drives
+this to HIGH is criterion 3: the refactor's real target is package-boundary
+crossing (the extraction moves deploy/delivery/transaction/orchestration
+logic OUT of `packages/core` and INTO `packages/deploy`, `packages/delivery`,
+etc. — those packages are not yet Harness's callers, but they become its
+collaborators after the extract), plus the invariant clause — every method
+must keep emitting to the same append-only event log with the same monotonic
+`#seq`, and the file's own comments (`index.mjs:103-110`) document a prior
+real bug where a spread copy silently defeated a freeze invariant. That
+invariant is exactly the case a mechanical call-site count cannot see, which
+is why `rdc-refactoring-score` reports `invariantCheckRequired: true`
+whenever boundary-crossing or a >15-call-site result already pushes it to
+High, but leaves the actual invariant judgment to this step.
 
 ### Steps (each leaves the tree working; each names its own proof)
 1. Define `DeployPort`/`DeliveryPort`/`TransactionPort`/`OrchestrationPort`
@@ -177,7 +255,8 @@ that isn't locally checkable" case a call-site count would miss entirely.
    event-log read/write, which is intentionally NOT extracted — it's the
    spine, not a layering violation per this skill's own header) — this is
    the positive-control check that no inline I/O was missed.
-## Verdict: HIGH effort, 5 steps, each with a named proof; zero external
-call sites means the migration is low-RISK to sequence but not low-EFFORT —
-the two are different axes and this plan's Effort line says so explicitly.
+## Verdict: HIGH effort, 5 steps, each with a named proof; 8 call sites, all
+WITHIN `packages/core` (zero from any OTHER package today) means the
+migration is low-RISK to sequence but not low-EFFORT — the two are different
+axes and this plan's Effort line says so explicitly.
 ```
