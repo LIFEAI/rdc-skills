@@ -5,7 +5,9 @@
 | Package | License (verified) | What we took from it |
 |---|---|---|
 | [OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit) | MIT (verified via its `package.json` `license` field + repo README `## License` section — the repo's root `LICENSE` file itself was not independently fetched this session) | Real detection logic, thresholds, and rule IDs for Steps 1–7 below, ported/adapted from its actual TypeScript source under `src/agents/*/tools/*.ts` (not reimplemented from a description) |
-| [ts-morph](https://github.com/dsherret/ts-morph) `24.0.0` | MIT (verified: `node_modules/ts-morph/package.json`) | The AST layer for the TypeScript/JavaScript `LanguagePlugin` (`scripts/lib/plugins/typescript.mjs`) — see the "Known gaps" AST-parser note below |
+| [ts-morph](https://github.com/dsherret/ts-morph) `24.0.0` | MIT (verified: `node_modules/ts-morph/package.json`) | The AST layer for the TypeScript/JavaScript `LanguagePlugin` (`scripts/lib/plugins/typescript.mjs`) — still the backend for Clean Code, Patterns, and Refactoring this pass; see "AST parser — CLOSED" below for the SOLID swap to tree-sitter |
+| [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter) `0.24.7` | MIT (verified: `node_modules/web-tree-sitter/package.json`) | The tree-sitter WASM runtime bindings for `scripts/lib/plugins/treesitter.mjs` — SOLID's default AST layer as of this pass |
+| [tree-sitter-wasms](https://www.npmjs.com/package/tree-sitter-wasms) `0.1.13` | **Unlicense** (verified: `node_modules/tree-sitter-wasms/package.json` — public domain, NOT MIT) | Pre-built WASM grammar assets (TypeScript, TSX, JavaScript) consumed by `treesitter.mjs` |
 | [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) `1.30.0` | MIT (verified: `node_modules/@modelcontextprotocol/sdk/package.json`) | MCP server transport, unrelated to the scoring logic itself |
 | [zod](https://github.com/colinhacks/zod) `3.25.76` | MIT (verified) | Input validation elsewhere in this repo's skill tooling |
 | [express](https://github.com/expressjs/express) `5.2.1` | MIT (verified) | HTTP transport for `rdc-skills-mcp`, unrelated to the scoring logic |
@@ -36,17 +38,22 @@ the tool tables.
 
 ## Shared contract
 
-Every ts-morph-backed tool (SOLID, Clean Code, Patterns, Refactoring) reads
-from one shape: `NormalizedUnit` / `NormalizedMember`, defined in
-[`scripts/lib/language-plugin.mjs`](scripts/lib/language-plugin.mjs) and
-produced, for TypeScript/JavaScript, by
+Four tools (SOLID, Clean Code, Patterns, Refactoring) read from one shape:
+`NormalizedUnit` / `NormalizedMember`, defined in
+[`scripts/lib/language-plugin.mjs`](scripts/lib/language-plugin.mjs). Two
+plugins produce that shape for TypeScript/JavaScript today:
 [`scripts/lib/plugins/typescript.mjs`](scripts/lib/plugins/typescript.mjs)
-— the ONE file in this repo allowed to import `ts-morph`. Every scoring file
-downstream of it is pure functions over that shape; none of them touch an
-AST directly. This is what "language independent" means in practice: adding
-a Python or Go plugin that emits the same `NormalizedUnit` shape makes all
-four of those tools work on that language with zero changes to the scoring
-logic itself.
+(ts-morph — the ONE file in this repo allowed to import it) and
+[`scripts/lib/plugins/treesitter.mjs`](scripts/lib/plugins/treesitter.mjs)
+(the fleet's own tree-sitter parser, ported from CodeFlow's
+`nativeParser.ts` — see "AST parser — CLOSED" below). SOLID defaults to the
+tree-sitter plugin (`--parser` selects either); Clean Code, Patterns, and
+Refactoring still default to ts-morph this pass. Every scoring file
+downstream of either plugin is pure functions over the shared shape; none of
+them touch an AST directly. This is what "language independent" means in
+practice: adding a Python or Go plugin that emits the same `NormalizedUnit`
+shape makes all four of those tools work on that language with zero changes
+to the scoring logic itself.
 
 Three tools (Package Design, Architecture, Duplicate Code) are deliberately
 NOT built on this contract — they operate on file paths, import statements,
@@ -182,6 +189,15 @@ tool's own "done" claim:
 
 ## Decisions closed this pass (not left open)
 
+- **AST parser (SOLID) — closed.** Swapped `solid-score.mjs` from ts-morph
+  to the fleet's own tree-sitter parser (`scripts/lib/plugins/treesitter.mjs`,
+  ported from CodeFlow's `nativeParser.ts`), default `--parser tree-sitter`.
+  Exact parity on `rdc-harness`'s `Harness` (68.5/100, both backends, every
+  criterion). One real bug found and fixed (concise-arrow-body blindness);
+  one real pre-existing ts-morph defect found and root-caused (shared-project
+  degradation at 100+ files — not a tree-sitter issue). Clean Code, Patterns,
+  and Refactoring stay on ts-morph this pass — see "AST parser — CLOSED"
+  below for full detail.
 - **G5 duplication detection** — closed. Built Step 8 above, real
   Rabin-Karp implementation, positive-control-verified, one real bug (window
   merge) caught and fixed before ship.
@@ -214,45 +230,145 @@ tool's own "done" claim:
   distance > 0.5. Left as-is (harmless dead branch, not incorrect output),
   documented in the test file with the proof rather than silently removed.
 
-## Disclosed architectural finding — not fixed this pass, needs a decision
+## AST parser — CLOSED (SOLID moved to tree-sitter; 3 tools stay on ts-morph)
 
-**The AST layer (`scripts/lib/plugins/typescript.mjs`) uses `ts-morph`
-(TypeScript/JavaScript only), built without checking for existing fleet
-infrastructure first.** The monorepo already has
+**Previously disclosed here as an open finding, now closed by direct operator
+instruction (Dave, 2026-08-20):** the AST layer (`scripts/lib/plugins/
+typescript.mjs`) used `ts-morph` (TypeScript/JavaScript only) without first
+checking for existing fleet infrastructure. The monorepo already owns
 [`@regen/codeflow-parser`](https://github.com/LIFEAI/regen-root/tree/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser)
 ([`nativeParser.ts`](https://github.com/LIFEAI/regen-root/blob/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser/src/nativeParser.ts))
-— a genuinely multi-language parser (tree-sitter WASM grammars for
-TypeScript, JavaScript, Python, C, C++, C#, running as a PM2 batch-parse
-service for CodeFlow, added by commit
-[`d56e76c86`](https://github.com/LIFEAI/regen-root/commit/d56e76c8641cebae72e3406da2d009de2a6f469b),
-2026-07-01) that was never checked against before this build started. This
-is a real process failure, not a hedge: `NormalizedUnit`'s *contract* is
-language-independent, but its only working *implementation* is TS/JS-only
-forever, when a genuinely multi-language parser already exists in the fleet.
+— a genuinely multi-language, standalone, in-process tree-sitter parser
+(TypeScript, JavaScript, Python, C, C++, C#), confirmed callable in-process
+as a library (`this.parser.parse(files)`, CodeFlow's own ingestion pipeline)
+with the PM2 `server.ts` wrapper as an optional separate deployment this
+validator does not depend on.
 
-Not fixed here because swapping the AST backbone underneath 4 already-shipped,
-dogfooded tools (SOLID, Clean Code, Patterns, Refactoring) is an
-architectural change per `.claude/rules/architectural-change-approval.md`
-in the monorepo — it needs its own interview, not a silent swap bundled
-into a doc-fix pass. Open question for that interview: does
-`codeflow-parser`'s `ParseFileResult` shape (`symbols`/`interfaces`/`calls`/
-`imports`) carry enough fact granularity to replace `NormalizedUnit`
-(statement counts, magic numbers, switch-statement shapes, etc. — many
-facts this build added to `typescript.mjs` this session), or would it need
-its own extension first?
+**Built:** [`scripts/lib/plugins/treesitter.mjs`](scripts/lib/plugins/treesitter.mjs)
+— a new `LanguagePlugin` implementing the full `NormalizedUnit`/
+`NormalizedMember` contract for TypeScript, TSX, and JavaScript on
+`web-tree-sitter` + `tree-sitter-wasms` directly (no dependency on
+`regen-root` at runtime — the port is textual, done once). Foundation ported
+from `nativeParser.ts`'s `extractTsJsSymbols`/`extractCallsFromBody`/
+`extractTsJsImports` (same node-type vocabulary, same top-level-declaration
+walk shape), then extended with every fact `NormalizedUnit`/
+`NormalizedMember` requires that `nativeParser.ts` does not compute
+(statement counts, magic numbers, empty catches, dead conditionals,
+switch-statement shapes, null checks, complex conditionals, callee names,
+constructor `new` targets, deep-chain call counts, `getInstance` detection,
+static property names, LSP override comparison against a resolved base
+class, and cross-file `deadExportsOf`/`referenceSitesOf` via a real
+identifier-text walk over every cached parsed file — tree-sitter has no
+`findReferencesAsNodes()` language service). Every tree-sitter node type and
+field name used (`public_field_definition`, `method_definition`'s
+`parameters`/`body`/`return_type` fields, `if_statement`'s `condition`/
+`consequence`/`alternative`, `else_clause` wrapping an `else if` as a nested
+`if_statement`, `super()` vs `super.method()`'s different function-field
+shapes, parenless single-param arrows exposing a bare `parameter` field, TS
+`enum_assignment`) was verified empirically by parsing representative
+TypeScript with the installed grammar and inspecting the resulting CST —
+not assumed from memory of the grammar.
 
-**`@regen/codeflow-parser`'s own dependency chain — verified, not used yet:**
+`scripts/solid-score.mjs` now takes `--parser tree-sitter|ts-morph`,
+**defaulting to `tree-sitter`** per the operator's instruction to actually
+use the new plugin, not just build it unused; `ts-morph` stays available as
+an escape hatch/regression-comparison lever.
 
-| Package | License (verified) | Role |
+**Parity — real numbers, via the actual CLI, both flags, same target
+(`rdc-harness`'s `Harness` god-object, `packages/core/src/index.mjs`):**
+
+```
+=== tree-sitter (default) ===
+Harness (class)  total=68.5
+  SRP:  40 [high]  3 connected component(s) across 24 member(s)
+  OCP: 100 [low]   0 branch/type-check hit(s) across 24 member(s)
+  LSP: 100 [low-medium]  no base class
+  ISP:  73 [medium-high] 18 public member(s), avg 0.8 param(s)
+  DIP:  53 [high]  15 concrete instantiation(s) of 32 total dependenc(y/ies)
+
+=== ts-morph (--parser ts-morph) ===
+Harness (class)  total=68.5     <- byte-identical, all 5 criteria, all details
+```
+Not just in-range: **exactly** `68.5/100` under both backends, every
+per-criterion score and detail string identical. `RefusedError` (the file's
+other class) also scored identically (100/100, both backends). Confirmed
+with a member-level diff across every `NormalizedMember` field
+(`paramCount`, `branchHits`, `statementCount`, `isPublic`, `fieldAccess`,
+`calls`) before wiring the CLI — zero diffs.
+
+**A real bug found and fixed during broader dogfooding (not on the Harness
+target — found by scoring 130 files across `rdc-skills` + `rdc-harness`):**
+a concise-body arrow class/module property — `model = () => new
+PhaseModel({...})` (`rdc-harness/packages/phases/test/phase-model.test.mjs:21`)
+— has its ENTIRE body AS the `new_expression`/`call_expression`/
+`member_expression` node itself (an arrow function's concise body is the
+expression directly, not a `statement_block` wrapping it). The self-
+exclusive tree walk (`getDescendantsOfKind`-equivalent, visits children only)
+only tested the body's CHILDREN, never the body node's own type — so
+`new PhaseModel` itself was invisible to `constructorNewCallTargetsOf`/
+`callsOf`/`fieldsOf`/`branchHitsOf`/`calleeNamesOf`/`deepChainCallCountOf`
+for every concise-arrow member. Fixed by making the walk self-inclusive
+(`walkSelfAndDescendants`) — verified safe everywhere else in the file
+(every other target node type this plugin searches for can never
+structurally BE the root node passed in) and confirmed fixed by re-running
+the same 130-file dogfood pass.
+
+**A second, larger divergence found and root-caused during the same
+dogfooding — and it is NOT a tree-sitter defect:** scoring all 130 files in
+one process, 9 files showed DIP-score gaps up to 24.3 points, `ts-morph`
+consistently reporting FEWER concrete instantiations than tree-sitter (e.g.
+`phase-model.test.mjs`: ts-morph 0, tree-sitter 7). Root-caused by hand: a
+**fresh, independent ts-morph project** parsing that same file finds **7**
+`new PhaseModel(...)` nodes — matching tree-sitter exactly — and `typescript.mjs`'s
+own `sharedProject()`, warmed up with only the 2 files that actually matter
+(the defining file + the test file), ALSO correctly returns **7**. Only the
+`sharedProject()` instance that had accumulated 113+ prior files in one
+long-running process returns 0. This is a **pre-existing correctness defect
+in ts-morph's incremental shared-`Project` pattern at scale**, not something
+this build introduced — and it is evidence FOR the swap, not against it:
+tree-sitter's plugin holds no incremental language-service state to go
+stale, so it does not reproduce this failure mode at all. `solid-score.mjs`'s
+real invocation pattern (one target directory/file per process) rarely hits
+the file count where ts-morph's degradation appears, but a long-running
+multi-package sweep (exactly what dogfooding this pass did) will.
+
+**Determinism** — same requirement as every other tool in this doc: ran
+`solid-score.mjs` twice against the same target, `--format json`, both a
+single-file target and a whole-directory target, diffed the output.
+**Byte-identical both times**, both scopes.
+
+**Scoped explicitly out of this pass:**
+- **Only `solid-score.mjs` was swapped.** `clean-code-score.mjs`,
+  `pattern-score.mjs`, and `refactoring-score.mjs` still default to
+  `typescript.mjs`/ts-morph. Swapping SOLID first, with the new plugin
+  built, dogfooded, and proven, de-risks the other three — a larger
+  regression-proof job the operator can direct next.
+- **Python is NOT implemented in `treesitter.mjs`.** `nativeParser.ts` has
+  real, working Python extraction logic (`extractPythonSymbols`) that could
+  be ported in a follow-up pass, but no scoring CLI in this repo has ever
+  targeted Python — shipping an unproven, un-dogfooded third language in
+  the same pass as the TS/JS swap is scope creep, not scope discipline.
+  C/C++/C# are out of scope entirely for the same reason.
+- **A minor, disclosed `.d.ts`-only gap:** two ambient-declaration-only
+  files (`scripts/lib/vendor/codeflow-parser/{grammars,nativeParser}.d.ts`)
+  score 1 unit under ts-morph (which recognizes `declare function ...;` as a
+  `FunctionDeclaration` via its higher-level API) and 0 under tree-sitter
+  (whose grammar wraps an ambient signature as `ambient_declaration`, a
+  different node type than plain `function_declaration`, which this
+  plugin's top-level walk does not yet match). Both sides of this gap are
+  bodyless type declarations with zero SOLID-relevant content either way
+  (no statements, no branches, no fields) — disclosed, not chased further
+  this pass.
+
+**Real dependency versions installed and verified this pass** (added to
+`rdc-skills`' own `package.json` `dependencies` — not the codeflow-parser
+package in the separate `regen-root` monorepo, which this plugin does not
+import from at runtime):
+
+| Package | Version installed | License (verified) |
 |---|---|---|
-| [`@regen/codeflow-parser`](https://github.com/LIFEAI/regen-root/blob/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser/package.json) `0.1.0` | `"private": true`, no separate license field (internal monorepo package, hosted at [github.com/LIFEAI/regen-root](https://github.com/LIFEAI/regen-root) — real repo, not a third-party npm dependency) | Native tree-sitter batch-parse service for CodeFlow, not currently consumed by this validator |
-| [tree-sitter-wasms](https://www.npmjs.com/package/tree-sitter-wasms) `0.1.13` | **Unlicense** (verified: `node_modules/.pnpm/tree-sitter-wasms@0.1.13/.../package.json` — public domain, NOT MIT) | Pre-built WASM grammar assets — TypeScript, JavaScript, Python, C, C++, C# |
-| [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter) `0.24.7` | MIT (verified) | The tree-sitter WASM runtime bindings `codeflow-parser` calls |
-
-If the future interview above decides to adopt this parser, both real deps
-would need adding to `rdc-skills`' own `package.json` — they are not
-currently dependencies of this repo, only of `packages/codeflow-parser` in
-the separate `regen-root` monorepo.
+| [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter) | `0.24.7` (matches the version confirmed live in `regen-root`'s own `codeflow-parser`; npm `latest` is `0.26.12` — pinned to the version already proven working with this ported logic rather than chasing latest) | MIT (verified: `node_modules/web-tree-sitter/package.json`) |
+| [tree-sitter-wasms](https://www.npmjs.com/package/tree-sitter-wasms) | `0.1.13` (matches npm `latest`) | **Unlicense** (verified: `node_modules/tree-sitter-wasms/package.json` — public domain, NOT MIT) |
 
 ## Research bibliography
 

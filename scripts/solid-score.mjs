@@ -35,7 +35,10 @@
  *
  * Usage:
  *   node solid-score.mjs <path> [--config <file>] [--diff <ref>]
- *     [--format text|json]
+ *     [--format text|json] [--parser tree-sitter|ts-morph]
+ *
+ * `--parser` selects the AST backend (default `tree-sitter`, see the
+ * PARSER_PLUGINS block below for why).
  */
 
 import { execFileSync } from 'node:child_process';
@@ -46,9 +49,31 @@ import { parse as parseYaml } from 'yaml';
 
 import { registerPlugin, pluginFor } from './lib/language-plugin.mjs';
 import { typescriptPlugin } from './lib/plugins/typescript.mjs';
+import { treesitterPlugin } from './lib/plugins/treesitter.mjs';
 import { scoreUnit } from './lib/solid-scoring.mjs';
 
-registerPlugin(typescriptPlugin);
+// AST backend selection — `--parser tree-sitter|ts-morph`, default
+// `tree-sitter` per direct operator instruction (Dave, 2026-08-20): the
+// fleet's own standalone, in-process, multi-language tree-sitter parser
+// (ported from CodeFlow's `packages/codeflow-parser/src/nativeParser.ts`,
+// see scripts/lib/plugins/treesitter.mjs's own header for the full port
+// citation) replaces the third-party TS-only ts-morph backend as the
+// default for this CLI. `--parser ts-morph` stays available as an escape
+// hatch/regression-comparison lever, not a silent removal — ts-morph
+// remains the backend the other 3 ts-morph tools (clean-code-score,
+// pattern-score, refactoring-score) use this pass; only SOLID moves.
+const PARSER_PLUGINS = { 'tree-sitter': treesitterPlugin, 'ts-morph': typescriptPlugin };
+
+const parserArgIndex = process.argv.indexOf('--parser');
+const parserName = parserArgIndex !== -1 ? process.argv[parserArgIndex + 1] : 'tree-sitter';
+if (!PARSER_PLUGINS[parserName]) {
+  throw new Error(`--parser must be one of ${Object.keys(PARSER_PLUGINS).join('|')}, got "${parserName}"`);
+}
+// Register only the SELECTED plugin — typescriptPlugin and treesitterPlugin
+// both claim the identical file-extension set (canHandle), so registering
+// both would make `pluginFor()` always resolve to whichever was registered
+// first regardless of `--parser`, silently ignoring the flag.
+registerPlugin(PARSER_PLUGINS[parserName]);
 // A future Python plugin registers here too — nothing else in this file changes.
 
 export const DEFAULT_CONFIG = {
@@ -263,6 +288,7 @@ async function main() {
     results, regressions, boundaryFindings, boundaryViolations, boundaryMisconfigured, unresolvedLanguages,
     config: { weights: config.weights, diff: config.diff, boundaryRuleCount: (config.boundaries ?? []).length },
     configPath, configLoaded,
+    parser: parserName,
   };
 
   if (format === 'json') {
