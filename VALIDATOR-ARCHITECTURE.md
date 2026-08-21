@@ -238,6 +238,19 @@ into a doc-fix pass. Open question for that interview: does
 facts this build added to `typescript.mjs` this session), or would it need
 its own extension first?
 
+**`@regen/codeflow-parser`'s own dependency chain — verified, not used yet:**
+
+| Package | License (verified) | Role |
+|---|---|---|
+| `@regen/codeflow-parser` `0.1.0` | `"private": true`, no separate license field (internal monorepo package — [`packages/codeflow-parser/package.json`](../../packages/codeflow-parser/package.json), not a third-party dependency) | Native tree-sitter batch-parse service for CodeFlow, not currently consumed by this validator |
+| [tree-sitter-wasms](https://www.npmjs.com/package/tree-sitter-wasms) `0.1.13` | **Unlicense** (verified: `node_modules/.pnpm/tree-sitter-wasms@0.1.13/.../package.json` — public domain, NOT MIT) | Pre-built WASM grammar assets — TypeScript, JavaScript, Python, C, C++, C# |
+| [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter) `0.24.7` | MIT (verified) | The tree-sitter WASM runtime bindings `codeflow-parser` calls |
+
+If the future interview above decides to adopt this parser, both real deps
+would need adding to `rdc-skills`' own `package.json` — they are not
+currently dependencies of this repo, only of `packages/codeflow-parser` in
+the separate `regen-root` monorepo.
+
 ## Research bibliography
 
 Real URLs fetched/searched this session — for the next person picking this
