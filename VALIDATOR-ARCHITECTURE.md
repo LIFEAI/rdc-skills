@@ -197,11 +197,21 @@ tool's own "done" claim:
   footprint than the ~40-line graph walk already in `package-metrics.mjs`
   for a problem with no identified functional gap. Revisit only if a real
   case surfaces that the hand-rolled walk gets wrong.
-- **Unit tests for all 8 scoring libraries** — in progress, dispatched as a
-  background build this session (not deferred to "someday"): one
-  `node:test` file per library under `tests/lib/`, covering empty input,
-  a known-violation fixture per rule, a known-clean fixture, and boundary
-  conditions on every numeric threshold. Report follows when it lands.
+- **Unit tests for all 8 scoring libraries** — closed. 243 tests under
+  [`tests/lib/`](tests/lib/), Node's built-in `node:test` (no new
+  dependency), one file per library plus a shared `fixtures.mjs`. Every
+  rule/detector/threshold has a violation fixture; every numeric threshold
+  (F1 >20, F2 >3, Builder >4 params, T5 >10, T6 >30, etc.) is tested at and
+  just past the boundary. Re-run independently (`node --test
+  tests/lib/*.test.mjs`), not just trusted from the build report: **243
+  pass, 0 fail.** No bugs found in the libraries themselves. One real design
+  finding, not a bug: `package-metrics.mjs`'s `zone` classifier has an
+  `'off-main-sequence'` branch that is mathematically unreachable — since
+  `instability`/`abstractness` are both bounded `[0,1]`, `distance > 0.5`
+  can only happen when both values fall under 0.5 (zone-of-pain) or both
+  over 0.5 (zone-of-uselessness); no input reaches the mixed quadrant with
+  distance > 0.5. Left as-is (harmless dead branch, not incorrect output),
+  documented in the test file with the proof rather than silently removed.
 
 ## Disclosed architectural finding — not fixed this pass, needs a decision
 

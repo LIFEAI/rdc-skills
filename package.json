@@ -36,6 +36,7 @@
     "rdc-duplication-score": "scripts/duplication-score.mjs"
   },
   "scripts": {
+    "test:validator": "node --test tests/lib/*.test.mjs",
     "postinstall": "node scripts/postinstall.js",
     "install-rdc-skills": "node scripts/install-rdc-skills.js",
     "uninstall:win": "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1",
