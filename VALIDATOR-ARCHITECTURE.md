@@ -337,6 +337,148 @@ multi-package sweep (exactly what dogfooding this pass did) will.
 single-file target and a whole-directory target, diffed the output.
 **Byte-identical both times**, both scopes.
 
+**UPDATE (2026-08-20/21, same night) — `treesitter.mjs` now consumes
+`nativeParser.ts`'s own `members[]`/`units[]` extraction directly, instead of
+re-implementing it:** the parity numbers and bug writeups directly above
+describe the FIRST build of `treesitter.mjs`, at a point where
+`nativeParser.ts` only extracted `symbols`/`interfaces`/`calls`/`imports` at a
+coarse, top-level-only granularity — it never walked class method bodies at
+all, which is why this plugin had to independently re-derive every per-member
+fact from scratch. Minutes after that first build shipped, `nativeParser.ts`
+gained a real `members[]`/`units[]`/`references[]` surface (a new
+`src/memberFacts.ts`, commit `1e4e4012b` on `regen-root`'s `develop`) that
+walks EVERY callable body — not just top-level functions — and computes
+almost exactly the same per-member/per-unit facts this plugin was
+duplicating. This plugin was rewritten the same night to consume that surface
+directly rather than continue re-deriving it.
+
+**What changed, mechanically:** the compiled `nativeParser.js`/`grammars.js`/
+`memberFacts.js`/`xmlParser.js` (plus `.d.ts`) were re-vendored into
+`scripts/lib/vendor/codeflow-parser/` from `regen-root`'s freshly-built
+`dist/`, and `.source-commit` bumped to `a354d5be2d1db865faea92c1013eb2a62981e271`
+(the `x-claude-sv` worktree HEAD at vendor time). `treesitter.mjs` now imports
+`extractMembers` from the vendored `memberFacts.js` and calls it directly and
+SYNCHRONOUSLY against its own tree-sitter parse of each file — not through
+`createNativeParser().parse()`'s `async` service wrapper, which cannot be
+called from `extractUnits()` (the `LanguagePlugin` contract in
+`../language-plugin.mjs` requires that method to stay synchronous, and
+`parse()` is `async` end-to-end because it also fronts an XML branch and a
+batch override/reference-resolution pass this plugin doesn't use).
+`extractMembers` itself has no `await` in it anywhere — a plain, pure,
+deterministic function of `(rootNode, language)` per its own header contract
+— so calling it directly is the correct fix for the sync/async mismatch, not
+a workaround.
+
+**Field mapping — `NormalizedMember`/`NormalizedUnit` (this plugin's
+contract) ← `ParsedMember`/`ParsedUnit` (the vendored extractor's):**
+
+| NormalizedMember/Unit field | Source | Note |
+|---|---|---|
+| `paramCount` | `ParsedMember.paramCount` | direct |
+| `fieldAccess` | `ParsedMember.fieldAccess` | direct — now deduped + lexicographically sorted (was unsorted, with duplicate occurrences, before) |
+| `branchHits` | `ParsedMember.branchHits` | direct — semantics broadened: native counts a `switch`'s `default` arm as a branch and counts an if/else-if chain by its full arm count, where this plugin's own prior local walk counted only chain LINKS and never counted `default`. Real, verified difference — see parity re-run below |
+| `statementCount` | `ParsedMember.statementCount` | direct — boundary differs: native's walk stops at a NESTED callable (a closure passed to `.map()` is its own member), where this plugin's prior local walk was self-inclusive across ALL nesting depths including nested closures. Deliberate design in `memberFacts.ts` ("a closure...is its own member...folding its statements into the enclosing method would inflate every complexity signal") |
+| `declaredNames` | `ParsedMember.declaredNames`, filtered | destructured-pattern entries (`{ handle, target, snapshot }` as ONE combined name — verified empirically) are dropped; `kind` field stripped to match this plugin's existing shape |
+| `magicNumbers` | `ParsedMember.magicNumbers`, mapped | `value` coerced `string→number` (native emits `value` as source text, e.g. `"-5"`); native's 0/1/-1 exclusion is a STRING comparison (`"1.0"` would NOT be excluded) where the prior local version excluded by NUMBER comparison — a real, disclosed edge-case difference, not hit in the Harness fixture |
+| `constructorNewCallTargets` | `ParsedMember.constructorNewCallTargets` | direct |
+| `deepChainCallCount` | `ParsedMember.deepChainCallCount` | direct |
+| `calleeNames` | `ParsedMember.calleeNames` | direct |
+| `concreteInstantiations`, `totalDependencies` (unit, class only) | `ParsedUnit.concreteInstantiations`/`.totalDependencies` | direct — `totalDependencies` uses a FUNDAMENTALLY DIFFERENT formula than this plugin's prior local one (native: distinct non-self call receivers + `new`-targets, minus own member names; prior local: concrete instantiations + import-specifier count + constructor-injected-typed-param count) — a real, measured difference, see parity re-run |
+| `staticPropertyNames`, `hasGetInstanceMethod`, `hasBaseClass` (unit, class only) | `ParsedUnit.*` | direct — `hasGetInstanceMethod`/`hasBaseClass` both broaden slightly (more `getInstance`-family names; more heritage-clause node types recognized) |
+| `calls` | **stays local** | this plugin's contract keeps a `this.`-stripped-only, receiver-otherwise-preserved form (`obj.method()` → `"obj.method"`) for `solid-scoring.mjs`'s SRP same-component test; native's `calleeNames` strips EVERY receiver, which is right for pattern-scoring.mjs's keyword scans but wrong for SRP's sibling-call detection — would have created spurious cross-member unions |
+| `isPublic` | **stays local** | native's `ParsedMember.exported` is the OWNING CLASS's export flag propagated to every member — it has no `private`/`protected`/`#`-prefix accessibility signal at all |
+| `override` | **stays local** | native's `resolveOverrideShapes` is BATCH-scoped across one `parse()` call over every file at once; this plugin's `extractUnits` is called per-file, incrementally — re-running a whole-project batch parse on every single-file call would be a real perf regression, so cross-file base-method resolution keeps using this plugin's existing `fileCache`-backed lookup, unchanged |
+| `emptyCatches`, `deadConditionals`, `nullChecks` | **stay local** | native reports these as a bare COUNT (`number`), not an array — `clean-code-scoring.mjs`'s E1/G9 findings and `refactoring-scoring.mjs`'s null-object-transform read `.line` (and, for `deadConditionals`, `.kind`) per occurrence, which a count cannot supply |
+| `statementTexts`, `complexConditionals` | **stay local** | native reports these as `string[]` (text only, no `line`) — `refactoring-scoring.mjs`'s consolidate-duplicate-code and decompose-conditional findings need `.line` (and, for `complexConditionals`, `.length`) to build a locatable finding |
+| `switchStatements[].hasBehaviorCall/.hasTypeCreation`, `switchBehaviorCallLine`, `conditionalFeatureCallLine` | **stay local** | native's `SwitchFact.behaviorDispatch`/`.typeConstruction` use a DIFFERENT, broader test (any call-or-return in a case; any `new` inside a type-named discriminant switch) than this repo's specific architecture-toolkit word lists (calculate/process/validate/format for clean-code and refactoring; calculate/process/execute/validate/format for pattern-advisor's Strategy; wrap/add/extend/enhance for Decorator) — reusing native's flags would silently change which findings fire |
+| `deadExportsOf`/`referenceSitesOf` | **unchanged, fully local** | cross-file identifier-text walk, as before this pass; SOLID never calls either, so this is orthogonal to the parity numbers below |
+
+**Correlation.** `extractMembers` returns a FLAT `members[]` including every
+nested closure as its own entry with `owner: null` (a callback is genuinely
+its own member with its own facts, per `memberFacts.ts`'s own design). This
+plugin still needs to decide what counts as a "member" under its OWN contract
+(a class's own methods/arrow-fields, or a file's own top-level declarations —
+never an inner closure folded into one of those), so it keeps its existing
+identity walk (`memberEntriesOf` for a class body; the top-level declaration
+scan for a module) and correlates each locally-identified entry to the
+matching native entry by `` `${owner ?? ''}::${name}::${startLine}` `` (the
+callable node's own start line — verified to match exactly between the two
+walks for method/constructor/arrow-field/top-level-function/top-level-arrow
+shapes). A correlation miss falls back to this plugin's ORIGINAL, fully local
+computation for that one member — unchanged from before this pass — so a miss
+degrades to old-but-correct, never to a dropped or wrong fact.
+
+**Re-verified parity, same target (`rdc-harness`'s `Harness`,
+`packages/core/src/index.mjs`), both flags, real CLI output:**
+
+```
+=== tree-sitter (post-native-consumption) ===
+Harness (class)  total=66.9
+  SRP:  40 [high]  3 connected component(s) across 24 member(s)
+  OCP:  83 [low]   16 branch/type-check hit(s) across 24 member(s), density 0.67
+  LSP: 100 [low-medium]  no base class
+  ISP:  73 [medium-high] 18 public member(s), avg 0.8 param(s)
+  DIP:  56 [high]  15 concrete instantiation(s) of 34 total dependenc(y/ies)
+
+=== ts-morph (--parser ts-morph, unchanged) ===
+Harness (class)  total=68.5
+  OCP: 100 [low]   0 branch/type-check hit(s)
+  DIP:  53 [high]  15 concrete instantiation(s) of 32 total dependenc(y/ies)
+  (SRP/LSP/ISP unchanged, byte-identical to tree-sitter)
+```
+
+**66.9, not 68.5 — a real, explained difference, not a regression:**
+`concreteInstantiations: 15` matches exactly (both backends, unchanged —
+confirms the underlying `new PhaseModel(...)`-class detection is stable). The
+two criteria that moved are exactly the two fields the mapping table above
+flags as using DIFFERENT NATIVE FORMULAS, not local re-derivations:
+- **OCP (83 vs 100, ts-morph's own 0):** `branchHits` rose from ts-morph's 0
+  to tree-sitter's 16 because `memberFacts.ts` counts a `switch`'s `default`
+  arm as a branch and counts a full if/else-if chain by arm count — both
+  MORE COMPLETE than either prior implementation. This is the "real, positive
+  finding" case the task called out: the native parser counts branches the
+  duplicate logic undercounted (ts-morph's own branchHits equivalent reports
+  0 for this same class — a pre-existing gap in the untouched ts-morph path,
+  not introduced here).
+- **DIP (56 vs 53):** `totalDependencies` is 34 (native) vs 32 (ts-morph) —
+  a 2-dependency gap from two genuinely different counting methodologies
+  (native: distinct call-receivers + `new`-targets; ts-morph/prior-local:
+  import-specifier count + constructor-injected-typed-param count), not a
+  bug in either.
+`RefusedError` (the file's other class) still scores 100/100 identically.
+
+**Determinism** — ran `solid-score.mjs --parser tree-sitter` twice against
+the same target, `--format json`, diffed the output: **byte-identical.**
+
+**Regression suite** — `node --test tests/lib/*.test.mjs`: **243/243**, no
+change from before this pass (none of the 243 tests exercise the Harness
+fixture's exact score, so the OCP/DIP formula changes above did not trip any
+existing assertion; they are captured here as a disclosed finding instead).
+
+**How much duplicate CST-walking code was actually removable — the honest
+number is small, not large:** `treesitter.mjs` grew from 964 to 1,182 lines
+(+218), not shrank. Nothing was DELETED from the local extractor block —
+every local function (`fieldsOf`, `callsOf`, `branchHitsOf`,
+`declaredNamesOf`, `magicNumbersOf`, `statementCountOf`,
+`constructorNewCallTargetsOf`, `deepChainCallCountOf`, `calleeNamesOf`,
+`concreteDependencyCounts`, plus all eleven residual-fact extractors) is
+still present, because it is still needed as the correlation-miss fallback
+path for the nine member fields and three unit fields now primarily sourced
+from native output, in addition to being unconditionally needed for the
+eleven fields that never had a native equivalent to begin with (`calls`,
+`isPublic`, `override`, and the eight clean-code/refactoring/pattern-advisor
+facts requiring per-item line/regex detail the native surface doesn't carry).
+What changed is which VALUES are used at runtime, not which code exists: in
+the common case (correlation succeeds — the normal case for real class/module
+members), 9 of 19 `NormalizedMember` fields and 5 of 9 `NormalizedUnit`
+fields now come from the vendored extractor instead of this plugin's own
+walk, with the local computation demoted to a safety-net fallback rather
+than deleted. The remaining ~10 member facts genuinely cannot be sourced
+from `memberFacts.ts`'s current output shape (missing per-item line numbers,
+different regex/keyword semantics, or a batch-scoping mismatch with this
+plugin's incremental per-file API) and stay local, unconditionally, by
+design — not by oversight.
+
 **Scoped explicitly out of this pass:**
 - **Only `solid-score.mjs` was swapped.** `clean-code-score.mjs`,
   `pattern-score.mjs`, and `refactoring-score.mjs` still default to

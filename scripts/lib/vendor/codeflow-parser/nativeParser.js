@@ -13,7 +13,28 @@
  *   A3  — parse_status enum for false-RED guard
  */
 import { loadGrammar } from './grammars.js';
+import { buildReferenceGraph, countIdentifiers, extractMembers, hasLanguageProfile, resolveOverrideShapes, } from './memberFacts.js';
+import { extractXml, isXmlLanguage, XML_LANGUAGES } from './xmlParser.js';
 const DEFAULT_MAX_CALLS = 200;
+// The tree-sitter node that represents "a call" is NAMED DIFFERENTLY IN EVERY
+// GRAMMAR. This map is the whole reason python and csharp had 0 CALLS edges
+// while carrying 20,871 and 10,076 symbols respectively: extractCallsFromBody
+// tested `node.type === 'call_expression'` — true only for the C-like grammars —
+// so the python and csharp walks ran to completion and matched nothing.
+//
+// All four shapes expose the SAME two fields (`function`, `arguments`), which is
+// why only the type test varies below and the extraction body is shared.
+const CALL_NODE_TYPES = {
+    typescript: ['call_expression'],
+    javascript: ['call_expression'],
+    python: ['call'],
+    c: ['call_expression'],
+    cpp: ['call_expression'],
+    csharp: ['invocation_expression'],
+};
+function callNodeTypesFor(language) {
+    return CALL_NODE_TYPES[language] ?? ['call_expression'];
+}
 /**
  * Create a native tree-sitter LanguageParser.
  */
@@ -61,49 +82,59 @@ export function createNativeParser(opts) {
     }
     return {
         id: 'tree-sitter',
-        languages: ['typescript', 'javascript', 'python', 'c', 'cpp', 'csharp'],
+        languages: ['typescript', 'javascript', 'python', 'c', 'cpp', 'csharp', ...XML_LANGUAGES],
         async parse(files) {
             const results = [];
             const ready = await ensureRuntime();
             if (!ready || !ParserClass) {
-                return files.map(file => ({
-                    path: file.path,
-                    language: file.language,
-                    symbols: [],
-                    interfaces: [],
-                    calls: [],
-                    imports: [],
-                    parse_status: 'parse_error',
-                }));
+                return files.map(file => emptyResult(file, 'parse_error'));
             }
+            // Per-file identifier frequencies + exported names, collected during the
+            // main loop so the cross-file reference pass costs one extra sweep of
+            // already-parsed data rather than re-parsing anything.
+            const referenceInputs = [];
+            const factsByPath = new Map();
             for (const file of files) {
                 try {
-                    const grammar = await getLanguage(file.language);
-                    if (!grammar) {
+                    // XML-family documents are handled BEFORE grammar loading: there is
+                    // no tree-sitter grammar for them, so the grammar path would return
+                    // `no_grammar` and drop a BPMN process — a program with real nodes
+                    // and real edges — on the floor.
+                    if (isXmlLanguage(file.language)) {
+                        const xml = extractXml(file.content, file.language);
+                        const hasXmlContent = xml.symbols.length > 0;
+                        factsByPath.set(file.path, { members: xml.members, units: xml.units });
+                        referenceInputs.push({
+                            path: file.path,
+                            exportedNames: exportedNamesOf(xml.symbols, xml.interfaces),
+                            identifierCounts: countXmlIdentifiers(xml),
+                        });
                         results.push({
                             path: file.path,
                             language: file.language,
-                            symbols: [],
-                            interfaces: [],
-                            calls: [],
-                            imports: [],
-                            parse_status: 'no_grammar',
+                            symbols: xml.symbols,
+                            interfaces: xml.interfaces,
+                            calls: xml.calls,
+                            imports: xml.imports,
+                            parse_status: hasXmlContent ? 'parsed' : 'legitimately_empty',
+                            calls_truncated: false,
+                            members: xml.members,
+                            units: xml.units,
+                            references: [],
+                            profile_complete: true,
                         });
+                        continue;
+                    }
+                    const grammar = await getLanguage(file.language);
+                    if (!grammar) {
+                        results.push(emptyResult(file, 'no_grammar'));
                         continue;
                     }
                     const parser = new ParserClass();
                     parser.setLanguage(grammar);
                     const tree = parser.parse(file.content);
                     if (!tree) {
-                        results.push({
-                            path: file.path,
-                            language: file.language,
-                            symbols: [],
-                            interfaces: [],
-                            calls: [],
-                            imports: [],
-                            parse_status: 'parse_error',
-                        });
+                        results.push(emptyResult(file, 'parse_error'));
                         parser.delete?.();
                         continue;
                     }
@@ -112,15 +143,46 @@ export function createNativeParser(opts) {
                     const calls = [];
                     const imports = [];
                     const rootNode = tree.rootNode;
+                    // Declarations first: `calls` resolution tests a callee against the
+                    // known-symbol set, so the roster has to be complete before any body
+                    // is walked.
                     if (file.language === 'typescript' || file.language === 'javascript') {
-                        extractTsJsSymbols(rootNode, file, symbols, interfaces, calls, imports, maxCalls);
+                        extractTsJsSymbols(rootNode, file, symbols, interfaces, imports);
                     }
                     else if (file.language === 'python') {
-                        extractPythonSymbols(rootNode, file, symbols, interfaces, calls, imports, maxCalls);
+                        extractPythonSymbols(rootNode, file, symbols, interfaces, imports);
                     }
                     else if (file.language === 'c' || file.language === 'cpp' || file.language === 'csharp') {
                         extractCFamilySymbols(rootNode, file, symbols, interfaces, imports);
                     }
+                    // THE FIX. Calls used to be pulled only from bodies that were both
+                    // exported and a top-level `function_declaration`, which excluded
+                    // every class method, every arrow, every non-exported helper and
+                    // every nested function — the majority of real code. Now one member
+                    // walk decides what a callable body is, and both the fact surface
+                    // and the call surface are driven from it.
+                    const callNodeTypes = callNodeTypesFor(file.language);
+                    let callsTruncated = false;
+                    const facts = extractMembers(rootNode, file.language, (member, body) => {
+                        // `caller` stays the BARE member name on purpose. CodeFlow's graph
+                        // resolves a call edge by matching this against the symbol roster,
+                        // and qualifying it (`Widget.render`) would leave every edge from a
+                        // method unresolvable against a symbol recorded as `render`. The
+                        // owner is not lost — `members[].owner` carries it for the
+                        // validation engine, which is the consumer that needs the
+                        // distinction between two same-named methods.
+                        callsTruncated = extractCallsFromBody(member.name, body, symbols, calls, maxCalls, callNodeTypes) || callsTruncated;
+                    });
+                    // Class members were absent from `symbols` entirely in this parser —
+                    // a class read as one opaque symbol with no methods. Add them, since
+                    // a graph that cannot name a method cannot resolve a call to it.
+                    appendMemberSymbols(facts.members, symbols);
+                    factsByPath.set(file.path, facts);
+                    referenceInputs.push({
+                        path: file.path,
+                        exportedNames: exportedNamesOf(symbols, interfaces),
+                        identifierCounts: countIdentifiers(rootNode),
+                    });
                     const hasContent = symbols.length > 0 || interfaces.length > 0;
                     const parseStatus = hasContent ? 'parsed' : 'legitimately_empty';
                     results.push({
@@ -131,25 +193,118 @@ export function createNativeParser(opts) {
                         calls,
                         imports,
                         parse_status: parseStatus,
+                        calls_truncated: callsTruncated,
+                        members: facts.members,
+                        units: facts.units,
+                        references: [],
+                        profile_complete: hasLanguageProfile(file.language),
                     });
                     tree.delete?.();
                     parser.delete?.();
                 }
                 catch {
-                    results.push({
-                        path: file.path,
-                        language: file.language,
-                        symbols: [],
-                        interfaces: [],
-                        calls: [],
-                        imports: [],
-                        parse_status: 'parse_error',
-                    });
+                    results.push(emptyResult(file, 'parse_error'));
                 }
+            }
+            // Batch passes. Both are deliberately AFTER the per-file loop: an
+            // override's base class and a symbol's callers live in other files, and
+            // resolving them mid-loop would make a file's output depend on the order
+            // it happened to appear in — the exact non-determinism this parser must
+            // not have.
+            resolveOverrideShapes([...factsByPath.values()]);
+            const referencesByPath = buildReferenceGraph(referenceInputs);
+            for (const result of results) {
+                result.references = referencesByPath.get(result.path) ?? [];
             }
             return results;
         },
     };
+}
+/**
+ * The one shape an unparseable file takes.
+ *
+ * Written once because five hand-rolled copies is how `calls_truncated: false`
+ * ended up duplicated on the same object literal — every future field on
+ * `ParseFileResult` would otherwise need five identical edits, and a missed
+ * one is a type error at best and a silently absent surface at worst.
+ */
+function emptyResult(file, status) {
+    return {
+        path: file.path,
+        language: file.language,
+        symbols: [],
+        interfaces: [],
+        calls: [],
+        imports: [],
+        parse_status: status,
+        calls_truncated: false,
+        members: [],
+        units: [],
+        references: [],
+        profile_complete: hasLanguageProfile(file.language),
+    };
+}
+/**
+ * Add class members to the symbol roster.
+ *
+ * Only members that BELONG to a unit are added. A nested helper or a callback
+ * inside a function body is a real member for scoring purposes but is not a
+ * declaration anything outside the file can reference, and recording it as a
+ * symbol produces the "nine symbols named genId from one file" problem — a
+ * bigger index that is worse to search.
+ */
+function appendMemberSymbols(members, symbols) {
+    const seen = new Set(symbols.map(s => `${s.name}:${s.start_line}`));
+    for (const member of members) {
+        if (!member.owner)
+            continue;
+        const key = `${member.name}:${member.start_line}`;
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        symbols.push({
+            name: member.name,
+            kind: member.kind === 'function' ? 'method' : member.kind,
+            exported: member.exported,
+            start_line: member.start_line,
+            end_line: member.end_line,
+            return_type: member.return_type ?? undefined,
+        });
+    }
+}
+/**
+ * Name frequencies for an XML document, so its symbols participate in the same
+ * cross-file reference graph as code.
+ *
+ * A BPMN flow node referenced from another document (a call activity naming a
+ * process, a DMN decision cited by a rule task) is a genuine cross-file
+ * reference; excluding XML from the graph would report every process as a dead
+ * export.
+ */
+function countXmlIdentifiers(xml) {
+    const counts = new Map();
+    const bump = (name) => {
+        if (name)
+            counts.set(name, (counts.get(name) ?? 0) + 1);
+    };
+    for (const symbol of xml.symbols)
+        bump(symbol.name);
+    for (const call of xml.calls) {
+        bump(call.caller);
+        bump(call.callee);
+    }
+    return counts;
+}
+/** Names this file exposes to other files — the reference-graph subjects. */
+function exportedNamesOf(symbols, interfaces) {
+    const names = new Set();
+    for (const symbol of symbols)
+        if (symbol.exported)
+            names.add(symbol.name);
+    for (const iface of interfaces)
+        if (iface.exported)
+            names.add(iface.name);
+    return [...names].sort();
 }
 // ── TS/JS extraction ──────────────────────────────────────────────────────────
 function isExported(node) {
@@ -169,7 +324,15 @@ function getDeclarationNode(node) {
     }
     return node;
 }
-function extractTsJsSymbols(rootNode, file, symbols, interfaces, calls, imports, maxCalls) {
+/**
+ * Top-level declarations for the coarse symbol roster.
+ *
+ * Deliberately still top-level-only: this produces the FILE's public shape.
+ * Members inside those declarations are produced by `extractMembers` and
+ * merged in by `appendMemberSymbols`, so the two concerns stay separable and
+ * neither has to know the other's traversal rules.
+ */
+function extractTsJsSymbols(rootNode, file, symbols, interfaces, imports) {
     for (let i = 0; i < rootNode.namedChildCount; i++) {
         const topNode = rootNode.namedChild(i);
         if (!topNode)
@@ -266,29 +429,24 @@ function extractTsJsSymbols(rootNode, file, symbols, interfaces, calls, imports,
                 break;
             }
         }
-        // Extract calls from exported function bodies
-        if (exported && declNode.type === 'function_declaration') {
-            const nameNode = declNode.childForFieldName('name');
-            const body = declNode.childForFieldName('body');
-            if (nameNode && body) {
-                extractCallsFromBody(nameNode.text, body, symbols, calls, maxCalls);
-            }
-        }
     }
     extractTsJsImports(rootNode, imports);
 }
-function extractCallsFromBody(callerName, bodyNode, symbols, calls, maxCalls) {
+function extractCallsFromBody(callerName, bodyNode, symbols, calls, maxCalls, callNodeTypes = ['call_expression']) {
     const knownSymbols = new Set(symbols.map(s => s.name));
     const callMap = new Map();
     function walkForCalls(node, count) {
         if (count >= maxCalls)
             return count;
-        if (node.type === 'call_expression') {
+        if (callNodeTypes.includes(node.type)) {
             count++;
             const fnNode = node.childForFieldName('function');
             if (fnNode) {
                 const fnText = fnNode.text;
-                const parts = fnText.split('.');
+                // Member access is spelled `.` in TS/JS/python/C#, but `->` and `::` in
+                // C/C++. Split on all three so a C++ `obj->method()` yields callee
+                // `method` with receiver `obj`, not one opaque `obj->method` callee.
+                const parts = fnText.split(/->|::|\./);
                 const calleeName = parts[parts.length - 1];
                 const receiver = parts.length > 1 ? parts.slice(0, -1).join('.') : undefined;
                 const argsNode = node.childForFieldName('arguments');
@@ -322,10 +480,11 @@ function extractCallsFromBody(callerName, bodyNode, symbols, calls, maxCalls) {
         }
         return count;
     }
-    walkForCalls(bodyNode, 0);
+    const visited = walkForCalls(bodyNode, 0);
     for (const call of callMap.values()) {
         calls.push(call);
     }
+    return visited >= maxCalls;
 }
 function extractTsJsImports(rootNode, imports) {
     for (let i = 0; i < rootNode.namedChildCount; i++) {
@@ -371,11 +530,11 @@ function extractTsJsImports(rootNode, imports) {
     }
 }
 // ── Python extraction ─────────────────────────────────────────────────────────
-function extractPythonSymbols(rootNode, file, symbols, interfaces, calls, imports, maxCalls) {
-    for (let i = 0; i < rootNode.namedChildCount; i++) {
-        const node = rootNode.namedChild(i);
-        if (!node)
-            continue;
+function extractPythonSymbols(rootNode, file, symbols, interfaces, imports) {
+    // RECURSIVE, deliberately. This walk was previously a single pass over
+    // rootNode.namedChild(i) — top level only — so every method inside a class
+    // was invisible: not a symbol, and therefore not a possible caller either.
+    function walk(node) {
         switch (node.type) {
             case 'function_definition': {
                 const nameNode = node.childForFieldName('name');
@@ -426,10 +585,16 @@ function extractPythonSymbols(rootNode, file, symbols, interfaces, calls, import
             case 'import_statement':
             case 'import_from_statement': {
                 extractPythonImport(node, imports);
-                break;
+                return; // import internals hold no symbols worth descending into
             }
         }
+        for (let i = 0; i < node.namedChildCount; i++) {
+            const child = node.namedChild(i);
+            if (child)
+                walk(child);
+        }
     }
+    walk(rootNode);
 }
 function extractPythonImport(node, imports) {
     if (node.type === 'import_statement') {
@@ -501,9 +666,10 @@ function extractCFamilySymbols(rootNode, file, symbols, interfaces, imports) {
             case 'function_definition':
             case 'function_declaration':
             case 'method_declaration':
-            case 'constructor_declaration':
+            case 'constructor_declaration': {
                 addSymbol(node, 'function');
                 break;
+            }
             case 'class_specifier':
             case 'class_declaration':
             case 'struct_specifier':
