@@ -32,7 +32,8 @@
     "rdc-architecture-score": "scripts/architecture-score.mjs",
     "rdc-pattern-score": "scripts/pattern-score.mjs",
     "rdc-refactoring-score": "scripts/refactoring-score.mjs",
-    "rdc-test-smell-score": "scripts/lib/test-smell-scoring.mjs"
+    "rdc-test-smell-score": "scripts/lib/test-smell-scoring.mjs",
+    "rdc-duplication-score": "scripts/duplication-score.mjs"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js",

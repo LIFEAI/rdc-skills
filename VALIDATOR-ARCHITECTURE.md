@@ -1,11 +1,26 @@
 # Validator — Architecture
 
+## Third-party attribution
+
+| Package | License (verified) | What we took from it |
+|---|---|---|
+| [OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit) | MIT (verified via its `package.json` `license` field + repo README `## License` section — the repo's root `LICENSE` file itself was not independently fetched this session) | Real detection logic, thresholds, and rule IDs for Steps 1–7 below, ported/adapted from its actual TypeScript source under `src/agents/*/tools/*.ts` (not reimplemented from a description) |
+| [ts-morph](https://github.com/dsherret/ts-morph) `24.0.0` | MIT (verified: `node_modules/ts-morph/package.json`) | The AST layer for the TypeScript/JavaScript `LanguagePlugin` (`scripts/lib/plugins/typescript.mjs`) — see the "Known gaps" AST-parser note below |
+| [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) `1.30.0` | MIT (verified: `node_modules/@modelcontextprotocol/sdk/package.json`) | MCP server transport, unrelated to the scoring logic itself |
+| [zod](https://github.com/colinhacks/zod) `3.25.76` | MIT (verified) | Input validation elsewhere in this repo's skill tooling |
+| [express](https://github.com/expressjs/express) `5.2.1` | MIT (verified) | HTTP transport for `rdc-skills-mcp`, unrelated to the scoring logic |
+| [yaml](https://github.com/eemeli/yaml) `2.9.0` | **ISC** (verified — NOT MIT, corrected here) | YAML parsing elsewhere in this repo's skill tooling |
+
+**Explicitly evaluated but NOT used** (their algorithms/prior-art informed design decisions below; no code or dependency taken):
+[jscpd](https://github.com/kucherenko/jscpd), PMD [CPD](https://pmd.github.io/pmd/pmd_userdocs_cpd.html), [ArchUnitTS](https://github.com/LukasNiessen/ArchUnitTS), [dependency-cruiser](https://github.com/sverweij/dependency-cruiser).
+
 ## What it is
 
 A deterministic code-analysis suite covering SOLID, Clean Code, Clean
-Architecture, package design, testing strategy, design patterns, and
-refactoring opportunities. Seven CLIs, zero LLM calls inside any of them.
-Ported from [OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit)
+Architecture, package design, testing strategy, design patterns,
+refactoring opportunities, and duplicate-code detection. Eight CLIs, zero
+LLM calls inside any of them. Seven are ported from
+[OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit)
 (MIT) — their own project structure is 7 top-level agent folders under
 `src/agents/`, and their own `.claude/skills/*.md` are thin wrappers around
 `node dist/cli.js --agents=<name>`, no LLM in their loop either. This suite
@@ -39,7 +54,7 @@ text/regex scan answers as correctly as an AST would, so they carry no
 `ts-morph` dependency at all and work on any language whose imports look
 like ES/CJS syntax.
 
-All 7 CLIs support `--format json`, are proven deterministic (identical
+All 8 CLIs support `--format json`, are proven deterministic (identical
 output across two runs on the same unchanged input — no timestamps, no
 absolute paths, sorted finding arrays), and are registered as global bins in
 `package.json`.
@@ -68,7 +83,7 @@ absolute paths, sorted finding arrays), and are registered as global bins in
 | **Script** | [`scripts/lib/clean-code-scoring.mjs`](scripts/lib/clean-code-scoring.mjs), CLI in [`scripts/clean-code-score.mjs`](scripts/clean-code-score.mjs) |
 | **Algorithm** | N1/N2/N4/N7: per-declared-name checks (cryptic, noise-word, magic-number-outside-const, generic-suffix) walking the real AST, not a whole-file regex. F1/F2: statement count (>20) / param count (>3) per member. E1: empty catch-block scan. G9a: unreachable constant-conditional branch. G9b: cross-file unused-export scan via `findReferencesAsNodes()`, gated behind a positive-control check. |
 | **Output** | JSON: findings list, each `{rule, file, line, message, confidence}`; G9 findings additionally carry `deadExportsScope.positiveControlOk` — G9b's export-usage findings are withheld entirely if the control fails. |
-| **Source** | `src/agents/clean-code-analyzer/tools/{naming,function,code-smell}-validator.ts`, github.com/OnSightTeam/architecture-toolkit (MIT). Their checks are whole-file text regexes with an occurrence-count threshold to suppress false positives; this port reads the real AST per declared binding instead, so every occurrence is its own finding with no threshold needed. **Not ported**: N3, N5, N6, C1–C5, G5, G14, G16, G28 — named with reasons in `skills/clean-code-analyzer/SKILL.md`. |
+| **Source** | `src/agents/clean-code-analyzer/tools/{naming,function,code-smell}-validator.ts`, github.com/OnSightTeam/architecture-toolkit (MIT). Their checks are whole-file text regexes with an occurrence-count threshold to suppress false positives; this port reads the real AST per declared binding instead, so every occurrence is its own finding with no threshold needed. **Not ported**: N3, N5, N6, C1–C5, G14, G16, G28 — named with reasons in `skills/clean-code-analyzer/SKILL.md`. G5 (Duplicate Code) is real but lives in Step 8 below, not here — it's a cross-file, whole-corpus check, the wrong shape for this file's per-unit contract. |
 
 ---
 
@@ -137,6 +152,19 @@ absolute paths, sorted finding arrays), and are registered as global bins in
 
 ---
 
+## Step 8 — Duplicate Code (G5)
+
+| | |
+|---|---|
+| **Call** | `rdc-duplication-score <path> [--min-tokens <n>] [--format text\|json]` |
+| **Input** | file or directory path; `--min-tokens` default 50 (matches PMD CPD's default token threshold) |
+| **Script** | [`scripts/lib/duplication-scoring.mjs`](scripts/lib/duplication-scoring.mjs), CLI in [`scripts/duplication-score.mjs`](scripts/duplication-score.mjs) |
+| **Algorithm** | Token-shingle Rabin-Karp rolling-hash matching — the same technique jscpd and PMD's CPD both use. Tokenizes each file (comments stripped by extension, string literals kept as real content since a repeated literal is real duplication), computes a rolling hash over every `minTokens`-length window in O(n), buckets windows by hash, then **merges consecutive matching window offsets into maximal contiguous blocks** — the merge step is the part that matters: without it, a single real 60-token duplicate reports as ~40 overlapping findings (one per window slide), which is exactly the bug this tool's own first draft shipped with and caught via its own positive-control test before this doc was written. |
+| **Output** | JSON: `{duplicates: [{tokenCount, occurrences: [{file, startLine, endLine}, ...]}], filesScanned, minTokens}` — each `duplicates[]` entry is one real contiguous duplicate block, not one per window slide. |
+| **Source** | Algorithm choice informed by [jscpd](https://github.com/kucherenko/jscpd) and PMD's [CPD](https://pmd.github.io/pmd/pmd_userdocs_cpd.html) (both real, mature, Rabin-Karp-based — see Research Bibliography below) — **no code taken from either**; this is an independent implementation of the published algorithm, not a port. **Verified against the real toolkit source** (`src/agents/clean-code-analyzer/tools/code-smell-validator.ts`, `checkDuplication()`): their G5 is a same-file repeated-line-text counter (flags a line if it appears >3 times in ONE file) — no cross-file matching, no minimum block length, a one-line coincidental repeat counts the same as a real duplicated block. This implementation is strictly stronger: real cross-file structural matching, a minimum contiguous-block length (not per-line), and reports the actual matched block range on both sides, not just a per-file count. |
+
+---
+
 ## What's still judgment, not mechanical
 
 Four questions no AST/regex fact can answer, still routed to an LLM
@@ -151,20 +179,71 @@ tool's own "done" claim:
 | `clean-code-analyzer` | Does a name lie about what the code does (semantic, not shape) | N1/N2/N7 (Step 2) catch shape; a name that's the right LENGTH and SPECIFICITY but describes the wrong behavior needs reading intent against implementation |
 | `package-design` | Does a package's actual responsibility match its name/README | Ca/Ce/cohesion (Step 3) are structural; "does this package do what it claims" needs reading intent |
 
-## Known gaps (not yet closed)
+## Decisions closed this pass (not left open)
 
-- **G5 (duplication detection)** was incorrectly scoped as judgment-only in
-  the original Clean Code port. It isn't — [jscpd](https://github.com/kucherenko/jscpd)
-  and PMD's [CPD](https://pmd.github.io/pmd/pmd_userdocs_cpd.html) both solve
-  this deterministically via the Rabin-Karp token-matching algorithm. Not
-  yet built.
-- **Cycle-detection algorithm** (used by Steps 3 and 5) is a hand-rolled
-  graph walk. [ArchUnitTS](https://github.com/LukasNiessen/ArchUnitTS) and
-  [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) are
-  mature, widely-used tools for the same problem — not yet evaluated as a
-  replacement.
-- **Zero unit tests** exist for any of the seven scoring libraries. Every
-  "done" claim above is backed by dogfooding against real code
-  (`rdc-harness`, this repo's own `scripts/`) plus a positive-control
-  fixture per rule family — real evidence the tools work on the cases fed to
-  them, not a regression-test net against future edits.
+- **G5 duplication detection** — closed. Built Step 8 above, real
+  Rabin-Karp implementation, positive-control-verified, one real bug (window
+  merge) caught and fixed before ship.
+- **Cycle-detection algorithm (Steps 3 and 5) — evaluated, decision: KEEP
+  the hand-rolled graph walk, do not adopt ArchUnitTS or dependency-cruiser.**
+  Reasoning: (1) our walk is already proven correct — dogfooded against
+  `rdc-harness` and this repo's own tree, zero cycles found, independently
+  confirmed by hand-verification, not just trusted; (2) it's reused twice
+  (Steps 3 and 5) with proven determinism, satisfying the ATF golden-capture
+  requirement; (3) both external tools are designed as standalone CLI/CI
+  linters with their own config/output format, not as an importable pure
+  function returning JSON into another tool's pipeline — adopting either
+  would mean wrapping a subprocess or forking their internals, a bigger
+  footprint than the ~40-line graph walk already in `package-metrics.mjs`
+  for a problem with no identified functional gap. Revisit only if a real
+  case surfaces that the hand-rolled walk gets wrong.
+- **Unit tests for all 8 scoring libraries** — in progress, dispatched as a
+  background build this session (not deferred to "someday"): one
+  `node:test` file per library under `tests/lib/`, covering empty input,
+  a known-violation fixture per rule, a known-clean fixture, and boundary
+  conditions on every numeric threshold. Report follows when it lands.
+
+## Disclosed architectural finding — not fixed this pass, needs a decision
+
+**The AST layer (`scripts/lib/plugins/typescript.mjs`) uses `ts-morph`
+(TypeScript/JavaScript only), built without checking for existing fleet
+infrastructure first.** The monorepo already has
+[`@regen/codeflow-parser`](../../packages/codeflow-parser) — a genuinely
+multi-language parser (tree-sitter WASM grammars for TypeScript, JavaScript,
+Python, C, C++, C#, running as a PM2 batch-parse service for CodeFlow) that
+was never checked against before this build started. This is a real
+process failure, not a hedge: `NormalizedUnit`'s *contract* is language-
+independent, but its only working *implementation* is TS/JS-only forever,
+when a genuinely multi-language parser already exists in the fleet.
+
+Not fixed here because swapping the AST backbone underneath 4 already-shipped,
+dogfooded tools (SOLID, Clean Code, Patterns, Refactoring) is an
+architectural change per `.claude/rules/architectural-change-approval.md`
+in the monorepo — it needs its own interview, not a silent swap bundled
+into a doc-fix pass. Open question for that interview: does
+`codeflow-parser`'s `ParseFileResult` shape (`symbols`/`interfaces`/`calls`/
+`imports`) carry enough fact granularity to replace `NormalizedUnit`
+(statement counts, magic numbers, switch-statement shapes, etc. — many
+facts this build added to `typescript.mjs` this session), or would it need
+its own extension first?
+
+## Research bibliography
+
+Real URLs fetched/searched this session — for the next person picking this
+up, not "I researched online":
+
+**Source ported from:**
+- [github.com/OnSightTeam/architecture-toolkit](https://github.com/OnSightTeam/architecture-toolkit) — root repo, `.claude/skills/`, `src/agents/` tree
+- `src/agents/clean-code-analyzer/tools/{naming,function,code-smell}-validator.ts`
+- `src/agents/package-design/tools/{stability-metrics-calculator,package-coupling-analyzer}.ts`
+- `src/agents/testing-strategy/tools/test-quality-validator.ts`
+- `src/agents/architecture-reviewer/tools/{dependency-rule-validator,boundary-analysis-validator,layer-separation-validator}.ts`
+- `src/agents/pattern-advisor/tools/{creational,structural,behavioral}-pattern-analyzer.ts`
+- `src/agents/pattern-refactoring-guide/tools/{refactoring-analyzer,code-smell-refactoring-guide,pattern-transformation-guide}.ts`
+  (all fetched via `raw.githubusercontent.com/OnSightTeam/architecture-toolkit/main/<path>`)
+
+**Web searches run (query → what it surfaced):**
+- "static analysis tools SOLID principles violation detection without LLM AST-based" → [cycode.com](https://cycode.com/blog/static-code-analysis/), [Sorald (arXiv 2103.12033)](https://arxiv.org/pdf/2103.12033), [AVATAR (arXiv 1812.07270)](https://arxiv.org/pdf/1812.07270), [Mining Fix Patterns for FindBugs (arXiv 1712.03201)](https://arxiv.org/pdf/1712.03201), [datadoghq.com](https://www.datadoghq.com/knowledge-center/static-analysis/), [blog.codacy.com](https://blog.codacy.com/static-code-analysis), [oligo.security](https://www.oligo.security/academy/static-code-analysis)
+- "ArchUnit dependency-cruiser layered architecture boundary enforcement rules" → [archunit.org/userguide](https://www.archunit.org/userguide/html/000_Index.html), [ArchUnitTS](https://github.com/LukasNiessen/ArchUnitTS), [ArchUnitPython](https://github.com/LukasNiessen/ArchUnitPython), [Loiane Groner: Architecture Testing for Java with ArchUnit](https://loiane.com/2026/07/architecture-testing-java-archunit/), [thearchitectsnotebook.substack.com](https://thearchitectsnotebook.substack.com/p/ep-122-the-modular-monolith-part)
+- "design pattern detection static analysis algorithm academic Factory Strategy Observer AST" → [Design pattern detection approaches: a systematic review (Springer, 10.1007/s10462-020-09834-5)](https://link.springer.com/article/10.1007/s10462-020-09834-5), [MARPLE (ScienceDirect S0020025510005955)](https://www.sciencedirect.com/science/article/abs/pii/S0020025510005955), [Identification and Assessment of Software Design Pattern Violations (arXiv 1906.01419)](https://arxiv.org/pdf/1906.01419), [Automatic Design Pattern Detection (Brown CS)](https://vis.cs.brown.edu/docs/pdf/Heuzeroth-2003-ADP.pdf)
+- "jscpd PMD CPD code duplication detection algorithm Rabin-Karp token-based" → [jscpd](https://github.com/kucherenko/jscpd), [PMD CPD](https://pmd.github.io/pmd/pmd_userdocs_cpd.html), [aarongoldenthal.com: GitLab Code Quality with PMD CPD](https://aarongoldenthal.com/posts/gitlab-code-quality-duplication-analysis-with-pmd-cpd/), [dev.to duplicate-checker roundup](https://dev.to/rahulxsingh/13-best-duplicate-code-checker-tools-in-2026-1cnk)
