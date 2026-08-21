@@ -48,11 +48,12 @@ a Python or Go plugin that emits the same `NormalizedUnit` shape makes all
 four of those tools work on that language with zero changes to the scoring
 logic itself.
 
-Two tools (Package Design, Architecture) are deliberately NOT built on this
-contract — they operate on file paths and import statements, which a plain
-text/regex scan answers as correctly as an AST would, so they carry no
-`ts-morph` dependency at all and work on any language whose imports look
-like ES/CJS syntax.
+Three tools (Package Design, Architecture, Duplicate Code) are deliberately
+NOT built on this contract — they operate on file paths, import statements,
+or raw token streams, which a plain text/regex scan answers as correctly as
+an AST would, so they carry no `ts-morph` dependency at all and work on any
+language whose imports look like ES/CJS syntax (Package Design, Architecture)
+or whose source can be tokenized at all (Duplicate Code — see Step 8).
 
 All 8 CLIs support `--format json`, are proven deterministic (identical
 output across two runs on the same unchanged input — no timestamps, no
