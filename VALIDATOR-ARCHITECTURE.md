@@ -219,13 +219,16 @@ tool's own "done" claim:
 **The AST layer (`scripts/lib/plugins/typescript.mjs`) uses `ts-morph`
 (TypeScript/JavaScript only), built without checking for existing fleet
 infrastructure first.** The monorepo already has
-[`@regen/codeflow-parser`](../../packages/codeflow-parser) — a genuinely
-multi-language parser (tree-sitter WASM grammars for TypeScript, JavaScript,
-Python, C, C++, C#, running as a PM2 batch-parse service for CodeFlow) that
-was never checked against before this build started. This is a real
-process failure, not a hedge: `NormalizedUnit`'s *contract* is language-
-independent, but its only working *implementation* is TS/JS-only forever,
-when a genuinely multi-language parser already exists in the fleet.
+[`@regen/codeflow-parser`](https://github.com/LIFEAI/regen-root/tree/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser)
+([`nativeParser.ts`](https://github.com/LIFEAI/regen-root/blob/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser/src/nativeParser.ts))
+— a genuinely multi-language parser (tree-sitter WASM grammars for
+TypeScript, JavaScript, Python, C, C++, C#, running as a PM2 batch-parse
+service for CodeFlow, added by commit
+[`d56e76c86`](https://github.com/LIFEAI/regen-root/commit/d56e76c8641cebae72e3406da2d009de2a6f469b),
+2026-07-01) that was never checked against before this build started. This
+is a real process failure, not a hedge: `NormalizedUnit`'s *contract* is
+language-independent, but its only working *implementation* is TS/JS-only
+forever, when a genuinely multi-language parser already exists in the fleet.
 
 Not fixed here because swapping the AST backbone underneath 4 already-shipped,
 dogfooded tools (SOLID, Clean Code, Patterns, Refactoring) is an
@@ -242,7 +245,7 @@ its own extension first?
 
 | Package | License (verified) | Role |
 |---|---|---|
-| `@regen/codeflow-parser` `0.1.0` | `"private": true`, no separate license field (internal monorepo package — [`packages/codeflow-parser/package.json`](../../packages/codeflow-parser/package.json), not a third-party dependency) | Native tree-sitter batch-parse service for CodeFlow, not currently consumed by this validator |
+| [`@regen/codeflow-parser`](https://github.com/LIFEAI/regen-root/blob/e018e119dd22c2b75c9cae243a79230b495c53c7/packages/codeflow-parser/package.json) `0.1.0` | `"private": true`, no separate license field (internal monorepo package, hosted at [github.com/LIFEAI/regen-root](https://github.com/LIFEAI/regen-root) — real repo, not a third-party npm dependency) | Native tree-sitter batch-parse service for CodeFlow, not currently consumed by this validator |
 | [tree-sitter-wasms](https://www.npmjs.com/package/tree-sitter-wasms) `0.1.13` | **Unlicense** (verified: `node_modules/.pnpm/tree-sitter-wasms@0.1.13/.../package.json` — public domain, NOT MIT) | Pre-built WASM grammar assets — TypeScript, JavaScript, Python, C, C++, C# |
 | [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter) `0.24.7` | MIT (verified) | The tree-sitter WASM runtime bindings `codeflow-parser` calls |
 
