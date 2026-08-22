@@ -117,6 +117,43 @@ function emptyCatchesOf(m) {
   return found;
 }
 
+// E2 unguarded risky operations — new rule, not ported from architecture-
+// toolkit (checked: no E2/E3/E4 exist anywhere in that source or in this
+// repo's own clean-code-analyzer/SKILL.md "not implemented" table — this is
+// genuinely new scope, not previously deferred with a documented reason).
+// Conservative by design: only `await` expressions and a small named list of
+// known-throwing sync calls (JSON.parse, fs.readFileSync/writeFileSync)
+// count as "risky" — flagging every function call as risky would swamp
+// real findings in noise. "Guarded" means textually inside a TryStatement's
+// TRY block specifically (not its catch/finally) — computed by walking each
+// try block's own descendants first, so a risky op inside a catch/finally
+// of one try but not wrapped by any try of its own still reports correctly.
+const RISKY_SYNC_CALL_NAMES = ['JSON.parse', 'readFileSync', 'writeFileSync'];
+function unguardedRiskyOpsOf(m) {
+  const guarded = new Set();
+  for (const tryStmt of m.getDescendantsOfKind(SyntaxKind.TryStatement)) {
+    const tryBlock = tryStmt.getTryBlock();
+    for (const node of [
+      ...tryBlock.getDescendantsOfKind(SyntaxKind.AwaitExpression),
+      ...tryBlock.getDescendantsOfKind(SyntaxKind.CallExpression),
+    ]) {
+      guarded.add(node);
+    }
+  }
+  const found = [];
+  for (const awaitExpr of m.getDescendantsOfKind(SyntaxKind.AwaitExpression)) {
+    if (!guarded.has(awaitExpr)) found.push({ line: awaitExpr.getStartLineNumber(), kind: 'await' });
+  }
+  for (const call of m.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    if (guarded.has(call)) continue;
+    const exprText = call.getExpression().getText();
+    if (RISKY_SYNC_CALL_NAMES.some((name) => exprText === name || exprText.endsWith(`.${name}`))) {
+      found.push({ line: call.getStartLineNumber(), kind: exprText });
+    }
+  }
+  return found;
+}
+
 // G9 unreachable-code half — architecture-toolkit's actual G9 implementation
 // (src/agents/clean-code-analyzer/tools/code-smell-validator.ts:115,
 // `/if\s*\(\s*false\s*\)|if\s*\(\s*true\s*\)/`) is constant-conditional dead
@@ -389,6 +426,7 @@ function normalizedMember({ name, paramsNode, bodyNode, isPublicNode }, { baseMe
     magicNumbers: magicNumbersOf(bodyNode),
     emptyCatches: emptyCatchesOf(bodyNode),
     deadConditionals: deadConditionalsOf(bodyNode),
+    unguardedRiskyOps: unguardedRiskyOpsOf(bodyNode),
     // ADDED for refactoring-scoring.mjs (2026-08-20), additive-only:
     statementTexts: statementTextsOf(bodyNode),
     nullChecks: nullChecksOf(bodyNode),

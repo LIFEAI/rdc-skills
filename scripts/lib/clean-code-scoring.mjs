@@ -173,6 +173,26 @@ export function e1EmptyCatchBlocks(unit) {
   return { ruleId: 'E1', findings, confidence: 'high' };
 }
 
+// ── E2 — unguarded risky operations (missing try/catch) ────────────────────
+// New rule, not ported from architecture-toolkit -- confirmed no E2/E3/E4
+// exist in their source or in this repo's own clean-code-analyzer/SKILL.md
+// "not implemented" table before adding this (this file's own header
+// requires that check before claiming coverage). Built to close ATF's
+// R3 "error-handling coverage" gap (LADDER-ARCHITECTURE.md, 2026-08-22) --
+// E1 already caught the swallowed-exception half; this catches the OTHER
+// real defect in the same chapter, an operation with no error handling at
+// all. Conservative on purpose: `await` and a small named list of
+// known-throwing sync calls, not every function call.
+export function e2UnguardedRiskyOps(unit) {
+  const findings = [];
+  for (const m of unit.members) {
+    for (const op of m.unguardedRiskyOps ?? []) {
+      findings.push({ location: loc(unit, m.name, op.line), detail: `unguarded ${op.kind} — no enclosing try/catch` });
+    }
+  }
+  return { ruleId: 'E2', findings, confidence: 'high' };
+}
+
 // ── G9 — dead code (two independent halves) ────────────────────────────────
 // architecture-toolkit's ACTUAL G9 (code-smell-validator.ts:115,
 // `/if\s*\(\s*false\s*\)|if\s*\(\s*true\s*\)/`) is constant-conditional
@@ -230,6 +250,7 @@ export function cleanCodeScore(unit, deadExportsFacts = null) {
     f1: f1LongMethods(unit),
     f2: f2TooManyParams(unit),
     e1: e1EmptyCatchBlocks(unit),
+    e2: e2UnguardedRiskyOps(unit),
     g9: g9DeadCode(unit, deadExportsFacts ?? []),
   };
   const totalFindings = Object.values(rules).reduce((n, r) => n + r.findings.length, 0);

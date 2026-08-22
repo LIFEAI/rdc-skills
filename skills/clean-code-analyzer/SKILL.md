@@ -4,7 +4,7 @@ description: >-
   Usage `rdc:clean-code-analyzer <path> [--project-root <dir>]` — naming,
   dead code, function-size, and error-handling smells outside SOLID's scope
   (SOLID governs class/module shape; this governs whether the code inside is
-  readable and honest about what it does). N1/N2/N4/N7/F1/F2/E1/G9 are
+  readable and honest about what it does). N1/N2/N4/N7/F1/F2/E1/E2/G9 are
   mechanical AST checks, not LLM judgment — see `scripts/clean-code-score.mjs`.
 ---
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   n1CrypticNames, n2MeaninglessNames, n4MagicNumbers, n7GenericNames,
-  f1LongMethods, f2TooManyParams, e1EmptyCatchBlocks, g9DeadCode,
+  f1LongMethods, f2TooManyParams, e1EmptyCatchBlocks, e2UnguardedRiskyOps, g9DeadCode,
   cleanCodeScore, NOT_IMPLEMENTED,
 } from '../../scripts/lib/clean-code-scoring.mjs';
 import { makeMember, makeUnit } from './fixtures.mjs';
@@ -152,6 +152,33 @@ test('E1: no empty catches does not fire', () => {
   assert.deepEqual(e1EmptyCatchBlocks(unit).findings, []);
 });
 
+// ── E2 — unguarded risky operations ────────────────────────────────────────
+
+test('E2: an unguarded-await fact fires', () => {
+  const unit = makeUnit({ members: [makeMember({ unguardedRiskyOps: [{ line: 10, kind: 'await' }] })] });
+  const r = e2UnguardedRiskyOps(unit);
+  assert.equal(r.findings.length, 1);
+  assert.match(r.findings[0].location, /:10$/);
+  assert.match(r.findings[0].detail, /unguarded await/);
+});
+
+test('E2: an unguarded risky sync call fact fires', () => {
+  const unit = makeUnit({ members: [makeMember({ unguardedRiskyOps: [{ line: 3, kind: 'JSON.parse' }] })] });
+  const r = e2UnguardedRiskyOps(unit);
+  assert.equal(r.findings.length, 1);
+  assert.match(r.findings[0].detail, /unguarded JSON\.parse/);
+});
+
+test('E2: no unguarded risky ops does not fire', () => {
+  const unit = makeUnit({ members: [makeMember({ unguardedRiskyOps: [] })] });
+  assert.deepEqual(e2UnguardedRiskyOps(unit).findings, []);
+});
+
+test('E2: missing unguardedRiskyOps fact (older plugin) does not throw, reports zero', () => {
+  const unit = makeUnit({ members: [makeMember({})] });
+  assert.deepEqual(e2UnguardedRiskyOps(unit).findings, []);
+});
+
 // ── G9 — dead code (unreachable half + unused-export half) ───────────────
 
 test('G9: unreachable-conditional half fires per dead-conditional fact', () => {
@@ -189,7 +216,7 @@ test('G9: no dead conditionals and no export facts does not fire, confidence sta
 
 // ── cleanCodeScore — full aggregate over all 8 rules at once ─────────────
 
-test('cleanCodeScore: a unit with one violation per rule fires all 8 rules and totals correctly', () => {
+test('cleanCodeScore: a unit with one violation per pre-existing rule fires all 8 and totals correctly (E2 untouched here, tested separately)', () => {
   const unit = makeUnit({
     name: 'Manager',
     members: [makeMember({
