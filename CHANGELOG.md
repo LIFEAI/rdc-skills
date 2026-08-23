@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.35.3 — coding standards wired into plan/preplan/build/fixit/review
+
+### Fixed
+- `docs/CODING-STANDARDS.md` (regen-root's SOLID/Clean-Architecture standard)
+  existed but was never referenced by any skill that actually reads source
+  documents before working — `preplan`, `plan`, `build`, `fixit`, and
+  `review` all now load it (regen-root; skip if absent). Applied to both the
+  `commands/*.md` and `skills/*/SKILL.md` copies where they diverge.
+- `skills/review/SKILL.md` incorrectly attributed `rdc-solid-score` to ATF;
+  it is this package's own validator (`scripts/solid-score.mjs`), which ATF's
+  Test-Ladder separately invokes as a consumer, not an owner.
+
+### Added
+- WIP, best-effort references to ATF's Test-Ladder and rdc-harness's
+  proof-ledger/mutation-check pattern in `build`, `fixit`, and `review` — not
+  a hard gate; explicitly a no-op where a target repo doesn't ship either.
+
+---
+
 ## v0.25.11 — private Coolify maintenance path
 
 ### Added

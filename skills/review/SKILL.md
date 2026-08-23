@@ -11,6 +11,10 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 
+> **Standard being enforced:** `docs/CODING-STANDARDS.md` (SOLID/Clean-Architecture —
+> regen-root; skip if absent). Step 8c is where it's actually checked, via this package's
+> own `rdc-solid-score` (also invoked by ATF's Test-Ladder as a consumer, not an owner).
+
 
 # rdc:review — Quality Gate
 
@@ -124,7 +128,10 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
    output. Either non-empty is a FORM/FIT failure — dispatch
    `architecture-reviewer` (skill: "architecture-reviewer") for the judgment
    half if a boundary finding needs a suggested fix, not just a named
-   violation.
+   violation. `rdc-solid-score` is this package's own SOLID validator
+   (`scripts/solid-score.mjs`), which ATF's Test-Ladder also invokes at rung
+   TI-3/R3 as a dogfooding example — this step is not an ATF integration;
+   ATF is a separate consumer of the same tool, not its owner.
 
    **Severity gate:**
    - Any regression, or any boundary violation → verdict cannot be CLEAN.
@@ -132,6 +139,14 @@ description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc
      do not fabricate a config; a repo with no boundary rules configured has
      nothing wrong to report, but say so explicitly rather than silently
      passing.
+
+   **rdc-harness (WIP — best-effort, not a hard gate yet):** if the reviewed
+   repo ships an `rdc-harness`-style `tools/mutate-check.mjs` and
+   `tools/proof-ledger.mjs` pair, run `tools/mutate-check.mjs` and quote its
+   result. A proof-ledger count is not citable evidence while its own
+   mutation gate is red — report that combination as HAS_ISSUES rather than
+   passing along a ledger number the gate itself has disowned. Absence of
+   this tooling in the target repo is not a finding; do not install it ad hoc.
 
    Under `RDC_TEST=1`: echo `[RDC_TEST] skipping form/fit/function gate` and continue.
 

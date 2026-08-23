@@ -34,6 +34,10 @@ description: >-
    .claude/rules/work-items-rpc.md            — work item schema, RPC, status enums
    .claude/rules/system-quick-links.md        — routing map to all system architecture docs
    .claude/rules/version-numbering.md         — version bump rules for affected packages
+   docs/CODING-STANDARDS.md                   — SOLID/Clean-Architecture standard; names
+                                                 ATF's Test-Ladder and rdc-harness's
+                                                 proof-ledger pattern where either applies
+                                                 (regen-root; skip if absent)
    ```
 
    **Step 1b — Identify affected domains, then load the matching architecture doc:**
@@ -112,6 +116,12 @@ description: >-
      - completeness: independently observable acceptance criteria plus at least one required `decomp-*` and `test-*` checklist row; and
      - proportionality: estimated files/LOC, declared surfaces, and change kind.
    - Do not invent architecture evidence. Missing, unregistered, broad-refactor, multi-surface, or disproportionate contracts are intentionally routed to human Design Review.
+   - **ATF Test-Ladder / rdc-harness (WIP — best-effort, not a hard gate yet):** if the
+     package being planned has its own ATF `STP-001.md` or ships an `rdc-harness`-style
+     `tools/proof-ledger.mjs`/`tools/mutate-check.mjs` pair, name it in the work package's
+     test requirements as an additional validation signal alongside vitest/tsc. Neither
+     system is fleet-wide or hook-enforced yet — do not fabricate a ladder or a proof
+     ledger for a package that doesn't already have one.
 
 6. **Write plan doc** to `.rdc/plans/<topic-slug>.md` (fallback: `.rdc/plans/<topic-slug>.md` if `.rdc/` does not exist):
    ```markdown

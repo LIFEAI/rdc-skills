@@ -37,6 +37,10 @@ description: >-
    .claude/rules/infrastructure-contract.md   — hard deployment + registry rules
    .claude/rules/work-items-rpc.md            — work item schema and RPC patterns
    .claude/rules/system-quick-links.md        — routing map to system architecture docs
+   docs/CODING-STANDARDS.md                   — SOLID/Clean-Architecture standard; names
+                                                 ATF's Test-Ladder and rdc-harness's
+                                                 proof-ledger pattern where either applies
+                                                 (regen-root; skip if absent)
    ```
 
    **Step 2b — Identify affected domains, then load the matching architecture doc:**

@@ -70,7 +70,8 @@ This signals the Stop hook that fixit is handling its own documentation.
 
 ### 4. Make the fix
 
-Do the minimal work. Scope creep rule: if you discover the fix requires more than originally scoped, **stop immediately**:
+Do the minimal work, conforming to `docs/CODING-STANDARDS.md` where present
+(regen-root; skip if absent). Scope creep rule: if you discover the fix requires more than originally scoped, **stop immediately**:
 1. Close the work item: `update_work_item_status('<id>', 'blocked', '["Escalated — scope exceeded fixit threshold"]')`
 2. Delete the marker file
 3. Tell the user to use `/rdc:build` instead
@@ -107,6 +108,11 @@ failure this step exists to prevent. Carry the change to where it is consumed an
   command + reason and tell the user the one step to run — do NOT mark `done`.
 
 Under `RDC_TEST=1`: echo `[RDC_TEST] skipping delivery (publish/deploy)` and proceed.
+
+**ATF Test-Ladder / rdc-harness (WIP — best-effort, not a hard gate yet):** if the touched
+package/repo already ships an ATF `STP-001.md` or an `rdc-harness`-style
+`tools/mutate-check.mjs`/`tools/proof-ledger.mjs` pair, run it and quote the result. Neither
+is fleet-wide yet — its absence is not itself a fixit failure.
 
 ### 6. Report, review, close, and clean up
 

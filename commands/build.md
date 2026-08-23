@@ -108,7 +108,9 @@ Read the task title and description, then:
 
 3. **Load the plan** (if exists): check `.rdc/plans/` for matching topic (fallback: `.rdc/plans/`).
 
-4. **Read CLAUDE.md files** for all affected packages.
+4. **Read CLAUDE.md files** for all affected packages, plus `docs/CODING-STANDARDS.md`
+   (SOLID/Clean-Architecture standard — regen-root; skip if absent) — carry it into every
+   dispatched agent prompt.
 
 5. **Classify each task** → assign agent type from the table above.
 
@@ -163,6 +165,12 @@ Read the task title and description, then:
     - Read the full output — zero failures, zero type errors
     - If any step fails: fix and re-run the entire gate. Do not skip.
     - NEVER `pnpm build` / `pnpm test` / `pnpm -r` (crashes machine)
+    - **ATF Test-Ladder / rdc-harness (WIP — best-effort, not a hard gate yet):** if a
+      touched package/repo ships an ATF `STP-001.md` or an `rdc-harness`-style
+      `tools/mutate-check.mjs`/`tools/proof-ledger.mjs` pair, run it and quote the result
+      alongside vitest/tsc. A red mutation gate is a real finding — report it, do not
+      silently drop it because it isn't wired into this checklist as required yet.
+      Absence of either system in the target is not a failure; do not install one ad hoc.
 
 11. **After verification passes:**
     - Push all commits:

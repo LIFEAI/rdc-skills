@@ -293,7 +293,9 @@ Read the task title and description, then:
 
    **Plan verifier escalation:** A separate verifier agent is optional, not default. Dispatch one only when the plan touches 5+ UI routes, 3+ data/API boundaries, auth/security, production deployment, or when this rubric fails twice. The verifier reads the plan and work-item checklists only; it does not write code.
 
-4. **Read CLAUDE.md files** for all affected packages.
+4. **Read CLAUDE.md files** for all affected packages, plus `docs/CODING-STANDARDS.md`
+   (SOLID/Clean-Architecture standard — regen-root; skip if absent) — carry it into every
+   dispatched agent prompt.
 
 5. **Classify each task** → assign agent type from the table above.
 
@@ -625,6 +627,12 @@ Read the task title and description, then:
     - Runs `npx tsc --noEmit` for every touched app/package
     - Starts the dev server and probes every modified route (expects HTTP 200, not 500)
     - Runs vitest for every touched package
+    - **ATF Test-Ladder / rdc-harness (WIP — best-effort, not a hard gate yet):** if a
+      touched package/repo ships an ATF `STP-001.md` or an `rdc-harness`-style
+      `tools/mutate-check.mjs`/`tools/proof-ledger.mjs` pair, run it and quote the result
+      alongside tsc/vitest. A red mutation gate is a real finding — report it even though
+      it isn't wired into this checklist as required yet. Absence of either system in the
+      target is not a failure; do not install one ad hoc.
     - For every durable workflow, runs the committed E2E harness and rejects the
       item unless its receipt proves public ingress -> queued/running -> terminal
       state, persisted outputs, and fixture cleanup on the deploy-equivalent
