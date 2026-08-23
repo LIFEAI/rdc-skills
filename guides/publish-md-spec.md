@@ -35,7 +35,7 @@ All fields are required unless marked optional.
 ---
 schema_version: "1.0"          # (required) always "1.0" for this revision
 entity_slug: <slug>            # (required) matches app_deployments.app_slug
-artifact_type: <type>          # (required) one of: website | api | package | worker | mcp-server
+artifact_type: <type>          # (required) one of: website | api | package | worker | mcp-server | financial-model
 environments: [dev]            # (required) array; subset of: dev, prod
 status: active                 # (required) one of: active | draft | deprecated
 notes: ""                      # (optional) free-text, ignored by validator
@@ -48,7 +48,7 @@ notes: ""                      # (optional) free-text, ignored by validator
 |-------|------|----------|---------------|
 | `schema_version` | string | yes | `"1.0"` |
 | `entity_slug` | string | yes | must match `app_deployments.app_slug` |
-| `artifact_type` | string | yes | `website` · `api` · `package` · `worker` · `mcp-server` |
+| `artifact_type` | string | yes | `website` · `api` · `package` · `worker` · `mcp-server` · `financial-model` |
 | `environments` | string[] | yes | subset of `[dev, prod]`; at least one required |
 | `status` | string | yes | `active` · `draft` · `deprecated` |
 | `notes` | string | no | free-text annotation |
