@@ -104,7 +104,7 @@ const CLAUTH_BASE = 'http://127.0.0.1:52437';
 const MONOREPO_SEARCH_DIRS = ['apps', 'sites', 'models', 'mcp-servers', 'packages'];
 
 const REQUIRED_FRONTMATTER_FIELDS = ['schema_version', 'entity_slug', 'artifact_type', 'environments', 'status'];
-const ALLOWED_ARTIFACT_TYPES = ['website', 'api', 'package', 'worker', 'mcp-server'];
+const ALLOWED_ARTIFACT_TYPES = ['website', 'api', 'package', 'worker', 'mcp-server', 'financial-model'];
 const ALLOWED_STATUSES = ['active', 'draft', 'deprecated'];
 const ALLOWED_ENVIRONMENTS = ['dev', 'prod'];
 const ALLOWED_SCHEMA_VERSIONS = ['1.0'];
