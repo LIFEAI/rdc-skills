@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.35.4 — marketplace sync false-positive: untracked file blocked it forever
+
+### Fixed
+- `syncMarketplaceCheckout()`'s dirty-check used plain `git status --porcelain`,
+  which also reports untracked files. A single harmless untracked file in a
+  marketplace clone (e.g. a stray local scratch file) made the check treat the
+  clone as "has local changes" and permanently refuse to sync it, on every
+  single install run, forever — even though `git reset --hard` never touches
+  untracked files and there was no real edit to preserve. This is the
+  confirmed root cause of the marketplace checkout sitting stale for over a
+  week despite repeated installer runs. Fixed to `--untracked-files=no`, which
+  checks only tracked-file modifications — genuine local edits still block the
+  sync exactly as before (PRESERVE-DIRTY intact); a stray untracked file no
+  longer does.
+- Regression test added: a real temp git origin+clone pair reproduces both the
+  untracked-cruft case (must sync) and the genuine-local-edit case (must still
+  block), so this cannot silently regress.
+- `tests/install-rdc-skills.test.mjs` also had two stale fixtures caught while
+  fixing this: `package-lock.json` version drifted from `package.json`
+  (0.35.2 vs 0.35.3+), and a hardcoded `skillCount === 36` assertion had rotted
+  against the real, current 43 skill directories. The count assertion now
+  compares against the actual `skills/*/SKILL.md` directories on disk instead
+  of a hardcoded number, so it can't go stale the same way again.
+
+---
+
 ## v0.35.3 — coding standards wired into plan/preplan/build/fixit/review
 
 ### Fixed

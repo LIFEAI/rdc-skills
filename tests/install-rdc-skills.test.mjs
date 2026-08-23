@@ -44,7 +44,22 @@ assert.match(
 const skillCount = Array.isArray(plugin.skills_meta)
   ? plugin.skills_meta.length
   : Object.keys(plugin.skills_meta || {}).length;
-assert.equal(skillCount, 36, 'test fixture should expose all 36 MCP skills from plugin skills_meta');
+// A hardcoded magic number here (previously 36, silently stale against the
+// real 43) rots the instant a skill is added or removed and stops proving
+// anything — it only proves someone remembered to bump a number. Assert
+// against the actual skills/ directory instead: every dir containing a
+// SKILL.md must be represented in plugin.json's skills_meta, and vice versa.
+const skillsDir = join(REPO_ROOT, 'skills');
+const realSkillDirs = require('node:fs')
+  .readdirSync(skillsDir, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'SKILL.md')))
+  .map((e) => e.name)
+  .sort();
+assert.equal(
+  skillCount,
+  realSkillDirs.length,
+  `plugin.json skills_meta (${skillCount}) must match the actual skill directories on disk (${realSkillDirs.length}): ${realSkillDirs.join(', ')}`,
+);
 assert.match(
   source,
   /Available MCP skills.*\/rdc:\* command shorthands/,
@@ -95,6 +110,81 @@ try {
   assert.equal(readFileSync(join(codexSkills, 'keep-me', 'SKILL.md'), 'utf8').includes('local:keep'), true);
 } finally {
   rmSync(codexSkills, { recursive: true, force: true });
+}
+
+// Regression for the 2026-08-23 incident: a marketplace clone with ZERO real
+// local edits — only a stray untracked file — sat 39+ commits behind for over
+// a week because `git status --porcelain` (which also reports untracked
+// files) was treated as "has local changes, never touch it". `git reset
+// --hard` never touches untracked files, so an untracked file is irrelevant
+// to whether the sync is safe. This builds a real origin + clone pair,
+// reproduces the exact scenario, and asserts the clone actually advances.
+const { syncMarketplaceCheckout } = require(script);
+const gitTestRoot = mkdtempSync(join(tmpdir(), 'rdc-marketplace-sync-'));
+try {
+  const originDir = join(gitTestRoot, 'origin');
+  const cloneDir = join(gitTestRoot, 'clone');
+  const runGit = (cwd, args) => {
+    const res = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    assert.equal(res.status, 0, `git ${args.join(' ')} failed: ${res.stderr}`);
+    return res.stdout.trim();
+  };
+
+  mkdirSync(originDir, { recursive: true });
+  runGit(originDir, ['init', '--initial-branch=master']);
+  runGit(originDir, ['config', 'user.email', 'test@example.com']);
+  runGit(originDir, ['config', 'user.name', 'Test']);
+  writeFileSync(join(originDir, 'file.txt'), 'v1\n');
+  runGit(originDir, ['add', '.']);
+  runGit(originDir, ['commit', '-m', 'v1']);
+
+  runGit(gitTestRoot, ['clone', originDir, cloneDir]);
+
+  // Advance origin so the clone is genuinely behind.
+  writeFileSync(join(originDir, 'file.txt'), 'v2\n');
+  runGit(originDir, ['add', '.']);
+  runGit(originDir, ['commit', '-m', 'v2']);
+  const originHead = runGit(originDir, ['rev-parse', 'HEAD']);
+
+  // The exact reproduction: a stray UNTRACKED file, nothing modified/staged.
+  writeFileSync(join(cloneDir, 'some-local-cruft.cjs'), 'module.exports = {};\n');
+  assert.match(
+    runGit(cloneDir, ['status', '--porcelain']),
+    /^\?\? some-local-cruft\.cjs$/,
+    'precondition: clone must show ONLY an untracked file, nothing modified',
+  );
+
+  syncMarketplaceCheckout(cloneDir);
+
+  assert.equal(
+    runGit(cloneDir, ['rev-parse', 'HEAD']),
+    originHead,
+    'a clone with only an untracked file must still advance to origin — untracked cruft is not a local edit',
+  );
+  assert.equal(
+    existsSync(join(cloneDir, 'some-local-cruft.cjs')),
+    true,
+    'the untracked file itself must survive the sync — reset --hard never touches it',
+  );
+
+  // Genuine dirt — a MODIFIED tracked file — must still block the sync.
+  writeFileSync(join(originDir, 'file.txt'), 'v3\n');
+  runGit(originDir, ['add', '.']);
+  runGit(originDir, ['commit', '-m', 'v3']);
+  const originHeadV3 = runGit(originDir, ['rev-parse', 'HEAD']);
+  writeFileSync(join(cloneDir, 'file.txt'), 'local edit, never committed\n');
+  const beforeDirtySync = runGit(cloneDir, ['rev-parse', 'HEAD']);
+
+  syncMarketplaceCheckout(cloneDir);
+
+  assert.equal(
+    runGit(cloneDir, ['rev-parse', 'HEAD']),
+    beforeDirtySync,
+    'a real local edit to a TRACKED file must still block the sync (PRESERVE-DIRTY)',
+  );
+  assert.notEqual(beforeDirtySync, originHeadV3, 'sanity: origin did advance further in this step');
+} finally {
+  rmSync(gitTestRoot, { recursive: true, force: true });
 }
 
 const packagedRoot = mkdtempSync(join(tmpdir(), 'rdc-packaged-truth-'));

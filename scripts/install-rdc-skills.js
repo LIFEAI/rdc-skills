@@ -508,8 +508,16 @@ function syncMarketplaceCheckout(mktDir) {
   const git = (...args) =>
     execSync(`git -C "${mktDir}" ${args.join(' ')}`, { encoding: 'utf8', stdio: 'pipe' }).trim();
   try {
-    if (git('status', '--porcelain')) {
-      warn(`marketplace clone has local changes at ${mktDir} — left untouched; it may serve stale commands`);
+    // PRESERVE-DIRTY means "don't discard a real local edit to a TRACKED file" —
+    // `--untracked-files=no` is deliberate. Plain `git status --porcelain` also
+    // reports untracked files (`?? some-cruft.txt`), which `git reset --hard`
+    // never touches and never conflicts with. Treating that as "dirty" made this
+    // sync silently refuse forever the moment ANY stray untracked file appeared
+    // in the clone — which is exactly how this checkout sat 39+ commits behind
+    // for over a week (2026-08-23), still warning "left untouched" on every run,
+    // while a plain `git status` on the same directory read completely clean.
+    if (git('status', '--porcelain', '--untracked-files=no')) {
+      warn(`marketplace clone has local changes to tracked files at ${mktDir} — left untouched; it may serve stale commands`);
       return;
     }
     const branch = git('rev-parse', '--abbrev-ref', 'HEAD') || 'master';
@@ -1347,7 +1355,7 @@ async function main() {
 // scripts/probe-installed-hooks.mjs verify the real install path instead of
 // re-implementing it — a probe that copies its own way proves nothing about what
 // ships. Without this guard, requiring the module would run a full install.
-module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, RDC_ENV_HOOK_TIMEOUT_SEC };
+module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, syncMarketplaceCheckout, RDC_ENV_HOOK_TIMEOUT_SEC };
 
 if (require.main === module) {
   main().catch(e => { fail(e.message); process.exit(1); });
