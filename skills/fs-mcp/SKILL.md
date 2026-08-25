@@ -3,6 +3,7 @@ name: fs-mcp
 description: "Usage `rdc:fs-mcp <task>` — Use the File System MCP bridge for live repo reads, safe writes, cloud-to-local ingest, and GitHub-branch imports into a dirty local monorepo. Use when Claude.ai, Cowork, or CLI agents need fs_read/fs_write/fs_import_git_files guidance."
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.

@@ -3,6 +3,7 @@ name: behavior-audit
 description: "Usage `rdc:behavior-audit <report-dir> [--since-days N] [--latest N] [--reprocess]` — produces a bounded, redacted Claude/Codex transcript evidence bundle, incrementally skips completed transcript hashes, and aligns candidate behavior problems to shared truth-governance rules."
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 > **OUTPUT CONTRACT:** Begin and end with the same checklist. Do not call an audit clean, complete, or compliant without the evidence-bundle manifest and an independent validator decision.
 
 # rdc:behavior-audit — Cross-Engine Truth and Behavior Audit

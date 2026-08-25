@@ -12,6 +12,7 @@ triggers:
   - monkey_dispatch payload with skill="brochurify"
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 # rdc:brochurify Orchestrator
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Report brochure job state, artifacts, and blockers directly; do not dump raw tool logs.
