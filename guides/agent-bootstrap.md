@@ -104,6 +104,29 @@ rule, not a preference.
 
 Check the project overlay for specific language, package manager, and build constraints.
 
+### Harness Use — Global Policy (applies to every rdc:* skill)
+
+If ANY step of the skill you are executing — regardless of which skill —
+needs to materialize a real product shape, open a signed edit session, run a
+target's own declared build gates, or deploy to dev-PM2/npm-registry, you
+MUST use the real, tested `rdc-harness` CLI instead of hand-rolled bash/curl:
+
+```bash
+node C:/Dev/rdc-harness/bin/rdc-harness.mjs <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
+```
+
+One JSON receipt per call, exit 0/1 — use it as evidence for whatever
+checklist/commit step it satisfies. This is a genuinely FORCED requirement,
+not a suggestion: a skill that hand-rolls its own create/open/build/deploy
+logic when this applies is doing exactly the duplicated, unproven work this
+policy exists to stop.
+
+This does NOT apply to a skill with no create/open/build/deploy step at all
+(status/report/help/analysis/media/conversation skills) — do not invent one.
+`open`/`edit` require `RDC_HARNESS_ISSUER_SECRET` set explicitly, no default.
+`deploy` has zero Coolify awareness (Coolify stays `rdc:deploy`'s own path)
+and no live co-editing surface outside `site-html`/`site-ts` targets.
+
 ---
 
 ## RDC_TEST Sandbox Contract
