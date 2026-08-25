@@ -69,6 +69,25 @@ Read the task title and description, then:
 - Mentions visualization, chart, diagram, SVG → `viz`
 - Multiple types? Dispatch multiple agents, each with its guide.
 
+### Execution primitive for create/open/build/deploy checklist rows
+
+When a dispatched agent's checklist row is to materialize a product shape,
+open a signed edit session, run a target's declared build gates, or deploy
+to dev-PM2/npm-registry, it uses the real, tested `rdc-harness` CLI instead
+of hand-rolled bash/curl:
+
+```bash
+node C:/Dev/rdc-harness/bin/rdc-harness.mjs <create|open|edit|build|deploy> <slug> --monorepo-root <the dispatched agent's own worktree>
+```
+
+One JSON receipt per call, exit 0/1 — tick the checklist row with the parsed
+receipt as evidence, not the raw dump. No Coolify awareness (production
+deploy stays `/rdc:deploy`'s own path) and no live co-editing surface
+outside `site-html`/`site-ts` (other classes get file-boundary save only —
+real, currently-unbuilt gap for other product classes, not something to
+paper over here). `open`/`edit` require `RDC_HARNESS_ISSUER_SECRET` set
+explicitly per-session — never a default.
+
 ## Procedure
 
 1. **Load the epic and its durable admission decisions:**

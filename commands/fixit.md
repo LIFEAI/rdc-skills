@@ -70,6 +70,23 @@ This signals the Stop hook that fixit is handling its own documentation.
 
 ### 4. Make the fix
 
+If the fix is a create/open/build/deploy step against a real fleet
+repository (materialize a product shape, open a signed edit session, run a
+target's declared build gates, or deploy to dev-PM2/npm-registry), use the
+real, tested `rdc-harness` CLI instead of hand-rolled bash/curl:
+
+```bash
+node C:/Dev/rdc-harness/bin/rdc-harness.mjs <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
+```
+
+One JSON receipt on stdout, exit 0/1 — use it as the evidence for whichever
+checklist/commit step it satisfies. It has no Coolify awareness (deploy here
+means PM2 dev or npm publish only — Coolify stays this skill's own §5.5 path)
+and no live co-editing surface outside `site-html`/`site-ts` targets (other
+classes get boundary-checked file save only). `open`/`edit` need
+`RDC_HARNESS_ISSUER_SECRET` set explicitly — no default exists or should.
+For anything not create/open/build/deploy shaped, edit files directly as below.
+
 Do the minimal work, conforming to `docs/CODING-STANDARDS.md` where present
 (regen-root; skip if absent). Scope creep rule: if you discover the fix requires more than originally scoped, **stop immediately**:
 1. Close the work item: `update_work_item_status('<id>', 'blocked', '["Escalated — scope exceeded fixit threshold"]')`
