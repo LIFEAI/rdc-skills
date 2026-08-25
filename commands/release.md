@@ -39,6 +39,17 @@ rdc:release: <repo> vX.Y.Z -> vA.B.C
 - Never force push or bypass hooks.
 - Never declare success without verifying the installed or deployed version.
 
+For a `package`-class target that already resolves through `rdc-harness`
+(a real monorepo subtree, not a standalone repo like this one), its
+`packages/deploy/src/runners/registry-release.mjs` runner already proves the
+"Tests/self-test passed" through "Local install/update executed" steps
+safely — real `npm pack`, isolated-prefix install (never the real global
+store), real verify, and `--live` explicitly gates the actual publish. Where
+applicable, `node C:/Dev/rdc-harness/bin/rdc-harness.mjs deploy <slug>
+[--live]` can supply those checklist rows' evidence directly instead of
+hand-rolling the same pack/install/verify cycle. This does not replace
+version bump/tag/push — the harness CLI does neither.
+
 ## RDC Skills Package
 
 After publishing this package to npm, a clean-box install should use:
