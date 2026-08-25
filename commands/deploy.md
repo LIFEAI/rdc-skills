@@ -27,11 +27,30 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy audit` — fleet-wide scan for missed failures
 - `rdc:deploy audit --fix` — fleet scan + auto-remediate safe issues
 - `rdc:deploy maintenance <service>` — create, update, or verify a template-declared private service; no public domain or host port
+- `rdc:deploy dev <slug>` — deploy to PM2 dev (Vultr), not Coolify — see Mode 0
 - `rdc:deploy` (no args) — print mode menu, ask which
 
 ## Modes
 
-### Mode 1 — deploy <slug> [build-id]
+### Mode 0 — dev <slug> (PM2 development, not Coolify)
+
+PM2 dev deploys route through the real, tested `rdc-harness` CLI instead of
+raw PM2/curl — it already implements this path (`shipRoute: pm2-development`,
+via `@lifeaitools/regen-deploy-mgr` on loopback :52438, never raw PM2):
+
+```
+rdc:deploy dev: <slug>
+[ ] node C:/Dev/rdc-harness/bin/rdc-harness.mjs deploy <slug> --monorepo-root <caller's own worktree>
+[ ] JSON receipt parsed — shipRoute confirmed "pm2-development" (else: not this product's route, see receipt.reason)
+[ ] Receipt reports ok / the specific refusal, reported verbatim — not narrated
+✅ rdc:deploy dev: <slug> — <receipt outcome in one line>
+```
+
+A receipt with `applicable: false, reason: 'not_pm2_shipped'` means this slug
+ships a different way (registry, static, or Coolify) — report that plainly,
+do not retry as Coolify without confirming that's actually the right route.
+
+### Mode 1 — deploy <slug> [build-id] (Coolify — staging/production)
 
 ```
 rdc:deploy: <slug> → <domain>

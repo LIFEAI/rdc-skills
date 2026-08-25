@@ -14,6 +14,18 @@ description: "Usage `rdc:edit <site|brand|route|file>` — open the local websit
 
 # rdc:edit — Local Website Editor Launcher
 
+**This skill is the designated handler `rdc-harness` dispatches to.**
+`packages/work/src/editors.mjs`'s `BY_CLASS` table maps `site-html`/`site-ts`
+product classes to editor id `'rdc:edit'` — when an agent calls
+`node C:/Dev/rdc-harness/bin/rdc-harness.mjs edit <slug>` against a website
+target, its receipt names `editorId: 'rdc:edit'` and an `editableBoundary`.
+This skill IS that handler: resolve the same target, launch/reuse the editor
+host, use the harness's `editableBoundary` as the save boundary if the call
+originated from a harness `edit` receipt. Every other product class
+(`app`/`package`/`mcp`/`model`/`artifact`) maps to editor id `'source'` — a
+boundary-checked file save with no live/co-editing surface at all; that gap
+is real and unbuilt, not something this skill covers.
+
 ## When to Use
 - The user wants to open a site, brand, route, or file in the local editor app
 - The user says "open this in the editor" or asks for the editor-host workflow
