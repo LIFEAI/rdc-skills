@@ -3,6 +3,7 @@ name: help
 description: "Usage `rdc:help` — Show all MCP skills with usage, requirements, slash forms, and codeflow status. Reads `.claude-plugin/plugin.json` skills_meta (single source of truth). Call when unsure which skill to use or what args it takes."
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 

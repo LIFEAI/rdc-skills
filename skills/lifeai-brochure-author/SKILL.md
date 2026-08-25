@@ -20,6 +20,7 @@ required_validators:
     blocking: true
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 # LIFEAI Brochure Authoring Contract
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Return the authored JSX guidance or verification result directly; do not dump raw tool logs.

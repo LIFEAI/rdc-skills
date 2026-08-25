@@ -3,6 +3,7 @@ name: refactor
 description: "Usage `rdc:refactor <epic-id|topic> --takeover <reason>` — Governed consolidation and implementation of a cross-cutting refactor. Authorizes an explicit takeover, preserves evidence, re-parents relevant work through the consolidation RPC, isolates every writer, and uses the same review, validator, landing, and delivery gates as rdc:build."
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 > **OUTPUT CONTRACT:** `guides/output-contract.md`
 
 # rdc:refactor

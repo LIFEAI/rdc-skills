@@ -3,6 +3,7 @@ name: brochure
 description: "Usage `rdc:brochure <input> [--out <path>] [--template <name>] [--format Letter|A4]` — Turn a zip, folder, HTML file, URL, or markdown folder into a print-quality PDF brochure via Puppeteer. Auto-detects print-variant HTML, honors @page CSS, falls back to a Studio-token-aware template when no HTML exists."
 ---
 
+> If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
