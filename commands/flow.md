@@ -49,10 +49,10 @@ rdc:flow normal                   # clear — back to no flow declared
 ### 1. Read the current state
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>console.log(JSON.stringify(m.currentFlow(),null,2)))"
+node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>console.log(JSON.stringify(m.currentState(),null,2)))"
 ```
 
-Report `flow` (or `null` if nothing declared — the fail-closed default, same as before this mechanism existed), and when set, `reason`, `setBy`, `setAt`.
+`currentState()` reads BOTH axes at once — the declared flow AND any live `rdc-mode.mjs` hotfix/maintenance window — because a relaxed mode overrides a required flow (loosest state wins) and a status check that only showed flow would miss that override entirely. Report `flow` (or `null` if nothing declared — the fail-closed default), `flowReason`/`flowSetBy`/`flowSetAt` when set, and `mode` (`normal` unless a hotfix/maintenance window is open), with `modeReason`/`modeMinutesLeft` when it isn't.
 
 ### 2. Setting a plain work-shape flow — no reason required
 
