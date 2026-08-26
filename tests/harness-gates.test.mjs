@@ -146,34 +146,16 @@ const WI = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 }
 
 // ===========================================================================
-// 2. foreground-process-gate.js
+// 2. foreground-process-gate.js — moved to its own file, tests/foreground-process-gate.test.mjs
+//
+// Narrowed 2026-08-26 (epic 688ad6da WP-4, lifeai-env): the window-focus/
+// process-launch checks this section used to assert (SetForegroundWindow
+// blocking, hidden/minimized allowances) were retired — that whole class is
+// now caller-logged by lifeai-env's lib/TermLaunch.psm1, not hard-blocked
+// here. The dedicated test file covers what remains (checkPlaywright) plus
+// asserts the four retired checks stay retired, so removing this embedded
+// section is not a coverage loss — see that file instead.
 // ===========================================================================
-{
-  const focusPayload = {
-    tool_input: {
-      command: "powershell -NoProfile -Command \"Add-Type '[DllImport(\\\"user32.dll\\\")] public static extern bool SetForegroundWindow(System.IntPtr hWnd);'\"",
-    },
-  };
-  const r = runHook('foreground-process-gate.js', focusPayload, {});
-  assert('FPG blocks SetForegroundWindow focus API', r.status === 1, `status=${r.status} ${r.stdout}${r.stderr}`);
-  assert('FPG block mentions window focus operations', /Window focus\/restore\/minimize\/collapse/.test(r.stdout + r.stderr));
-
-  const hiddenPayload = {
-    tool_input: {
-      command: 'powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -File ".\\\\scripts\\\\helper.ps1"',
-    },
-  };
-  const h = runHook('foreground-process-gate.js', hiddenPayload, {});
-  assert('FPG allows hidden PowerShell helper', h.status === 0, `status=${h.status} ${h.stdout}${h.stderr}`);
-
-  const minimizedPayload = {
-    tool_input: {
-      command: 'Start-Process powershell.exe -WindowStyle Minimized -ArgumentList "-NoProfile"',
-    },
-  };
-  const m = runHook('foreground-process-gate.js', minimizedPayload, {});
-  assert('FPG allows minimized Start-Process without focus APIs', m.status === 0, `status=${m.status} ${m.stdout}${m.stderr}`);
-}
 
 // ===========================================================================
 // 3. post-tool-batch-gate.js

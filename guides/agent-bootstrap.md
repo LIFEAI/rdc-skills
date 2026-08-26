@@ -90,17 +90,38 @@ Never run `pnpm build` or equivalent full builds locally — they consume excess
 Type-check only: `npx tsc --noEmit --project <path>/tsconfig.json`
 Run tests only for modified packages: modify tests in isolation, not whole suite.
 
-### No Foreground Windows
+### Terminal/process launches — caller-logged, not hard-blocked
 
-Agent-launched processes must not steal focus. This is a hard local-operator
-rule, not a preference.
+**Narrowed 2026-08-26** (epic 688ad6da, lifeai-env; direct operator
+instruction: "remove the PreToolUse foreground-window guard entirely...
+replace it with caller-logging for traceability"). The old hard block on
+every raw `Start-Process`/`cmd /c start`/window-focus API/bare `.ps1` launch
+is retired — `foreground-process-gate.js` (rdc-skills) no longer enforces any
+of it. The replacement isn't a weaker rule; it's a different mechanism:
+lifeai-env's `lib/TermLaunch.psm1` (`Invoke-TermLaunchHidden` /
+`Invoke-TermLaunchInteractive`) logs every caller (script + line + argv) to
+`C:/Dev/.logs` **before** spawning, for every launch — which answers "who
+launched this and with what" for every case, not just the ones a regex
+pattern happened to catch.
 
-- Playwright must run headless. Do not use `--headed`, `--ui`, `codegen`, `open`, `show-report`, or `PWDEBUG=1` in agent sessions.
-- Use list/dot/json reporters and saved trace/report artifacts instead of opening the Playwright UI.
-- PowerShell helpers must use `-WindowStyle Hidden -NonInteractive`, or a hidden wrapper.
-- `Start-Process` must include `-WindowStyle Hidden` or `-WindowStyle Minimized`.
-- `cmd /c start` must use `/min` for intentionally visible tools or `/b` for background work.
-- Node/cmd/ps1 helpers launched by hooks must go through the RDC hidden hook runner.
+- Use `Invoke-TermLaunchHidden -Command <cmd> [-Arguments][-WorkingDirectory]`
+  for a background/no-window process, and `Invoke-TermLaunchInteractive
+  [-Title]` for a visible new terminal tab — never a raw `Start-Process`/
+  `wt.exe` call. Neither primitive accepts an arbitrary inline multi-line
+  command string, only a flat command + argument array or a `-File <script>`
+  path — this structurally prevents the `wt.exe -Command` argv-mangling bug
+  class, which no amount of pattern-blocking ever fully closed.
+- Node/cmd/ps1 helpers launched by hooks must still go through the RDC hidden
+  hook runner (`hooks/run-bash-hidden.ps1` and its RdcRun contract) — that
+  convention is unchanged.
+
+**One safety property survives, unrelated to the above and never retired:**
+Playwright must still run headless in agent sessions. Do not use `--headed`,
+`--ui`, `codegen`, `open`, `show-report`, or `PWDEBUG=1`. Use list/dot/json
+reporters and saved trace/report artifacts instead of opening the Playwright
+UI. `foreground-process-gate.js` still hard-blocks this — it was never a
+terminal-launch-primitive question, so narrowing the launch rules above never
+touched it.
 
 Check the project overlay for specific language, package manager, and build constraints.
 

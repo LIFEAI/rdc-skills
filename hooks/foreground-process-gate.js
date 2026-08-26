@@ -1,9 +1,28 @@
 #!/usr/bin/env node
 /**
- * PreToolUse hook — block focus-stealing foreground process launches.
+ * PreToolUse hook — blocks Playwright headed/UI-mode invocations only.
+ *
+ * NARROWED 2026-08-26 (epic 688ad6da WP-4, lifeai-env). This file used to
+ * ALSO block every raw foreground process launch (Start-Process without
+ * -WindowStyle Hidden, cmd /c start without /min, window-focus Win32 APIs,
+ * bare PowerShell .ps1 launches) -- that entire class is retired per Dave's
+ * direct operator instruction: "remove the PreToolUse foreground-window
+ * guard entirely... replace it with caller-logging for traceability."
+ * lifeai-env's lib/TermLaunch.psm1 (Invoke-TermLaunchHidden /
+ * Invoke-TermLaunchInteractive) is the replacement -- it logs every caller
+ * (script + line + argv) to C:/Dev/.logs BEFORE spawning, which is strictly
+ * more informative than a hard block that told a caller only "add
+ * -WindowStyle Hidden" and never recorded who asked.
+ *
+ * checkPlaywright is a SEPARATE, unrelated concern (Design Decision D3,
+ * .rdc/plans/terminal-launch-consolidation.md in lifeai-env): agent
+ * sessions must never pop an interactive Playwright UI. That has nothing to
+ * do with terminal/process launch primitives, so it was deliberately kept
+ * here rather than folded into caller-logging, which would have silently
+ * dropped a real safety property this narrowing was never asked to remove.
+ * The filename is legacy -- kept to avoid an unrelated hookify-manifest
+ * rewire for a rename that changes nothing about what the file does.
  */
-'use strict';
-
 const hookLog = require('./hook-logger');
 
 function readStdin() {
@@ -35,35 +54,6 @@ function toolText(raw) {
   try { return JSON.stringify(raw.tool_input || raw); } catch { return ''; }
 }
 
-function hasHiddenIntent(command) {
-  return /-WindowStyle\s+Hidden/i.test(command) ||
-    /-WindowStyle\s+Minimized/i.test(command) ||
-    /windowsHide\s*:\s*true/i.test(command) ||
-    /CreateNoWindow\s*=\s*\$?true/i.test(command) ||
-    /Start-Job\b/i.test(command) ||
-    /--background\b/i.test(command) ||
-    /\bHEADLESS\s*=\s*(1|true)\b/i.test(command) ||
-    /\bCI\s*=\s*(1|true)\b/i.test(command);
-}
-
-function hasExplicitWindowOverride(command) {
-  return /\bRDC_ALLOW_WINDOW_FOCUS\s*=\s*(1|true)\b/i.test(command) ||
-    /\bRDC_INTERACTIVE_WINDOW\s*=\s*(1|true)\b/i.test(command);
-}
-
-function checkWindowFocusApi(command) {
-  if (hasExplicitWindowOverride(command)) return;
-  const focusApi = /\b(SetForegroundWindow|SwitchToThisWindow|AppActivate|SetWindowPos|ShowWindowAsync?|BringWindowToTop)\b/i;
-  const broadWindowApi = /\b(EnumWindows|Get-Process\s+\|\s*Where-Object|GetWindow|FindWindow)\b/i;
-  const windowMutation = /\b(minimi[sz]e|restore|foreground|focus|activate|collapse)\b/i;
-  if (focusApi.test(command) || (broadWindowApi.test(command) && windowMutation.test(command))) {
-    block(
-      'Window focus/restore/minimize/collapse operations are not allowed in agent-launched commands. Spawn helpers hidden/no-window instead; set RDC_ALLOW_WINDOW_FOCUS=1 only for an explicitly requested interactive recovery action.',
-      { kind: 'window-focus-api' },
-    );
-  }
-}
-
 function checkPlaywright(command) {
   if (!/\b(playwright|@playwright\/test)\b/i.test(command)) return;
 
@@ -82,45 +72,13 @@ function checkPlaywright(command) {
   }
 }
 
-function checkPowerShell(command) {
-  if (!/\bStart-Process\b/i.test(command)) return;
-  if (hasHiddenIntent(command)) return;
-  block(
-    '`Start-Process` must include `-WindowStyle Hidden` or `-WindowStyle Minimized` for agent-launched node/cmd/ps1/test processes. Focus/restore/collapse APIs remain blocked unless explicitly requested.',
-    { kind: 'start-process' },
-  );
-}
-
-function checkCmdStart(command) {
-  if (!/\bcmd(?:\.exe)?\s+\/c\s+start\b/i.test(command)) return;
-  if (/\bcmd(?:\.exe)?\s+\/c\s+start\s+(""|''|`"")?\s*\/b\b/i.test(command)) return;
-  block(
-    '`cmd /c start` must use `/min` or `/b` for background tools. Focus/restore/collapse APIs remain blocked unless explicitly requested.',
-    { kind: 'cmd-start' },
-  );
-}
-
-function checkDirectShellLaunch(command) {
-  if (hasHiddenIntent(command)) return;
-  if (/\bpowershell(?:\.exe)?\b[^|\n]*(?:-File\s+[^|\n]*\.ps1|\.ps1\b)/i.test(command)) {
-    block(
-      'PowerShell script launches from agent tooling must use `-WindowStyle Hidden -NonInteractive` or a hidden wrapper.',
-      { kind: 'powershell-ps1' },
-    );
-  }
-}
-
 async function main() {
   let raw;
   try { raw = JSON.parse(await readStdin()); } catch { process.exit(0); }
   const command = toolText(raw);
   if (!command) pass({ reason: 'no-command' });
 
-  checkWindowFocusApi(command);
   checkPlaywright(command);
-  checkPowerShell(command);
-  checkCmdStart(command);
-  checkDirectShellLaunch(command);
 
   pass({ reason: 'clean' });
 }
