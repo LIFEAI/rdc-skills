@@ -8,6 +8,12 @@ description: >-
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
 
+> **Superseded by `rdc:flow`, 2026-08-26.** `hotfix`/`maintenance` are now
+> flow values (same reason-required, same relaxation allowlist, no TTL by
+> default) — one FSM surface instead of two. This skill's underlying code
+> (`rdc-mode.mjs`) is untouched and still works; new work should use
+> `rdc:flow hotfix "<reason>"` instead of `rdc:mode hotfix ...`.
+
 # rdc:mode — operating mode
 
 ## When to Use
