@@ -49,7 +49,7 @@ rdc:flow normal                   # clear — back to no flow declared
 ### 1. Read the current state
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>console.log(JSON.stringify(m.currentState(),null,2)))"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-flow.mjs').href).then(m=>console.log(JSON.stringify(m.currentState(),null,2)))"
 ```
 
 `currentState()` reads BOTH axes at once — the declared flow AND any live `rdc-mode.mjs` hotfix/maintenance window — because a relaxed mode overrides a required flow (loosest state wins) and a status check that only showed flow would miss that override entirely. Report `flow` (or `null` if nothing declared — the fail-closed default), `flowReason`/`flowSetBy`/`flowSetAt` when set, and `mode` (`normal` unless a hotfix/maintenance window is open), with `modeReason`/`modeMinutesLeft` when it isn't.
@@ -57,7 +57,7 @@ node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>cons
 ### 2. Setting a plain work-shape flow — no reason required
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>console.log(JSON.stringify(m.setFlow(process.argv[1],{setBy:process.argv[2]}),null,2)))" "<flow>" "<session-id>"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-flow.mjs').href).then(m=>console.log(JSON.stringify(m.setFlow(process.argv[1],{setBy:process.argv[2]}),null,2)))" "<flow>" "<session-id>"
 ```
 
 ### 3. Setting hotfix or maintenance — a reason is REQUIRED
@@ -65,7 +65,7 @@ node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>cons
 Refuse to proceed without one — `setFlow` throws on an empty reason for these two values, by design, same as `setMode` always did: an unexplained disarm is how a temporary state becomes permanent.
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>console.log(JSON.stringify(m.setFlow('hotfix',{reason:process.argv[1],setBy:process.argv[2]}),null,2)))" "<reason>" "<session-id>"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-flow.mjs').href).then(m=>console.log(JSON.stringify(m.setFlow('hotfix',{reason:process.argv[1],setBy:process.argv[2]}),null,2)))" "<reason>" "<session-id>"
 ```
 
 Then state plainly, in the checklist: **which guards are now relaxed, that the safety set is still armed, and that this stays active until explicitly cleared (no TTL — active management, not a silent timer).**
@@ -73,7 +73,7 @@ Then state plainly, in the checklist: **which guards are now relaxed, that the s
 ### 4. Returning to normal
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-flow.mjs').then(m=>{m.clearFlow();console.log('cleared')})"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-flow.mjs').href).then(m=>{m.clearFlow();console.log('cleared')})"
 ```
 
 Do this **as soon as the incident is over**, or the moment the declared work-shape changes.

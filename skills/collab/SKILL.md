@@ -230,7 +230,7 @@ most common failure and it fails at the guard layer, not the prompt layer.
 > version of this table said the opposite.** Managed identity is an 8-field record
 > (`lane, role, repoIdentity, ownerPid, ownerStartFingerprint, sessionId,
 > leaseEpoch, ownerToken`) built by `buildStartupIdentity()` in
-> [`pool/codex-topology.mjs`](file:///C:/Dev/lifeai-env/pool/codex-topology.mjs)
+> [`pool/codex-topology.mjs`](file:///C:/Dev/lifeai/node_modules/@lifeai/lifeai-env/pool/codex-topology.mjs)
 > and minted **only by the interactive launcher**, which also claims the lease.
 > `codex exec` has no lane-claim path, so it cannot produce that record — which
 > means **a headless Codex peer cannot write in any lane, including its own**.
@@ -245,7 +245,7 @@ most common failure and it fails at the guard layer, not the prompt layer.
 > fires when there is **no lease at all** (`ownerMatchesLease` returns false for a
 > null lease), so it will send you hunting a conflicting owner that does not exist.
 
-file:///C:/Dev/lifeai-env/pool/codex-topology.mjs
+file:///C:/Dev/lifeai/node_modules/@lifeai/lifeai-env/pool/codex-topology.mjs
 | **`local-llm`** | local endpoint per `.claude/context/clauth.md`; credential via `curl -s http://127.0.0.1:52437/v/<service>` | none (no repo attachment) | Small context windows: send the contract and the open points, never the whole document. Link paths instead of pasting files. |
 | **`claude-agent`** | `Agent` tool, or `claude -p --bare` / `claude --bg` | **`isolation: "worktree"` as an actual tool parameter** if it will commit — a prose claim of isolation is inert | Parallel agents on a shared checkout race on `git stash` and `.git/index`. See `.claude/rules/subagent-credentials.md`. |
 | **`claude-ai`** | chitchat MCP (`chitchat_send` / `chitchat_poll` / `chitchat_reply`) + SSE | session-scoped | Messages evaporate when the session stops — export durable decisions to TinTin. |

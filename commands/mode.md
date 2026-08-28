@@ -70,7 +70,7 @@ rdc:mode normal                       # close it early
 ### 1. Read the current mode
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-mode.mjs').then(m=>console.log(JSON.stringify(m.currentMode(),null,2)))"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-mode.mjs').href).then(m=>console.log(JSON.stringify(m.currentMode(),null,2)))"
 ```
 
 Report `mode`, and when not normal also `reason`, `setBy`, and `minutesLeft`.
@@ -84,7 +84,7 @@ unexplained disarm is how a temporary state becomes permanent, and the reason is
 the entire content of the audit line.
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-mode.mjs').then(m=>console.log(JSON.stringify(m.setMode('hotfix',{reason:process.argv[1],minutes:Number(process.argv[2]||60),setBy:process.argv[3]}),null,2)))" "<reason>" "<minutes>" "<session-id>"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-mode.mjs').href).then(m=>console.log(JSON.stringify(m.setMode('hotfix',{reason:process.argv[1],minutes:Number(process.argv[2]||60),setBy:process.argv[3]}),null,2)))" "<reason>" "<minutes>" "<session-id>"
 ```
 
 Then state plainly, in the checklist: **which guards are now off, that the safety
@@ -93,7 +93,7 @@ set is still armed, and the exact wall-clock time the window closes.**
 ### 3. Returning to normal
 
 ```bash
-node -e "import('file:///C:/Dev/lifeai-env/hooks/lib/rdc-mode.mjs').then(m=>{m.clearMode();console.log('normal')})"
+node -e "import(require('url').pathToFileURL(process.env.LIFEAI_ENV + '/hooks/lib/rdc-mode.mjs').href).then(m=>{m.clearMode();console.log('normal')})"
 ```
 
 Do this **as soon as the incident is over**. The window expiring on its own is
