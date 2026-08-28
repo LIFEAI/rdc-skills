@@ -14,17 +14,39 @@ description: "Usage `rdc:env [status|install|repair|update]` — Manage the LIFE
 - After a reboot or GPU crash — verify everything came back up
 - Setting up a fresh box — install all tools and services
 - Something is broken — repair services, MCPs, CodeFlow
-- Routine update — pull latest env repo and run drift check
+- Routine update — bring the harness current and run a drift check
 - "check the environment", "fix my setup", "install environment"
+
+## The harness arrives by one of two channels — find out which BEFORE acting
+
+`$LIFEAI_ENV` is **not** necessarily a git repo, and on a normal box it is not.
+
+| channel | what `$LIFEAI_ENV` is | who owns freshness |
+|---|---|---|
+| **npm** (the normal box) | an installed package, e.g. `C:/Dev/lifeai/node_modules/@lifeai/lifeai-env` | `npm` — `env-boot` installs into the owning prefix at session start |
+| **git** (the publishing box) | a checkout of `LIFEAI/environment` | `land.mjs` → fetch → `env-install` |
+
+Every `git` command in this skill applies to the **git** channel only. Against an
+npm install they fail outright — `fatal: not a git repository` — because there is
+no `.git` there at all. Ask first:
+
+```bash
+node "$LIFEAI_ENV/machines/env-boot.mjs" check
+```
+
+It reports the installed version, the published version, and which channel this
+box is on, and changes nothing. Do not infer the channel from the path: the git
+tree at `C:/Dev/lifeai-env` still exists on the publishing box alongside the npm
+install, so a path that looks familiar proves nothing.
 
 ## Subcommands
 
 | Command | What it does |
 |---------|-------------|
-| `status` (default) | Read-only check: env repo version, tool versions, MCP health, shim integrity, CodeFlow brain |
-| `install` | Full provision: clone env repo if missing, set LIFEAI_ENV, install tools, configure MCPs |
+| `status` (default) | Read-only check: channel + harness version, tool versions, MCP health, shim integrity, CodeFlow brain |
+| `install` | Full provision: install the harness if missing, set LIFEAI_ENV, install tools, configure MCPs |
 | `repair` | Diagnose and fix: restart crashed services, rebuild stale dists, fix broken shims |
-| `update` | Pull latest env repo, re-run audit, report drift, refresh shims if new scripts added |
+| `update` | Bring the harness current for its channel, re-run audit, report drift, refresh shims if new scripts added |
 
 ## Procedure
 
@@ -35,21 +57,42 @@ LIFEAI_ENV="${LIFEAI_ENV:-C:/Dev/lifeai-env}"
 ```
 
 If `$LIFEAI_ENV` is not set AND the default path doesn't exist:
-- For `install`: clone the repo and set the env var
-- For all others: STOP with `BLOCKED: environment repo not found. Run: rdc:env install`
+- For `install`: install the harness (see the channel table above — npm on a
+  normal box) and set the env var. `provision.ps1` is self-locating
+  (`$EnvRoot = $PSScriptRoot`), so running it *from* an install is what points
+  `LIFEAI_ENV` at that install. Machine scope needs elevation; without it it
+  falls back to User scope and says so.
+- For all others: STOP with `BLOCKED: environment harness not found. Run: rdc:env install`
 
 Read `$LIFEAI_ENV/manifest.json` — this is the harness inventory.
 
-### Step 1: Environment repo state
+### Step 1: Harness state — channel first, then freshness
 
 ```bash
-git -C "$LIFEAI_ENV" fetch origin 2>/dev/null
-git -C "$LIFEAI_ENV" rev-list --count HEAD..origin/main
+node "$LIFEAI_ENV/machines/env-boot.mjs" check
 ```
 
-Report: version from manifest.json, commits behind origin, last pull date.
+One command, both channels, no mutation. It prints the installed version, the
+published version, and — on an npm hub outside `npm root -g` — the prefix an
+update would target.
 
-For `update`: pull if behind. For `repair`: pull if behind (stale harness may be the cause).
+Report: version from manifest.json, the channel, and how far behind it is.
+
+**For `update` and `repair`, bring it current by its own channel:**
+
+```bash
+# npm channel — env-boot derives the owning prefix itself. Do NOT hand-roll a
+# prefix, and do NOT use a bare `npm install -g`: on a hub outside `npm root -g`
+# that silently updates a DIFFERENT directory and the hub never moves.
+node "$LIFEAI_ENV/machines/env-boot.mjs"
+
+# git channel (publishing box only)
+git -C "$LIFEAI_ENV" pull --ff-only origin main
+```
+
+> **Never report a version comparison as a freshness verdict without saying which
+> channel produced it.** On a git hub `env-boot` deliberately does not ask npm at
+> all — the two versions differing there is expected, not a broken publish.
 
 ### Step 2: Tool versions (audit)
 
@@ -124,8 +167,8 @@ This is the same check the startup guard runs. Zero blockers = environment healt
 
 | Check | Status | Detail |
 |-------|--------|--------|
-| Env repo | ✅ | v0.2.0, 0 behind origin |
-| LIFEAI_ENV | ✅ | C:/Dev/lifeai-env (Machine scope) |
+| Harness | ✅ | v0.8.119, npm channel, current |
+| LIFEAI_ENV | ✅ | C:/Dev/lifeai/node_modules/@lifeai/lifeai-env (Machine scope) |
 | Node | ✅ | v22.14.0 (min 22.0.0) |
 | pnpm | ✅ | 10.12.1 (min 10.0.0) |
 | clauth | ✅ | v1.30.2, unlocked |
