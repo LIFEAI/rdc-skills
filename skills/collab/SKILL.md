@@ -505,6 +505,41 @@ chitchat MCP + SSE; you are the build half of a live session.
 - `type: stop` ends the session; send a final summary, then `chitchat_stop`.
 - Stream progress mid-work with `chitchat_reply` on long tasks.
 
+### File-relay transport (the second way `listen` arrives)
+
+Merged from `commands/collab.md` on 2026-08-29, which is now removed. This
+skill documented only the chitchat/SSE transport; the command documented a
+FILE relay, and neither mentioned the other. Two transports for one mode, each
+written down in a place the other's reader would not look.
+
+Invoked as `/rdc:collab --session <session_id>`. claude.ai writes tasks into an
+inbox; you read, act, commit, write the response to an outbox, and loop.
+
+```
+sessionDir = .rdc/relay/sessions/<session_id>/
+inbox      = sessionDir/inbox/
+outbox     = sessionDir/outbox/
+```
+
+1. **Parse** `--session <uuid>`. With no `--session`, list
+   `.rdc/relay/sessions/` and show what is available. If the directories do not
+   exist, say so — `chitchat_start` has to run from claude.ai first. Do not
+   create them.
+2. **Announce.** Set `sessionDir/status.json` to
+   `{ "status": "active", "cli_connected_at": "<iso>", "session_id": "<id>" }`
+   and write a ready signal to the outbox, so claude.ai knows the CLI attached.
+3. **Poll** the inbox for `.md` files not ending in `.processed`, oldest first
+   by name. Nothing found → wait 5s and poll again; after 10 minutes idle print
+   a `Still listening...` heartbeat and keep waiting.
+4. **Process one message.** Read its frontmatter `type`. `stop` ends the
+   session. Anything else is a task: rename the file to `<name>.processed`
+   FIRST so a crash cannot replay it, then act with full capabilities — edits,
+   commits to the lane, `npx tsc --noEmit` (never `pnpm build`), other skills —
+   and write the response to the outbox when done.
+
+`agent-bootstrap.md` rules apply throughout, and Dave typing in the terminal is
+a high-priority override in this transport exactly as in the other.
+
 ---
 
 ## Dave interjections

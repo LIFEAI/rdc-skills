@@ -1,7 +1,7 @@
 {
   "schema": "lifeai.plugin.v1",
   "id": "rdc-skills",
-  "version": "0.35.8",
+  "version": "0.35.9",
   "publisher": "LIFEAI",
   "core": false,
   "documentation": {

@@ -74,6 +74,31 @@ If blocked, abort immediately with the message above. Do NOT proceed to the vers
 
 If PUBLISH.md is absent and app has no `app_deployments` row (library/package), skip this gate.
 
+## Rules
+
+Merged from `commands/release.md` on 2026-08-29, which is now removed. Each of
+these was in the command and NOT in this file, which is precisely the drift that
+shipping one verb as two documents produces.
+
+- Do not release without explicit user authorization.
+- Prefer repo-local release instructions in `.rdc/release.json`, README, package
+  scripts, or CI workflows.
+- **Never force push or bypass hooks.**
+- **Never declare success without verifying the installed or deployed version.**
+  A publish that exits 0 is not a published package — the registry can lag
+  minutes behind, so check the version endpoint, not the success line.
+
+For a `package`-class target that already resolves through `rdc-harness` (a real
+monorepo subtree, not a standalone repo like this one),
+`packages/deploy/src/runners/registry-release.mjs` already proves the
+"Tests/self-test passed" through "Local install/update executed" rows safely:
+real `npm pack`, isolated-prefix install (never the real global store), real
+verify, and `--live` explicitly gating the actual publish. Where applicable,
+`node C:/Dev/rdc-harness/bin/rdc-harness.mjs deploy <slug> [--live]` can supply
+that evidence directly instead of hand-rolling the same pack/install/verify
+cycle. It does **not** replace version bump, tag or push — the harness CLI does
+none of those.
+
 ## Resolution Order
 
 1. Current repo if `<repo>` is `.` or omitted and the user clearly refers to the current workspace.

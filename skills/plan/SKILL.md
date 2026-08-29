@@ -33,6 +33,30 @@ description: rdc:plan (topic) — produce architecture, decisions and an epic wi
    - Relevant CLAUDE.md files from affected packages
    - Existing Supabase epics: `SELECT get_open_epics()`
 
+1b. **Identify the affected domains, then load the matching architecture doc.**
+
+   Merged from `commands/plan.md` on 2026-08-29, which is now removed. This file
+   referenced architecture docs 9 times and the command 28 — but only the
+   command carried the ROUTING, so the instruction to load the right doc lived
+   in the copy a reader might never open.
+
+   | Domain keywords in the topic | Architecture doc to read |
+   |---|---|
+   | PRT, trust, capital, NAV, investor, land, DST | `docs/systems/prt/ARCHITECTURE.md` |
+   | CS 2.0, HAIL, PAL, virtue, quad-pixel, ontology, BPMN, cognitive | `docs/systems/cs2/ARCHITECTURE.md` |
+   | marketing, CRM, campaign, contact, outreach, RDC app | `docs/systems/rdc/ARCHITECTURE.md` |
+   | Claude workflow, skills, agents, dispatch, rdc:build | `docs/systems/claude-workflow/ARCHITECTURE.md` |
+   | Life AI, LIFEAI platform, life.ai | `docs/systems/lifeai/ARCHITECTURE.md` |
+   | media, R2, images, regen-media, MCP image | `docs/systems/media/ARCHITECTURE.md` |
+   | UI, component, brand, design token, shared, OG image | `docs/systems/shared/ARCHITECTURE.md` |
+
+   `.claude/rules/system-quick-links.md` is the routing map to all of them. A
+   topic spanning several domains reads ALL the matching docs before proceeding.
+
+   **A plan that contradicts an existing architecture doc is invalid.** Load them
+   first, and when a decision conflicts with one, flag the conflict rather than
+   quietly planning around it.
+
 2. **Read the codebase** — understand current state:
    - What packages are affected?
    - What types/interfaces already exist?

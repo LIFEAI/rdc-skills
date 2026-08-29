@@ -38,7 +38,15 @@ No raw MCP dumps. No UUIDs unless asked.
 - `rdc:deploy audit` — fleet-wide scan for missed failures
 - `rdc:deploy audit --fix` — fleet scan + auto-remediate safe issues
 - `rdc:deploy maintenance <service>` — create, update, or verify one allowlisted private infrastructure service (Mode 7)
+- `rdc:deploy dev <slug>` — explicit alias for the first form above. Plain
+  `rdc:deploy <slug>` already targets PM2 dev, so this only makes the intent
+  unmissable when a reader expects Coolify.
 - `rdc:deploy` (no args) — print mode menu, ask which
+
+> `<ref>` is what `commands/deploy.md` called `<build-id>` before that file was
+> removed (2026-08-29). Same thing — a registered manifest ref, a commit, or a
+> tag. With no ref, the deployment is the latest commit on the app's WATCHED
+> branch, not on whatever branch happens to be checked out locally.
 
 ## Modes
 
