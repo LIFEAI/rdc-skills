@@ -159,6 +159,9 @@ Est: <hours>',
   p_labels      := ARRAY['<label>'],
   p_estimated_hours := 2,
   p_source      := 'planning'
+  -- If the epic has architecture_ref set, also add a required
+  -- architecture-fidelity-<slug> checklist row via p_checklist here — the exit gate
+  -- hard-rejects `done` on any task under an architecture_ref epic that lacks one.
 );
 ```
 

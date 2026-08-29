@@ -7,10 +7,22 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
+/**
+ * `help` has ONE surface now.
+ *
+ * It used to ship as both commands/help.md and skills/help/SKILL.md, which is
+ * half of why a single verb appeared four times in the command list. The
+ * command was removed on 2026-08-29 after checking substance rather than
+ * counting lines: the skill already carried the manifest resolution order, the
+ * plugin.json path and the slash forms.
+ *
+ * Kept as a map rather than collapsed to one constant so the loop below still
+ * names which document failed — and so restoring a second surface, if that ever
+ * becomes right, is one line.
+ */
 const files = {
   readme: join(root, 'README.md'),
   skillHelp: join(root, 'skills', 'help', 'SKILL.md'),
-  commandHelp: join(root, 'commands', 'help.md'),
 };
 
 const docs = Object.fromEntries(
@@ -40,12 +52,14 @@ assert.match(docs.readme, /Nineteen[\s\S]*\/rdc:\*` command shorthands/i, 'READM
 assert.match(docs.readme, /Use `rdc_skill_list` for the authoritative live catalog/, 'README should point callers to live MCP catalog');
 assert.doesNotMatch(docs.readme, /All user-invocable skills become available as slash commands/, 'README must not imply all MCP skills are slash commands');
 assert.doesNotMatch(docs.readme, /29 skills organized into 6 categories/, 'README must not carry stale category count');
-assert.match(docs.commandHelp, /all MCP skills/, 'command help should refer to MCP skill catalog');
+// One surface, so these assert once. They were duplicated across commandHelp
+// and skillHelp; the negative pair moves to the surviving document rather than
+// being dropped — a stale-wording check is worth keeping regardless of which
+// file carries the text.
 assert.match(docs.skillHelp, /all MCP skills/, 'skill help should refer to MCP skill catalog');
 assert.match(docs.skillHelp, /manifest-driven/i, 'skill help should be manifest-driven');
-assert.match(docs.commandHelp, /manifest-driven/i, 'command help should be manifest-driven');
-assert.doesNotMatch(docs.commandHelp, /Print the full usage menu below verbatim/, 'command help must not use stale static menu wording');
-assert.doesNotMatch(docs.commandHelp, /get\/<service>/, 'command help must use current clauth /v/<service> wording');
+assert.doesNotMatch(docs.skillHelp, /Print the full usage menu below verbatim/, 'help must not use stale static menu wording');
+assert.doesNotMatch(docs.skillHelp, /get\/<service>/, 'help must use current clauth /v/<service> wording');
 
 const skillDirs = readdirSync(join(root, 'skills'))
   .filter((name) => {
