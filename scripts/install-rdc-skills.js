@@ -1000,30 +1000,60 @@ function runPreflight() {
 }
 
 // ── Commands listing ──────────────────────────────────────────────────────────
+/**
+ * List EVERY `/rdc:*` verb — from commands/ AND skills/.
+ *
+ * This enumerated `commands/` only. That was harmless while every verb shipped
+ * as both a command and a skill, and became actively misleading the moment the
+ * duplicates were removed (2026-08-29): the printed surface fell from 32 to 13
+ * while the real surface was unchanged at 56, because a skill provides the
+ * `rdc:` slash form on its own.
+ *
+ * Verified live, not assumed: `commands/status.md` was deleted and `rdc:status`
+ * still resolved, loading `skills/status/SKILL.md`.
+ *
+ * A listing that under-reports by 43 verbs is worse than no listing — it reads
+ * as "those commands are gone", which is exactly the conclusion I drew from it
+ * before checking. The installer's output IS the document an operator reads
+ * after an install, so it has to describe what actually exists.
+ */
 function listCommands() {
-  const cmdsDir = path.join(repoRoot, 'commands');
-  if (!fs.existsSync(cmdsDir)) return;
-  const files = fs.readdirSync(cmdsDir).filter(f => f.endsWith('.md')).sort();
-  const plugin = readJson(path.join(repoRoot, '.claude-plugin', 'plugin.json'), {});
-  const skillCount = Array.isArray(plugin.skills_meta)
-    ? plugin.skills_meta.length
-    : (plugin.skills_meta && typeof plugin.skills_meta === 'object' ? Object.keys(plugin.skills_meta).length : null);
-  console.log('');
-  if (skillCount !== null) {
-    console.log(`  \x1b[32mAvailable MCP skills (${skillCount}) and /rdc:* command shorthands (${files.length}):\x1b[0m`);
-    console.log('  Use MCP tools rdc_skill_list, rdc_skill_search, and rdc_skill_get for the full skill catalog.');
-  } else {
-    console.log(`  \x1b[32mAvailable /rdc:* command shorthands (${files.length}):\x1b[0m`);
+  const cmdsDir  = path.join(repoRoot, 'commands');
+  const skillDir = path.join(repoRoot, 'skills');
+
+  const verbs = new Map(); // name -> { desc, from }
+  const add = (name, desc, from) => {
+    if (!verbs.has(name)) verbs.set(name, { desc: desc || '', from });
+  };
+
+  if (fs.existsSync(cmdsDir)) {
+    for (const f of fs.readdirSync(cmdsDir).filter((x) => x.endsWith('.md'))) {
+      const fm = readFrontmatter(path.join(cmdsDir, f));
+      add(f.replace(/\.md$/, ''), fm.description, 'command');
+    }
   }
+  if (fs.existsSync(skillDir)) {
+    for (const d of fs.readdirSync(skillDir, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue;
+      const skillFile = path.join(skillDir, d.name, 'SKILL.md');
+      if (!fs.existsSync(skillFile)) continue;   // `tests/` is a fixture dir, not a skill
+      add(d.name, readFrontmatter(skillFile).description, 'skill');
+    }
+  }
+  if (verbs.size === 0) return;
+
+  const names = [...verbs.keys()].sort();
+  const nCmd = [...verbs.values()].filter((v) => v.from === 'command').length;
   console.log('');
-  const COL = 18;
-  for (const f of files) {
-    const name  = 'rdc:' + f.replace(/\.md$/, '');
-    const fm    = readFrontmatter(path.join(cmdsDir, f));
-    const desc  = (fm.description || '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-    const short = desc.length > 70 ? desc.slice(0, 70) + '…' : desc;
-    const pad   = ' '.repeat(Math.max(1, COL - name.length));
-    console.log(`  \x1b[36m/${name}\x1b[0m${pad}${short}`);
+  console.log(`  \x1b[32mAvailable /rdc:* verbs (${names.length}) — ${nCmd} command, ${names.length - nCmd} skill:\x1b[0m`);
+  console.log('  Use MCP tools rdc_skill_list, rdc_skill_search, and rdc_skill_get for the full catalog.');
+  console.log('');
+  const COL = 26;
+  for (const n of names) {
+    const desc  = (verbs.get(n).desc || '').replace(/\s+/g, ' ').trim();
+    const short = desc.length > 70 ? `${desc.slice(0, 70)}…` : desc;
+    const label = `rdc:${n}`;
+    console.log(`  \x1b[36m/${label}\x1b[0m${' '.repeat(Math.max(1, COL - label.length))}${short}`);
   }
   console.log('');
 }

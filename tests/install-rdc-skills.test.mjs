@@ -60,15 +60,33 @@ assert.equal(
   realSkillDirs.length,
   `plugin.json skills_meta (${skillCount}) must match the actual skill directories on disk (${realSkillDirs.length}): ${realSkillDirs.join(', ')}`,
 );
+// The listing must report EVERY /rdc:* verb, and say which surface each comes
+// from. It used to enumerate commands/ only, which was harmless while every verb
+// shipped as both a command and a skill — and became actively misleading the
+// moment the duplicates were removed (2026-08-29): the printed surface fell from
+// 32 to 13 while the real surface was unchanged, because a skill provides the
+// slash form on its own (verified live: commands/status.md deleted, rdc:status
+// still resolved). A listing that under-reports by 43 verbs reads as "those
+// commands are gone".
 assert.match(
   source,
-  /Available MCP skills.*\/rdc:\* command shorthands/,
-  'installer should distinguish the full MCP skill catalog from slash-command shorthands',
+  /Available \/rdc:\* verbs/,
+  'installer should list every /rdc:* verb, not only the command-backed ones',
 );
 assert.match(
   source,
-  /Object\.keys\(plugin\.skills_meta\)\.length/,
-  'installer should count object-shaped skills_meta manifests',
+  /command, \$\{[^}]*\} skill/,
+  'installer should say how many verbs come from commands and how many from skills',
+);
+assert.match(
+  source,
+  /readdirSync\(skillDir, \{ withFileTypes: true \}\)/,
+  'installer should enumerate the real skill directories, not a manifest count that can drift from disk',
+);
+assert.match(
+  source,
+  /SKILL\.md'\)\)\) continue/,
+  'installer must skip a directory with no SKILL.md — tests/ is a fixture dir, not a skill',
 );
 assert.match(
   source,
