@@ -78,12 +78,60 @@ function isGitCommit(command) {
   return true;
 }
 
-/** Extract the -m "..." message (or fall back to the whole command). */
+/**
+ * Extract the commit message from the command.
+ *
+ * Returns `{ message, readable }`. `readable:false` means the message is NOT
+ * present in the command at all — the caller must not treat that as "the agent
+ * wrote a bad message", because no message was ever offered to inspect.
+ *
+ * Three shapes carry a message, and only the first was ever read:
+ *
+ *   -m "subject"          -> in the command
+ *   <<'EOF' … EOF         -> in the command, but AFTER the flags (heredoc body)
+ *   -F <path>             -> in a FILE on disk
+ *   -F -   (a real pipe)  -> nowhere we can see it
+ *
+ * The old fallback returned the WHOLE COMMAND as the message. CONVENTIONAL_TYPES
+ * is anchored at ^, so a heredoc commit whose subject was a perfectly good
+ * `fix(scope): …` could never match — the string being tested started with
+ * `( cd … && git add … && git commit -q -F -`. Measured 2026-08-29: this hook
+ * blocked a commit whose message did begin with `fix(guards):`, and told the
+ * author there was "no conventional commit type", which was false.
+ *
+ * That is the recurring defect in one line: a checker that cannot read its
+ * evidence reported ABSENCE instead of reporting that it could not read.
+ * `git commit -F` is the sanctioned way to write a long message (a heredoc is
+ * how every multi-paragraph commit in this fleet is authored), so the one path
+ * the gate made unusable was the good one.
+ */
 function extractCommitMessage(command) {
   const cmd = String(command || '');
+
   const msgMatch = cmd.match(/-m\s+["']([^"']+)["']/s) ||
                    cmd.match(/-m\s+"([\s\S]+?)"\s*(?:&&|$)/);
-  return msgMatch ? msgMatch[1] : cmd;
+  if (msgMatch) return { message: msgMatch[1], readable: true };
+
+  // Heredoc: `<<'EOF' … EOF` / `<<"EOF"` / `<<EOF` / `<<-EOF`. The body IS in
+  // the command; it just does not follow a -m. Take everything between the
+  // delimiter line and its closing line.
+  const hd = cmd.match(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1\s*\n([\s\S]*?)\n[ \t]*\2\b/);
+  if (hd) return { message: hd[3], readable: true };
+
+  // -F <path>: the message is on disk. `-F -` is stdin and is NOT a path.
+  const fileMatch = cmd.match(/(?:^|\s)(?:-F|--file)[=\s]+(?!-\s|-$)(['"]?)([^'"\s]+)\1/);
+  if (fileMatch) {
+    try {
+      return { message: fs.readFileSync(fileMatch[2], 'utf8'), readable: true };
+    } catch {
+      return { message: '', readable: false };
+    }
+  }
+
+  // A real `-F -` pipe, or an editor-authored message: unreadable from here.
+  if (/(?:^|\s)(?:-F|--file)[=\s]+-(?:\s|$)/.test(cmd)) return { message: '', readable: false };
+
+  return { message: cmd, readable: true };
 }
 
 /**
@@ -201,7 +249,7 @@ async function captureCommit(raw) {
     return { captured: false, reason: 'commit-not-successful' };
   }
 
-  const message = extractCommitMessage(command);
+  const { message } = extractCommitMessage(command);
   const workItemId = parseCommitMessageWorkItem(message);
   if (!workItemId) {
     // No active work item -> NO-OP. No orphan row is ever written.
@@ -274,7 +322,24 @@ async function preToolUse(raw) {
     return process.exit(0);
   }
 
-  const msg = extractCommitMessage(command);
+  const { message: msg, readable } = extractCommitMessage(command);
+
+  // The message is real but arrives on a pipe (`-F -` with no heredoc) or from
+  // an editor. Say THAT, and name a runnable alternative — do not report it as
+  // a missing work item, which is a different fact and sends the author looking
+  // for the wrong thing.
+  if (!readable) {
+    hookLog('require-work-item', 'PreToolUse', 'block-unreadable', {});
+    process.stdout.write(JSON.stringify({
+      decision: 'block',
+      reason: '⛔ [require-work-item] The commit message arrives on stdin, so this check cannot read it '
+        + 'and will not guess. Nothing is wrong with your message — it is unverifiable from here. '
+        + 'Re-run with the message where the check can see it: `git commit -F <path>` (a file), '
+        + 'a heredoc (`git commit -F - <<\'EOF\' … EOF`), or `-m "<type>(<scope>): …"`.',
+    }));
+    return process.exit(0);
+  }
+
   if (CONVENTIONAL_TYPES.test(msg.trim()) || UUID_PATTERN.test(msg) || ISSUE_REF.test(msg)) {
     hookLog('require-work-item', 'PreToolUse', 'pass', { msg: msg.slice(0, 80) });
     return process.exit(0);

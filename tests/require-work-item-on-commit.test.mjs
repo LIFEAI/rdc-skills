@@ -170,6 +170,60 @@ function runHook(payload, extraEnv = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// 4. The message must be READ before it is judged.
+//
+// extractCommitMessage used to fall back to the WHOLE COMMAND when there was no
+// -m. CONVENTIONAL_TYPES is anchored at ^, so a heredoc commit whose subject was
+// a valid `fix(scope): …` could never match — the tested string began with
+// `( cd … && git add … && git commit -q -F -`. Measured 2026-08-29: this hook
+// blocked a commit whose message DID begin with `fix(guards):` and reported
+// "no conventional commit type", which was false.
+//
+// A heredoc is how every multi-paragraph commit in this fleet is authored, so
+// the single path the gate made unusable was the correct one. The load-bearing
+// half of this test is the NEGATIVE cases: reading the message must not become
+// a way to pass without one.
+{
+  const { extractCommitMessage } = require(HOOK);
+  const CONVENTIONAL = /^(feat|fix|chore|refactor|test|docs|style|perf|ci|build|revert)(\(.+\))?:/i;
+  const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const verdict = (cmd) => {
+    const { message, readable } = extractCommitMessage(cmd);
+    if (!readable) return 'unreadable';
+    return CONVENTIONAL.test(message.trim()) || UUID.test(message) ? 'pass' : 'block';
+  };
+
+  const realBlockedCommand = `( cd "C:/Dev/lifeai-env.wt/guard-remedy" && git add hooks/lib/guard-rules.mjs && git commit -q -F - <<'EOF'
+fix(guards): rtp-steering-grep counted the pipeline next command as a search path
+
+A multi-paragraph body, which is the entire reason -F is being used.
+EOF
+)`;
+
+  for (const [name, cmd, want] of [
+    ['heredoc with a conventional subject passes', realBlockedCommand, 'pass'],
+    ['heredoc <<-EOF passes', "git commit -F - <<-EOF\nfix(a): b\nEOF", 'pass'],
+    ['heredoc with a quoted delimiter passes', 'git commit -F - <<"MSG"\nfix(a): b\nMSG', 'pass'],
+    ['heredoc carrying only a UUID passes', "git commit -F - <<'EOF'\nwip\n\nWork-Item: f27ff5fa-0000-4000-8000-000000000000\nEOF", 'pass'],
+    ['-m still passes', 'git commit -m "fix(x): y"', 'pass'],
+    // Negative controls — reading the message is not a bypass.
+    ['heredoc without a type or UUID still blocks', "git commit -F - <<'EOF'\nrandom words\nEOF", 'block'],
+    ['a bare commit still blocks', 'git commit', 'block'],
+    // Honest about what it cannot see, rather than calling it absent.
+    ['a real stdin pipe reports unreadable', 'cat msg.txt | git commit -q -F -', 'unreadable'],
+  ]) {
+    assert(`extract: ${name}`, verdict(cmd) === want, `got ${verdict(cmd)}, want ${want}`);
+  }
+
+  // -F <path> reads the message off disk.
+  const msgFile = join(mkdtempSync(join(tmpdir(), 'wi-msg-')), 'COMMIT_EDITMSG');
+  writeFileSync(msgFile, 'refactor(core): tidy\n\nbody\n');
+  assert('extract: -F <file> with a type passes', verdict(`git commit -F ${msgFile}`) === 'pass');
+  writeFileSync(msgFile, 'no type here\n');
+  assert('extract: -F <file> without a type still blocks', verdict(`git commit -F ${msgFile}`) === 'block');
+}
+
+// ---------------------------------------------------------------------------
 if (failures.length > 0) {
   console.error('\ncommit-capture hook tests — FAIL\n');
   for (const f of failures) console.error(`  - ${f}`);
