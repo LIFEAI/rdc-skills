@@ -1,6 +1,6 @@
 ---
 name: onramp
-description: "Usage `rdc:onramp <slug> --name \"<Display Name>\"` — Full-pipeline enrollment orchestrator for a new Place Fund project. Runs all 7 phases: enroll → research + document integration → conflict resolution → brand book + imagery → Regen Score gate → site build → deploy dev. Each phase is idempotent and resumable."
+description: "rdc:onramp (slug) - [--name, --location, --archetype, --owner, --history, --dry-run] — Full-pipeline enrollment orchestrator for a new Place Fund project"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

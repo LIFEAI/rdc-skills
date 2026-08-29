@@ -1,8 +1,6 @@
 ---
 name: help
-description: >-
-  Usage `rdc:help` or `rdc` — manifest-driven menu of all MCP skills with
-  argument syntax, requirements, decision hints, and direct MCP/curl access.
+description: "rdc:help () — list all MCP skills with usage, requirements and slash form"
 ---
 
 > **Output contract:** Checklist/table output only. No raw MCP/JSON/log dumps.

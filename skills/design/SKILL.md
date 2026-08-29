@@ -1,6 +1,6 @@
 ---
 name: design
-description: "Usage `rdc:design <topic>` — RDC-owned design work for Studio, Palette Library, and token-aware UI systems. Use for Rampant color work or design-system-first builds owned by the design cell. Not for general UI polish — use impeccable for that."
+description: "rdc:design (topic) — design Studio, palette and token-aware UI work"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

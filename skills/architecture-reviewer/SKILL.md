@@ -1,16 +1,6 @@
 ---
 name: architecture-reviewer
-description: >-
-  Usage `rdc:architecture-reviewer <path> [--config <file>] [--diff <ref>]` —
-  Clean Architecture boundary/dependency-direction/layer-separation review.
-  Runs TWO mechanical scorers first — `rdc-architecture-score` (layer
-  classification, inward-dependency rule, framework coupling, missing
-  repository/port abstractions, HTTP/DB leaks into Use Cases, circular
-  layer dependencies) and `rdc-solid-score`'s orchestrator/port boundary
-  check — then dispatches judgment-level review for the ONE thing neither
-  can see: whether an abstraction boundary makes architectural SENSE for
-  this domain, not just whether it has the right shape. Call from
-  rdc:review step 8b+, or standalone before merging a new package/module.
+description: "rdc:architecture-reviewer (path) - [--diff] — Clean Architecture boundary/dependency-direction/layer-separation review"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

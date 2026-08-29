@@ -1,11 +1,6 @@
 ---
 name: pattern-advisor
-description: >-
-  Usage `rdc:pattern-advisor <path>` — suggests an applicable design pattern
-  for a given code shape. Factory Method/Builder/Singleton/Decorator/
-  Adapter/Facade/Strategy/Observer/Command/Template Method are mechanical
-  AST checks, not LLM judgment — see `scripts/pattern-score.mjs`. Advisory
-  only; never rewrites code itself.
+description: "rdc:suggest-patterns (path) — suggests an applicable design pattern for a given code shape"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

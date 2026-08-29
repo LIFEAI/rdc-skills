@@ -1,9 +1,6 @@
 ---
 name: package-design
-description: >-
-  Usage `rdc:package-design <path>` — module boundary and export-surface
-  review: does this package expose the right things, hide the right things,
-  and sit at the right size.
+description: "rdc:check-packages (path) — module boundary and export-surface review: does this package expose the right things, hide the right things..."
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

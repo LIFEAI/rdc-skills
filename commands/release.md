@@ -1,6 +1,6 @@
 ---
-description: >-
-  Atomic release. Usage `rdc:release <repo> [version]` or `rdc:release <repo> --patch|--minor|--major|--dry-run` — bump, commit, tag, push, wait CI/publish, install, and verify. Uses repo-local release metadata.
+
+description: "rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package"
 ---
 
 # rdc:release — Generic Release

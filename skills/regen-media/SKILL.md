@@ -1,6 +1,6 @@
 ---
 name: regen-media
-description: "Usage `rdc:regen-media <generate|edit|upscale|upload> <brief-or-path>` - Primary image-generation and Regen Media asset workflow. Use for image generation, image editing/upscaling, GPT Image/gpt-image-2 requests, Codex built-in image_gen, and uploading finished images to regen-media/R2. The default path is keyless local Codex gpt-image-2 via the built-in image_gen tool; server-side regen-media MCP/API generation is fallback only."
+description: "rdc:regen-media (action, brief-or-path) - [--size, --upload] — Primary image-generation and Regen Media asset workflow"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

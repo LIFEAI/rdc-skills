@@ -1,12 +1,6 @@
 ---
 name: full-analysis
-description: >-
-  Usage `rdc:full-analysis <path> [--diff <ref>]` — runs all seven surfaces
-  (solid-validator, architecture-reviewer, clean-code-analyzer,
-  package-design, pattern-advisor, testing-strategy, and
-  pattern-refactoring-guide on anything the others flag) and merges into
-  one report. The full form/fit/function pass — use before merging a new
-  package or a significant refactor, not for routine edits.
+description: "rdc:full-analysis <path> [--diff <ref>] — run all seven review surfaces over a path"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

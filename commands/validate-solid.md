@@ -1,8 +1,6 @@
 ---
 name: validate-solid
-description: >-
-  Usage `rdc:validate-solid <path> [--diff <ref>]` — deterministic SOLID +
-  Clean Architecture scoring (FORM corner). See skills/solid-validator.
+description: "rdc:validate-solid <path> [--diff <ref>] — score SOLID and Clean Architecture deterministically"
 ---
 
 # validate-solid

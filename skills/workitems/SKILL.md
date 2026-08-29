@@ -1,6 +1,6 @@
 ---
 name: workitems
-description: "Usage `rdc:workitems [add|done|status|list|query]` — Manual work item CRUD outside the normal build flow: add to backlog, mark done, update status, list open epics, query by label."
+description: "rdc:workitems ([subcommand]) — create, update and query work items directly"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

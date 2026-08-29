@@ -1,6 +1,6 @@
 ---
 name: edit
-description: "Usage `rdc:edit <site|brand|route|file>` — open the local website editor host for a target site, brand, route, or file. Resolves the target, launches or reuses the local editor host on port 3015, and opens the target in the browser when not under `RDC_TEST=1`."
+description: "rdc:edit (target) — open the local website editor for a target"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

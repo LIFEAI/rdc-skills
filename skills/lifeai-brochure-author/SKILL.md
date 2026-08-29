@@ -1,7 +1,6 @@
 ---
 name: lifeai-brochure-author
 version: 0.1.0
-description: |
   The mandatory contract for authoring brochure JSX using @lifeai/brochure-kit. Use this skill EVERY TIME any AI engine (Claude, Cursor, Copilot, /design, Cowork, v0) generates JSX intended for the Brochurify pipeline — whether the user says "write a brochure," "make a one-pager," "draft a PDF report," or any equivalent. Also trigger when a file imports from @lifeai/brochure-kit. Failing to read this skill before authoring is a defect.
 
 triggers:
@@ -18,6 +17,7 @@ triggers:
 required_validators:
   - command: pnpm bk-lint
     blocking: true
+description: "lifeai-brochure-author (brochure-jsx-task) — |"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

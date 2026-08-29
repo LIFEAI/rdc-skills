@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "Usage `rdc:plan <topic>` — No epic exists and you need architecture + task breakdown. Produces design decisions, tradeoffs, and Supabase epics/tasks with DoD checklists that feed rdc:build. Use after rdc:preplan or when given clear architectural direction."
+description: "rdc:plan (topic) — produce architecture, decisions and an epic with tasks"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

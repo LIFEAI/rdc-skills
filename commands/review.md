@@ -1,10 +1,6 @@
 ---
 name: review
-description: >-
-  Usage `rdc:review [--unattended]` — post-build quality gate: tsc, tests,
-  stale docs, export conflicts, a mandatory pr-review-toolkit:code-reviewer
-  pass, and the form/fit/function gate (solid-validator + architecture-
-  reviewer) across modified packages. See skills/review.
+description: "rdc:review () - [--unattended] — post-build gate: tsc, tests, docs and code review"
 ---
 
 # review

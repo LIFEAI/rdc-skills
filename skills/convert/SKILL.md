@@ -1,6 +1,6 @@
 ---
 name: convert
-description: "Usage `rdc:convert <input> [--out <dir>] [--to markdown|word] [--images assets|base64|s3]` — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word via the build-corpus CLI from npm `regen.mde`. Portable: runs in any session that can reach npm — Claude Code CLI, Codex, and claude.ai can fetch + run it. Use whenever the user asks to convert an Office document, build a Markdown corpus from .docx/.pptx, turn Markdown into a .docx, or open the report in the regen-mde editor on Windows."
+description: "rdc:convert (input) - [--out, --out-same-dir, --to, --images, --equations, --inline-images, --word-template, --move-sources, --config] — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word v..."
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

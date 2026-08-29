@@ -1,7 +1,6 @@
 ---
 name: workitems
-description: >-
-  Usage `rdc:workitems <action> [args]` — create, update, query work items via Supabase RPCs. Actions: add, update, done, list, epics. Use for "add to backlog", "mark done", "show open epics", any work item CRUD.
+description: "rdc:workitems ([subcommand]) — create, update and query work items directly"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

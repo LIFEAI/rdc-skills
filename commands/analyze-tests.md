@@ -1,9 +1,6 @@
 ---
 name: analyze-tests
-description: >-
-  Usage `rdc:analyze-tests <path>` — recommends test level (unit/
-  integration/live) and shape (assertion/golden-capture) for a surface
-  (FUNCTION corner). See skills/testing-strategy.
+description: "rdc:analyze-tests <path> — recommend the test level and shape for a surface"
 ---
 
 # analyze-tests

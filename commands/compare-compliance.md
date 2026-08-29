@@ -1,9 +1,6 @@
 ---
 name: compare-compliance
-description: >-
-  Usage `rdc:compare-compliance <path> --diff <ref>` — the SOLID/Clean
-  Architecture regression gate: did this change make compliance worse than
-  `<ref>`? Wraps solid-validator's git-diff mode.
+description: "rdc:compare-compliance <path> --diff <ref> — gate a change against a ref: did compliance get worse"
 ---
 
 # compare-compliance

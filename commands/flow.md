@@ -1,7 +1,6 @@
 ---
 name: flow
-description: >-
-  Usage `rdc:flow [status|<state> ["<reason>"]|normal]` — show or set the current flow state. Flow is the single FSM surface for both work-shape (plan/design/collab/build/refactor/overnight/harness-testing) and ceremony relaxation (hotfix/maintenance). Supersedes `rdc:mode` — hotfix/maintenance are flow values now, not a separate system.
+description: "rdc:flow [status|<state> [\"<reason>\"]|normal] — show or set the flow state"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

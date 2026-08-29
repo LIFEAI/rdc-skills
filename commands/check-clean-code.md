@@ -1,8 +1,6 @@
 ---
 name: check-clean-code
-description: >-
-  Usage `rdc:check-clean-code <path> [--diff <ref>]` — naming, dead code,
-  complexity smells. See skills/clean-code-analyzer.
+description: "rdc:check-clean-code <path> [--diff <ref>] — flag naming, dead code and complexity smells"
 ---
 
 # check-clean-code

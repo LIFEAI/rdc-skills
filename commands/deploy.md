@@ -1,7 +1,6 @@
 ---
 name: deploy
-description: >-
-  Coolify ops. Usage `rdc:deploy <slug> [build-id]`, `rdc:deploy new <slug>`, `rdc:deploy maintenance <service>`, `rdc:deploy diagnose <slug>`, or `rdc:deploy audit [--fix]` — typed checklists, private-service controls, DNS decision tree, and mandatory post-deploy gates. Checklist-only output.
+description: "rdc:deploy (slug, [action]) - [--fix, --hotfix] — ship to PM2 dev; promote to Coolify production"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

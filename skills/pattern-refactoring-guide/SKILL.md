@@ -1,9 +1,6 @@
 ---
 name: pattern-refactoring-guide
-description: >-
-  Usage `rdc:pattern-refactoring-guide <path>` — turns a pattern-advisor
-  recommendation (or a solid-validator/architecture-reviewer finding) into a
-  concrete before/after refactor plan. Produces a plan, does not apply it.
+description: "rdc:get-refactoring-plan (finding) — turns a pattern-advisor recommendation (or a solid-validator/architecture-reviewer finding) into a concrete..."
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

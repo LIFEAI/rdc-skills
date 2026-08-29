@@ -1,11 +1,6 @@
 ---
 name: testing-strategy
-description: >-
-  Usage `rdc:testing-strategy <path>` — recommends the right TEST LEVEL and
-  SHAPE for a surface (unit/integration/live tier, assertion vs golden-capture),
-  not a specific test to write. The FUNCTION corner of the form/fit/function
-  model — solid-validator covers FORM, architecture-reviewer covers FIT, this
-  covers whether a surface's behavior is actually provable, and how.
+description: "rdc:testing-strategy (path) — recommends the right TEST LEVEL and SHAPE for a surface (unit/integration/live tier, assertion vs golden-ca..."
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

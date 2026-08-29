@@ -1,7 +1,6 @@
 ---
 name: preplan
-description: >-
-  Usage `rdc:preplan <topic> [--unattended]` — research best practices, analyze codebase, compare approaches, surface unknowns before committing to a plan. Produces a research doc. No decisions, no code.
+description: "rdc:preplan (topic) — research the unknowns before committing to an architecture"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

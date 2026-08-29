@@ -1,7 +1,6 @@
 ---
 name: overnight
-description: >-
-  Usage `rdc:overnight [epic-id|label=X]` — unattended overnight supervisor, chains preplan → plan → build → review → report across all high-priority epics in --unattended mode. Use for "run overnight", "build while I sleep".
+description: "rdc:overnight ([scope]) — drain the work queue unattended, end to end"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

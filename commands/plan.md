@@ -1,7 +1,6 @@
 ---
 name: plan
-description: >-
-  Usage `rdc:plan <topic> [--unattended]` — architecture doc with design decisions, tradeoffs, work packages. Creates Supabase epics/tasks. Use after rdc:preplan or when given clear architectural direction.
+description: "rdc:plan (topic) — produce architecture, decisions and an epic with tasks"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -1,6 +1,6 @@
 ---
 name: behavior-audit
-description: "Usage `rdc:behavior-audit <report-dir> [--since-days N] [--latest N] [--reprocess]` — produces a bounded, redacted Claude/Codex transcript evidence bundle, incrementally skips completed transcript hashes, and aligns candidate behavior problems to shared truth-governance rules."
+description: "rdc:behavior-audit (report-dir) - [--since-days, --latest, --reprocess] — produces a bounded, redacted Claude/Codex transcript evidence bundle, incrementally skips completed transcr..."
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

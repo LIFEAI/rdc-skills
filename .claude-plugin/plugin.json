@@ -84,7 +84,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Apply precise, channel-native formatting and content repurposing to any output: LinkedIn, Twitter/X, Slack/..."
     },
     "brochure": {
       "name": "brochure",
@@ -156,7 +157,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Turn a zip, folder, HTML file, URL, or markdown folder into a print-quality PDF brochure via Puppeteer"
     },
     "brochurify": {
       "name": "brochurify",
@@ -199,7 +201,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "|"
     },
     "lifeai-brochure-author": {
       "name": "lifeai-brochure-author",
@@ -239,7 +242,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "|"
     },
     "build": {
       "name": "build",
@@ -296,7 +300,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "execute a planned epic: dispatch, gate, ship to dev"
     },
     "co-develop": {
       "name": "co-develop",
@@ -337,7 +342,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "peer-aware Claude/Codex co-development over clauth, with ask --wait as the default delegation pattern"
     },
     "collab": {
       "name": "collab",
@@ -375,7 +381,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "run a structured agent-to-agent conversation"
     },
     "convert": {
       "name": "convert",
@@ -467,7 +474,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word v..."
     },
     "deploy": {
       "name": "deploy",
@@ -532,7 +540,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "ship to PM2 dev; promote to Coolify production"
     },
     "regen-media": {
       "name": "regen-media",
@@ -597,7 +606,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Primary image-generation and Regen Media asset workflow"
     },
     "edit": {
       "name": "edit",
@@ -633,7 +643,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "open the local website editor for a target"
     },
     "design": {
       "name": "design",
@@ -675,7 +686,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "design Studio, palette and token-aware UI work"
     },
     "fixit": {
       "name": "fixit",
@@ -721,7 +733,8 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true,
-      "constraint": "Files touched MUST be < 5 AND time MUST be < 30 min. Otherwise use rdc:plan."
+      "constraint": "Files touched MUST be < 5 AND time MUST be < 30 min. Otherwise use rdc:plan.",
+      "purpose": "make a scoped fix under 5 files and ship it to dev"
     },
     "fs-mcp": {
       "name": "fs-mcp",
@@ -756,7 +769,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Use the File System MCP bridge for live repo reads, safe writes, cloud-to-local ingest, and GitHub-branch i..."
     },
     "handoff": {
       "name": "handoff",
@@ -804,7 +818,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "turn a plan or prototype into work items and artifacts"
     },
     "help": {
       "name": "help",
@@ -828,7 +843,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "list all MCP skills with usage, requirements and slash form"
     },
     "overnight": {
       "name": "overnight",
@@ -873,7 +889,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "drain the work queue unattended, end to end"
     },
     "plan": {
       "name": "plan",
@@ -919,7 +936,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "produce architecture, decisions and an epic with tasks"
     },
     "preplan": {
       "name": "preplan",
@@ -955,7 +973,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "research the unknowns before committing to an architecture"
     },
     "prototype": {
       "name": "prototype",
@@ -997,7 +1016,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "build a JSX/TSX mockup for visual review"
     },
     "extract-verifier-rules": {
       "name": "extract-verifier-rules",
@@ -1040,7 +1060,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "|"
     },
     "rpms-filemap": {
       "name": "rpms-filemap",
@@ -1066,7 +1087,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root mani..."
     },
     "release": {
       "name": "release",
@@ -1145,7 +1167,8 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": false,
-      "production_gate": "Promotion to main/production requires explicit user go-ahead. Dev deploys do not."
+      "production_gate": "Promotion to main/production requires explicit user go-ahead. Dev deploys do not.",
+      "purpose": "bump, tag, publish and verify a package"
     },
     "report": {
       "name": "report",
@@ -1180,7 +1203,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "write the session summary to .rdc/reports/"
     },
     "refactor": {
       "name": "refactor",
@@ -1237,7 +1261,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "Governed consolidation and implementation of a cross-cutting refactor"
     },
     "review": {
       "name": "review",
@@ -1285,7 +1310,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "post-build gate: tsc, tests, docs and code review"
     },
     "self-test": {
       "name": "self-test",
@@ -1318,7 +1344,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "validate every rdc skill, the manifest and tooling"
     },
     "housekeeping": {
       "name": "housekeeping",
@@ -1361,7 +1388,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Weekly maintenance audit: directory structure verification, PUBLISH.md URL validation, CLAUDE.md freshness,..."
     },
     "status": {
       "name": "status",
@@ -1389,7 +1417,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "snapshot open epics, health, blockers and next action"
     },
     "env": {
       "name": "env",
@@ -1435,7 +1464,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Manage the LIFEAI environment harness: check status, install on a fresh box, repair broken services, or pul..."
     },
     "terminal-config": {
       "name": "terminal-config",
@@ -1470,7 +1500,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "read and safely modify Windows Terminal settings, shell profiles, and agent startup sequencing without rely..."
     },
     "watch": {
       "name": "watch",
@@ -1494,7 +1525,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "open a live session-log viewer and report its path"
     },
     "new-model": {
       "name": "new-model",
@@ -1540,7 +1572,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "Register a new Reference Model completely — the yes/no gate that prevents half-registered models"
     },
     "workitems": {
       "name": "workitems",
@@ -1579,7 +1612,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "create, update and query work items directly"
     },
     "behavior-audit": {
       "name": "behavior-audit",
@@ -1642,7 +1676,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "produces a bounded, redacted Claude/Codex transcript evidence bundle, incrementally skips completed transcr..."
     },
     "onramp": {
       "name": "onramp",
@@ -1727,7 +1762,8 @@
       "sandbox_aware": true,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": true
+      "codeflow_required": true,
+      "purpose": "Full-pipeline enrollment orchestrator for a new Place Fund project"
     },
     "solid-validator": {
       "name": "solid-validator",
@@ -1778,7 +1814,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "the FORM corner of the form/fit/function model"
     },
     "architecture-reviewer": {
       "name": "architecture-reviewer",
@@ -1823,7 +1860,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "Clean Architecture boundary/dependency-direction/layer-separation review"
     },
     "testing-strategy": {
       "name": "testing-strategy",
@@ -1856,7 +1894,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "recommends the right TEST LEVEL and SHAPE for a surface (unit/integration/live tier, assertion vs golden-ca..."
     },
     "clean-code-analyzer": {
       "name": "clean-code-analyzer",
@@ -1900,7 +1939,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "naming, dead code, function-size, and error-handling smells outside SOLID's scope (SOLID governs class/modu..."
     },
     "package-design": {
       "name": "package-design",
@@ -1935,7 +1975,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "module boundary and export-surface review: does this package expose the right things, hide the right things..."
     },
     "pattern-advisor": {
       "name": "pattern-advisor",
@@ -1970,7 +2011,8 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "suggests an applicable design pattern for a given code shape"
     },
     "pattern-refactoring-guide": {
       "name": "pattern-refactoring-guide",
@@ -2010,7 +2052,101 @@
       "sandbox_aware": false,
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
-      "codeflow_required": false
+      "codeflow_required": false,
+      "purpose": "turns a pattern-advisor recommendation (or a solid-validator/architecture-reviewer finding) into a concrete..."
+    }
+  },
+  "commands_meta": {
+    "analyze-tests": {
+      "name": "analyze-tests",
+      "slash": "rdc:analyze-tests",
+      "usage": "rdc:analyze-tests <path>",
+      "command_only": true,
+      "purpose": "recommend the test level and shape for a surface"
+    },
+    "check-clean-code": {
+      "name": "check-clean-code",
+      "slash": "rdc:check-clean-code",
+      "usage": "rdc:check-clean-code <path> [--diff <ref>]",
+      "command_only": true,
+      "purpose": "flag naming, dead code and complexity smells"
+    },
+    "check-packages": {
+      "name": "check-packages",
+      "slash": "rdc:check-packages",
+      "usage": "rdc:check-packages <path>",
+      "command_only": true,
+      "purpose": "review module boundaries and the export surface"
+    },
+    "compare-compliance": {
+      "name": "compare-compliance",
+      "slash": "rdc:compare-compliance",
+      "usage": "rdc:compare-compliance <path> --diff <ref>",
+      "command_only": true,
+      "purpose": "gate a change against a ref: did compliance get worse"
+    },
+    "flow": {
+      "name": "flow",
+      "slash": "rdc:flow",
+      "usage": "rdc:flow [status|<state> [\"<reason>\"]|normal]",
+      "command_only": true,
+      "purpose": "show or set the flow state"
+    },
+    "full-analysis": {
+      "name": "full-analysis",
+      "slash": "rdc:full-analysis",
+      "usage": "rdc:full-analysis <path> [--diff <ref>]",
+      "command_only": true,
+      "purpose": "run all seven review surfaces over a path"
+    },
+    "get-refactoring-plan": {
+      "name": "get-refactoring-plan",
+      "slash": "rdc:get-refactoring-plan",
+      "usage": "rdc:get-refactoring-plan <finding>",
+      "command_only": true,
+      "purpose": "turn a finding into a step-ordered before/after plan"
+    },
+    "mode": {
+      "name": "mode",
+      "slash": "rdc:mode",
+      "usage": "rdc:mode [status|hotfix \"<reason>\" [minutes]|normal]",
+      "command_only": true,
+      "purpose": "show or set the operating mode"
+    },
+    "quick-check": {
+      "name": "quick-check",
+      "slash": "rdc:quick-check",
+      "usage": "rdc:quick-check <path>",
+      "command_only": true,
+      "purpose": "fast mechanical pass: SOLID score and boundary check"
+    },
+    "recover": {
+      "name": "recover",
+      "slash": "rdc:recover",
+      "usage": "rdc:recover [list|start]",
+      "command_only": true,
+      "purpose": "detect, repair and resume after a crash"
+    },
+    "review-arch": {
+      "name": "review-arch",
+      "slash": "rdc:review-arch",
+      "usage": "rdc:review-arch <path> [--diff <ref>]",
+      "command_only": true,
+      "purpose": "review layering and dependency direction"
+    },
+    "suggest-patterns": {
+      "name": "suggest-patterns",
+      "slash": "rdc:suggest-patterns",
+      "usage": "rdc:suggest-patterns <path>",
+      "command_only": true,
+      "purpose": "suggest design patterns; \"none needed\" is a valid verdict"
+    },
+    "validate-solid": {
+      "name": "validate-solid",
+      "slash": "rdc:validate-solid",
+      "usage": "rdc:validate-solid <path> [--diff <ref>]",
+      "command_only": true,
+      "purpose": "score SOLID and Clean Architecture deterministically"
     }
   }
 }

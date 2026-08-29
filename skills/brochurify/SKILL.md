@@ -1,7 +1,6 @@
 ---
 name: brochurify
 version: 0.1.0
-description: |
   Orchestrate a Brochurify job from source ingest through delivered PDF, using six parallel-dispatched typed sub-agents and the convergence loop. Use this skill EVERY TIME the user invokes Brochurify directly via "brochurify this", "make a brochure from", "convert this to a brochure PDF", or "rdc:brochurify". Also runs automatically when a job arrives from the broker via monkey_dispatch. The skill enforces D-001 through D-016 from the brochurify DECISIONS-LOG.
 triggers:
   - "rdc:brochurify"
@@ -10,6 +9,7 @@ triggers:
   - "convert to brochure PDF"
   - "generate brochure from"
   - monkey_dispatch payload with skill="brochurify"
+description: "rdc:brochurify (source) — |"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

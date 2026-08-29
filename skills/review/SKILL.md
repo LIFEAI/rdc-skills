@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Usage `rdc:review [--unattended]` — Post-build quality gate: tsc, tests, stale docs, export conflicts, and a mandatory pr-review-toolkit:code-reviewer pass across modified packages. Fixes what it can automatically, escalates the rest. Call after rdc:build and before merging to main."
+description: "rdc:review () - [--unattended] — post-build gate: tsc, tests, docs and code review"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

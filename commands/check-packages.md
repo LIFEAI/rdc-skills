@@ -1,8 +1,6 @@
 ---
 name: check-packages
-description: >-
-  Usage `rdc:check-packages <path>` — module boundary and export-surface
-  review. See skills/package-design.
+description: "rdc:check-packages <path> — review module boundaries and the export surface"
 ---
 
 # check-packages

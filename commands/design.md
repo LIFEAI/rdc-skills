@@ -1,7 +1,6 @@
 ---
 name: design
-description: >-
-  Usage `rdc:design <command|brief>` — RDC-owned design skill for Studio, Palette Library, token-aware UI work, and Rampa CLI-assisted color systems.
+description: "rdc:design (topic) — design Studio, palette and token-aware UI work"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

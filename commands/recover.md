@@ -1,7 +1,6 @@
 ---
 name: recover
-description: >-
-  Usage `rdc:recover [list|start]` — deterministic post-crash recovery: detect, repair (CodeFlow/PM2 only), verify, then find and resume abandoned Claude/Codex worktree-lane sessions.
+description: "rdc:recover [list|start] — detect, repair and resume after a crash"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

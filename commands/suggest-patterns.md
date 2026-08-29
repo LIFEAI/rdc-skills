@@ -1,9 +1,6 @@
 ---
 name: suggest-patterns
-description: >-
-  Usage `rdc:suggest-patterns <path>` — design pattern suggestions,
-  advisory only, "no pattern needed" is a valid verdict. See
-  skills/pattern-advisor.
+description: "rdc:suggest-patterns <path> — suggest design patterns; \"none needed\" is a valid verdict"
 ---
 
 # suggest-patterns

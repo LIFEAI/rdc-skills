@@ -1,6 +1,6 @@
 ---
 name: build
-description: "Usage `rdc:build <epic-id>` — You have a planned epic with tasks ready to execute. Dispatches parallel typed agents, each commits atomically to develop, runs a mandatory per-wave code-review gate (pr-review-toolkit:code-reviewer), closes work items, and runs the validator gate. Call after rdc:plan or when told to build."
+description: "rdc:build (epic-id) - [--no-review] — execute a planned epic: dispatch, gate, ship to dev"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -40,8 +40,8 @@ assert.match(docs.readme, /Nineteen[\s\S]*\/rdc:\*` command shorthands/i, 'READM
 assert.match(docs.readme, /Use `rdc_skill_list` for the authoritative live catalog/, 'README should point callers to live MCP catalog');
 assert.doesNotMatch(docs.readme, /All user-invocable skills become available as slash commands/, 'README must not imply all MCP skills are slash commands');
 assert.doesNotMatch(docs.readme, /29 skills organized into 6 categories/, 'README must not carry stale category count');
-assert.match(docs.commandHelp, /menu of all MCP skills/, 'command help should refer to MCP skill catalog');
-assert.match(docs.skillHelp, /Show all MCP skills/, 'skill help should refer to MCP skill catalog');
+assert.match(docs.commandHelp, /all MCP skills/, 'command help should refer to MCP skill catalog');
+assert.match(docs.skillHelp, /all MCP skills/, 'skill help should refer to MCP skill catalog');
 assert.match(docs.skillHelp, /manifest-driven/i, 'skill help should be manifest-driven');
 assert.match(docs.commandHelp, /manifest-driven/i, 'command help should be manifest-driven');
 assert.doesNotMatch(docs.commandHelp, /Print the full usage menu below verbatim/, 'command help must not use stale static menu wording');

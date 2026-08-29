@@ -1,7 +1,6 @@
 ---
 name: self-test
-description: >-
-  Usage `rdc:self-test [--strict] [--skill <name>] [--json] [--fix] [--tier2] [--parallel <n>] [--quick]` — validates every rdc-*.md skill: frontmatter, Usage marker, name↔filename match, referenced guides/rules/hooks exist, output contract banner, plugin manifest, duplicate-name + collision checks. Tier 1 static lint; Tier 2 behavioral runs via headless Claude or Codex in isolated worktrees + Supabase branch. Run before every release.
+description: "rdc:self-test () - [--strict] — validate every rdc skill, the manifest and tooling"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

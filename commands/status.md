@@ -1,7 +1,6 @@
 ---
 name: status
-description: >-
-  Usage `rdc:status` — open epics, work items by project, Coolify health, blockers, next recommended action. Read-only situational awareness.
+description: "rdc:status () — snapshot open epics, health, blockers and next action"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

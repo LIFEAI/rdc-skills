@@ -9,13 +9,7 @@ triggers:
   - register model
   - new model for
   - model registration check
-description: >
-  Register a new Reference Model completely — the yes/no gate that prevents half-registered models.
-  A reference model is DEFINED as registered in all four homes: (1) RPMS project_nodes row
-  (node_type=reference_model), (2) apps/vlas route group /models/<slug>, (3) apps/vlas
-  src/data/models/<slug> definitions, (4) global-corpus Drive directory. If ANY of the four is
-  missing, the model does not exist yet — run this skill.
-  Trigger when asked to create, register, or check whether a reference model exists.
+description: "rdc:new-model (slug-or-model-brief) — Register a new Reference Model completely — the yes/no gate that prevents half-registered models"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

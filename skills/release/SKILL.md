@@ -1,6 +1,6 @@
 ---
 name: release
-description: "Usage `rdc:release <repo> [version|--patch|--minor|--major|--dry-run]` — bump, commit, tag, push, wait for CI/publish, install, and verify a package or project using repo-local release metadata."
+description: "rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

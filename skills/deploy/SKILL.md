@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: "Usage `rdc:deploy <slug> [promote|diagnose|audit|convert]` — registry-resolved PM2 development deployment and Coolify production promotion through clauth's bearer-authenticated job control plane, with status receipts and mandatory content gates."
+description: "rdc:deploy (slug, [action]) - [--fix, --hotfix] — ship to PM2 dev; promote to Coolify production"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

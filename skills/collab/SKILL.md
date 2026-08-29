@@ -1,6 +1,6 @@
 ---
 name: collab
-description: "Usage `rdc:collab <collaborator> [inbound] <topic>` — Structured agent-to-agent CONVERSATION with Codex, a local LLM, a Claude agent, or a claude.ai session. Converges on a decision and never writes to the repo — work that needs writing becomes a work item for rdc:build. Run `rdc:collab status <peer>` first — both sides emit probed capability state. Every dispatch carries a response contract."
+description: "rdc:collab () - [--session] — run a structured agent-to-agent conversation"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

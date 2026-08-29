@@ -1,9 +1,6 @@
 ---
 name: quick-check
-description: >-
-  Usage `rdc:quick-check <path>` — fast mechanical-only pass: solid-validator
-  score + boundary check. No dispatched judgment agents. For a tight
-  iteration loop, not a merge gate.
+description: "rdc:quick-check <path> — fast mechanical pass: SOLID score and boundary check"
 ---
 
 # quick-check

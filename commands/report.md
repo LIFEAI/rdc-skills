@@ -1,7 +1,6 @@
 ---
 name: report
-description: >-
-  Usage `rdc:report [--unattended]` — nightly markdown report, writes to .rdc/reports/YYYY-MM-DD.md. Covers completed/open work items, per-project progress, infra status, git stats, test counts.
+description: "rdc:report () — write the session summary to .rdc/reports/"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

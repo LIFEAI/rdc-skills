@@ -1,7 +1,6 @@
 ---
 name: watch
-description: >-
-  Usage `rdc:watch` — initialize a session-log viewer and report its path; open it only during attended, non-test use. Zero infra, pure filesystem + static HTML.
+description: "rdc:watch () — open a live session-log viewer and report its path"
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

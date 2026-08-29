@@ -1,7 +1,6 @@
 ---
 name: extract-verifier-rules
 version: 0.1.0
-description: |
   Read recent enhancement-log entries, cluster failures by pattern, generate candidate verifier rules, test them against the known-good corpus and the failure corpus, and propose pull requests adding the highest-confidence rules to forbidden-patterns.json. Use this skill on a nightly cadence (3 AM PT), or manually when the user says "extract verifier rules", "promote enhancement log", "what new rules should we add", or after a significant brochure run produced many failures.
 triggers:
   - "rdc:extract-verifier-rules"
@@ -10,6 +9,7 @@ triggers:
   - "what new rules should we add"
   - "verifier corpus update"
   - nightly cron at 3:00 AM PT
+description: "rdc:extract-verifier-rules ([enhancement-log]) — |"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

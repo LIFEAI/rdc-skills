@@ -228,10 +228,23 @@ try {
 // the user installed.
 
 {
-  const pack = spawnSync('npm', ['pack', '--dry-run'], {
+  // `--json`, and loglevel forced.
+  //
+  // This read the human file listing, which npm prints at `notice` level. Run
+  // under `npm run --silent`, npm exports npm_config_loglevel=silent to every
+  // child, the listing vanishes, and the assertion reports "clauth-plugin.json
+  // must be present in the published tarball" — a packaging failure that is not
+  // happening. Measured 2026-08-29: PASS standalone, FAIL under --silent, with
+  // the file present in the tarball both times.
+  //
+  // A test whose verdict depends on the verbosity of the command that invoked
+  // it is a test that will eventually accuse the wrong thing. `--json` is a
+  // contract; the file listing is output formatting.
+  const pack = spawnSync('npm', ['pack', '--dry-run', '--json'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     shell: process.platform === 'win32',
+    env: { ...process.env, npm_config_loglevel: 'notice' },
   });
   assert.equal(pack.status, 0, `npm pack --dry-run failed:\n${pack.stdout}\n${pack.stderr}`);
   const packOutput = `${pack.stdout}\n${pack.stderr}`;

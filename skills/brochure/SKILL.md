@@ -1,6 +1,6 @@
 ---
 name: brochure
-description: "Usage `rdc:brochure <input> [--out <path>] [--template <name>] [--format Letter|A4]` — Turn a zip, folder, HTML file, URL, or markdown folder into a print-quality PDF brochure via Puppeteer. Auto-detects print-variant HTML, honors @page CSS, falls back to a Studio-token-aware template when no HTML exists."
+description: "rdc:brochure (input) - [--out, --template, --format, --margin, --no-print-emulate, --keep-workdir] — Turn a zip, folder, HTML file, URL, or markdown folder into a print-quality PDF brochure via Puppeteer"
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.
