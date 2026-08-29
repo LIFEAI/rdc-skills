@@ -1,6 +1,6 @@
 ---
 name: release
-description: "rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package"
+description: rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

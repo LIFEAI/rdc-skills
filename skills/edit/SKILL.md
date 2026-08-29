@@ -1,6 +1,6 @@
 ---
 name: edit
-description: "rdc:edit (target) — open the local website editor for a target"
+description: rdc:edit (target) — open the local website editor for a target
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

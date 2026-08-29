@@ -1,6 +1,6 @@
 ---
 name: design
-description: "rdc:design (topic) — design Studio, palette and token-aware UI work"
+description: rdc:design (topic) — design Studio, palette and token-aware UI work
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

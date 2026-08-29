@@ -1,6 +1,6 @@
 ---
 name: quick-check
-description: "rdc:quick-check <path> — fast mechanical pass: SOLID score and boundary check"
+description: rdc:quick-check <path> — fast mechanical pass, SOLID score and boundary check
 ---
 
 # quick-check

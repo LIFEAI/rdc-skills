@@ -1,6 +1,6 @@
 ---
 
-description: "rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package"
+description: rdc:release (repo, [version]) - [--patch, --minor, --major, --dry-run] — bump, tag, publish and verify a package
 ---
 
 # rdc:release — Generic Release

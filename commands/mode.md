@@ -1,6 +1,6 @@
 ---
 name: mode
-description: "rdc:mode [status|hotfix \"<reason>\" [minutes]|normal] — show or set the operating mode"
+description: rdc:mode [status|hotfix "<reason>" [minutes]|normal] — show or set the operating mode
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

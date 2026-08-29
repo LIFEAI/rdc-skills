@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "rdc:plan (topic) — produce architecture, decisions and an epic with tasks"
+description: rdc:plan (topic) — produce architecture, decisions and an epic with tasks
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

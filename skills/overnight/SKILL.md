@@ -1,6 +1,6 @@
 ---
 name: overnight
-description: "rdc:overnight ([scope]) — drain the work queue unattended, end to end"
+description: rdc:overnight ([scope]) — drain the work queue unattended, end to end
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

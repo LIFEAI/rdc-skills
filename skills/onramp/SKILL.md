@@ -1,6 +1,6 @@
 ---
 name: onramp
-description: "rdc:onramp (slug) - [--name, --location, --archetype, --owner, --history, --dry-run] — Full-pipeline enrollment orchestrator for a new Place Fund project"
+description: rdc:onramp (slug) - [--name, --location, --archetype, --owner, --history, --dry-run] — Full-pipeline enrollment orchestrator for a new Place Fund project
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

@@ -1,6 +1,6 @@
 ---
 name: suggest-patterns
-description: "rdc:suggest-patterns <path> — suggest design patterns; \"none needed\" is a valid verdict"
+description: rdc:suggest-patterns <path> — suggest design patterns; "none needed" is a valid verdict
 ---
 
 # suggest-patterns

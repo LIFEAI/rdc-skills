@@ -1,6 +1,6 @@
 ---
 name: compare-compliance
-description: "rdc:compare-compliance <path> --diff <ref> — gate a change against a ref: did compliance get worse"
+description: rdc:compare-compliance <path> --diff <ref> — gate a change against a ref, did compliance get worse
 ---
 
 # compare-compliance

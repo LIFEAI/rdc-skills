@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: "rdc:deploy (slug, [action]) - [--fix, --hotfix] — ship to PM2 dev; promote to Coolify production"
+description: rdc:deploy (slug, [action]) - [--fix, --hotfix] — ship to PM2 dev; promote to Coolify production
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

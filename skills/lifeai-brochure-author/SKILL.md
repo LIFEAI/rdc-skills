@@ -17,7 +17,7 @@ triggers:
 required_validators:
   - command: pnpm bk-lint
     blocking: true
-description: "lifeai-brochure-author (brochure-jsx-task) — |"
+description: lifeai-brochure-author (brochure-jsx-task) — |
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: "rdc:handoff () - [--from-prototype] — turn a plan or prototype into work items and artifacts"
+description: rdc:handoff () - [--from-prototype] — turn a plan or prototype into work items and artifacts
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

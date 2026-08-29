@@ -1,6 +1,6 @@
 ---
 name: review-arch
-description: "rdc:review-arch <path> [--diff <ref>] — review layering and dependency direction"
+description: rdc:review-arch <path> [--diff <ref>] — review layering and dependency direction
 ---
 
 # review-arch

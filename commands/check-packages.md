@@ -1,6 +1,6 @@
 ---
 name: check-packages
-description: "rdc:check-packages <path> — review module boundaries and the export surface"
+description: rdc:check-packages <path> — review module boundaries and the export surface
 ---
 
 # check-packages

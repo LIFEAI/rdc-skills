@@ -9,7 +9,7 @@ triggers:
   - register model
   - new model for
   - model registration check
-description: "rdc:new-model (slug-or-model-brief) — Register a new Reference Model completely — the yes/no gate that prevents half-registered models"
+description: rdc:new-model (slug-or-model-brief) — Register a new Reference Model completely — the yes/no gate that prevents half-registered models
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

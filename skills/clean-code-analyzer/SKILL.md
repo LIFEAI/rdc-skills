@@ -1,6 +1,6 @@
 ---
 name: clean-code-analyzer
-description: "rdc:check-clean-code (path) - [--diff] — naming, dead code, function-size, and error-handling smells outside SOLID's scope (SOLID governs class/modu..."
+description: rdc:check-clean-code (path) - [--diff] — naming, dead code, function-size, and error-handling smells outside SOLID's scope (SOLID governs class/modu...
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

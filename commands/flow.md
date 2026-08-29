@@ -1,6 +1,6 @@
 ---
 name: flow
-description: "rdc:flow [status|<state> [\"<reason>\"]|normal] — show or set the flow state"
+description: rdc:flow [status|<state> ["<reason>"]|normal] — show or set the flow state
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

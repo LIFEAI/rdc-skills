@@ -1,6 +1,6 @@
 ---
 name: get-refactoring-plan
-description: "rdc:get-refactoring-plan <finding> — turn a finding into a step-ordered before/after plan"
+description: rdc:get-refactoring-plan <finding> — turn a finding into a step-ordered before/after plan
 ---
 
 # get-refactoring-plan

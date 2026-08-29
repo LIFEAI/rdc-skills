@@ -1,6 +1,6 @@
 ---
 name: status
-description: "rdc:status () — snapshot open epics, health, blockers and next action"
+description: rdc:status () — snapshot open epics, health, blockers and next action
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

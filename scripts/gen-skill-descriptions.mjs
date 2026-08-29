@@ -99,7 +99,15 @@ function setDescription(file, description) {
   const body = fm[1];
   // description: may be plain, quoted, or a >- folded block spanning lines.
   const stripped = body.replace(/^description:\s*(?:>-?\s*\n(?:[ \t]+.*\n?)*|.*\n?)/m, '');
-  const rebuilt = `${stripped.replace(/\n+$/, '')}\ndescription: ${JSON.stringify(description)}`;
+  // Emit a PLAIN YAML scalar when it is safe to. JSON.stringify always quotes,
+  // and consumers that read the frontmatter naively then render the quotes as
+  // part of the description — the installed command list showed
+  //   /rdc:build   "rdc:build (epic-id) - [--no-review] — ..."
+  // quotes and all. A plain scalar is only unsafe if it starts with a YAML
+  // indicator or contains ": " (which would read as a key), so check for
+  // exactly that and quote only then.
+  const needsQuotes = /^[[{"'&*#|>%@`!-]/.test(description) || /:\s/.test(description) || /\s#/.test(description);
+  const rebuilt = `${stripped.replace(/\n+$/, '')}\ndescription: ${needsQuotes ? JSON.stringify(description) : description}`;
   const out = src.replace(fm[0], `---\n${rebuilt}\n---`);
   if (out === src) return { changed: false };
   if (!CHECK) writeFileSync(file, out);

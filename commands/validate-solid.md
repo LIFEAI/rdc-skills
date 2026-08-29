@@ -1,6 +1,6 @@
 ---
 name: validate-solid
-description: "rdc:validate-solid <path> [--diff <ref>] — score SOLID and Clean Architecture deterministically"
+description: rdc:validate-solid <path> [--diff <ref>] — score SOLID and Clean Architecture deterministically
 ---
 
 # validate-solid

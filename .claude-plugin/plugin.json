@@ -301,7 +301,7 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true,
-      "purpose": "execute a planned epic: dispatch, gate, ship to dev"
+      "purpose": "execute a planned epic, then gate and ship to dev"
     },
     "co-develop": {
       "name": "co-develop",
@@ -1311,7 +1311,7 @@
       "output_contract": "guides/output-contract.md",
       "enabled_default": true,
       "codeflow_required": true,
-      "purpose": "post-build gate: tsc, tests, docs and code review"
+      "purpose": "post-build gate over tsc, tests, docs and code review"
     },
     "self-test": {
       "name": "self-test",
@@ -2083,7 +2083,7 @@
       "slash": "rdc:compare-compliance",
       "usage": "rdc:compare-compliance <path> --diff <ref>",
       "command_only": true,
-      "purpose": "gate a change against a ref: did compliance get worse"
+      "purpose": "gate a change against a ref, did compliance get worse"
     },
     "flow": {
       "name": "flow",
@@ -2118,7 +2118,7 @@
       "slash": "rdc:quick-check",
       "usage": "rdc:quick-check <path>",
       "command_only": true,
-      "purpose": "fast mechanical pass: SOLID score and boundary check"
+      "purpose": "fast mechanical pass, SOLID score and boundary check"
     },
     "recover": {
       "name": "recover",

@@ -1,6 +1,6 @@
 ---
 name: help
-description: "rdc:help () — list all MCP skills with usage, requirements and slash form"
+description: rdc:help () — list all MCP skills with usage, requirements and slash form
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

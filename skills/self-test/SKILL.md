@@ -1,6 +1,6 @@
 ---
 name: self-test
-description: "rdc:self-test () - [--strict] — validate every rdc skill, the manifest and tooling"
+description: rdc:self-test () - [--strict] — validate every rdc skill, the manifest and tooling
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

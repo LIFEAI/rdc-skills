@@ -1,6 +1,6 @@
 ---
 name: fixit
-description: "rdc:fixit (description) — make a scoped fix under 5 files and ship it to dev"
+description: rdc:fixit (description) — make a scoped fix under 5 files and ship it to dev
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

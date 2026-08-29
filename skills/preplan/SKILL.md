@@ -1,6 +1,6 @@
 ---
 name: preplan
-description: "rdc:preplan (topic) — research the unknowns before committing to an architecture"
+description: rdc:preplan (topic) — research the unknowns before committing to an architecture
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

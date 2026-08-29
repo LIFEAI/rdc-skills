@@ -1,6 +1,6 @@
 ---
 name: watch
-description: "rdc:watch () — open a live session-log viewer and report its path"
+description: rdc:watch () — open a live session-log viewer and report its path
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

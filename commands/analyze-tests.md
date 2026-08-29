@@ -1,6 +1,6 @@
 ---
 name: analyze-tests
-description: "rdc:analyze-tests <path> — recommend the test level and shape for a surface"
+description: rdc:analyze-tests <path> — recommend the test level and shape for a surface
 ---
 
 # analyze-tests

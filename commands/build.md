@@ -1,6 +1,6 @@
 ---
 name: build
-description: "rdc:build (epic-id) - [--no-review] — execute a planned epic: dispatch, gate, ship to dev"
+description: rdc:build (epic-id) - [--no-review] — execute a planned epic, then gate and ship to dev
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

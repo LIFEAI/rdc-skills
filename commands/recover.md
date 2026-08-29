@@ -1,6 +1,6 @@
 ---
 name: recover
-description: "rdc:recover [list|start] — detect, repair and resume after a crash"
+description: rdc:recover [list|start] — detect, repair and resume after a crash
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

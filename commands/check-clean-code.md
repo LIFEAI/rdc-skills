@@ -1,6 +1,6 @@
 ---
 name: check-clean-code
-description: "rdc:check-clean-code <path> [--diff <ref>] — flag naming, dead code and complexity smells"
+description: rdc:check-clean-code <path> [--diff <ref>] — flag naming, dead code and complexity smells
 ---
 
 # check-clean-code

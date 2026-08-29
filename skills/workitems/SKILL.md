@@ -1,6 +1,6 @@
 ---
 name: workitems
-description: "rdc:workitems ([subcommand]) — create, update and query work items directly"
+description: rdc:workitems ([subcommand]) — create, update and query work items directly
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

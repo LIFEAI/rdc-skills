@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: "rdc:prototype (description) — build a JSX/TSX mockup for visual review"
+description: rdc:prototype (description) — build a JSX/TSX mockup for visual review
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

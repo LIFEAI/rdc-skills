@@ -1,6 +1,6 @@
 ---
 name: review
-description: "rdc:review () - [--unattended] — post-build gate: tsc, tests, docs and code review"
+description: rdc:review () - [--unattended] — post-build gate over tsc, tests, docs and code review
 ---
 
 # review

@@ -1,6 +1,6 @@
 ---
 name: help
-description: "rdc:help () — list all MCP skills with usage, requirements and slash form"
+description: rdc:help () — list all MCP skills with usage, requirements and slash form
 ---
 
 > **Output contract:** Checklist/table output only. No raw MCP/JSON/log dumps.

@@ -1,6 +1,6 @@
 ---
 name: full-analysis
-description: "rdc:full-analysis <path> [--diff <ref>] — run all seven review surfaces over a path"
+description: rdc:full-analysis <path> [--diff <ref>] — run all seven review surfaces over a path
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

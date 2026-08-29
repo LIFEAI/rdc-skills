@@ -1,6 +1,6 @@
 ---
 name: architecture-reviewer
-description: "rdc:architecture-reviewer (path) - [--diff] — Clean Architecture boundary/dependency-direction/layer-separation review"
+description: rdc:architecture-reviewer (path) - [--diff] — Clean Architecture boundary/dependency-direction/layer-separation review
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

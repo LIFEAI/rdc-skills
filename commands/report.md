@@ -1,6 +1,6 @@
 ---
 name: report
-description: "rdc:report () — write the session summary to .rdc/reports/"
+description: rdc:report () — write the session summary to .rdc/reports/
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

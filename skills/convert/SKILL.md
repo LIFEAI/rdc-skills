@@ -1,6 +1,6 @@
 ---
 name: convert
-description: "rdc:convert (input) - [--out, --out-same-dir, --to, --images, --equations, --inline-images, --word-template, --move-sources, --config] — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word v..."
+description: rdc:convert (input) - [--out, --out-same-dir, --to, --images, --equations, --inline-images, --word-template, --move-sources, --config] — Convert .docx/.pptx/.ppt → Markdown (Word OMML equations as KaTeX TeX, tables, images) or Markdown → Word v...
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

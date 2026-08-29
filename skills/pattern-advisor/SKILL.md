@@ -1,6 +1,6 @@
 ---
 name: pattern-advisor
-description: "rdc:suggest-patterns (path) — suggests an applicable design pattern for a given code shape"
+description: rdc:suggest-patterns (path) — suggests an applicable design pattern for a given code shape
 ---
 
 > If dispatching subagents or running as a subagent: read `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` first (fallback: `.rdc/guides/agent-bootstrap.md`) — this is also where the global rdc-harness-use policy for create/open/build/deploy work lives.

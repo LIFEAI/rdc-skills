@@ -1,6 +1,6 @@
 ---
 name: co-develop
-description: "rdc:co-develop (subcommand) - [--wait] — peer-aware Claude/Codex co-development over clauth, with ask --wait as the default delegation pattern"
+description: rdc:co-develop (subcommand) - [--wait] — peer-aware Claude/Codex co-development over clauth, with ask --wait as the default delegation pattern
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`

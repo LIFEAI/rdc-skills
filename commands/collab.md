@@ -1,6 +1,6 @@
 ---
 name: collab
-description: "rdc:collab () - [--session] — run a structured agent-to-agent conversation"
+description: rdc:collab () - [--session] — run a structured agent-to-agent conversation
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
