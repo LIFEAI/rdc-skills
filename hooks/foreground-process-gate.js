@@ -25,6 +25,33 @@
  */
 const hookLog = require('./hook-logger');
 
+/**
+ * The mitigator — OPTIONAL, because this hook crosses a repo boundary.
+ *
+ * EVERY BLOCK ROUTES THROUGH THE MITIGATOR (operator: "any block"). Audited
+ * 2026-08-30: 9 PreToolUse hooks wired, only the two guard dispatchers called
+ * mitigate(), so seven families refused with no repeat count and no
+ * classification — the signal that caught rtp-steering-grep being wrong in
+ * BOTH directions.
+ *
+ * This file ships in rdc-skills and installs to ~/.claude/hooks. The mitigator
+ * lives in lifeai-env, which is a SEPARATE repo that a consumer of this package
+ * may not have. So the import is best-effort and its absence is not an error:
+ * the block still lands, it simply arrives unannotated. A refusal that depended
+ * on a sibling repo being installed would be worse than no annotation at all.
+ */
+let mitigator = null;
+async function loadMitigator() {
+  try {
+    const path = require('node:path');
+    const fs = require('node:fs');
+    const envRoot = process.env.LIFEAI_ENV || 'C:/Dev/lifeai-env';
+    const file = path.join(envRoot, 'hooks', 'lib', 'guard-mitigator.mjs');
+    if (!fs.existsSync(file)) return;          // no lifeai-env here — that is fine
+    mitigator = await import(require('node:url').pathToFileURL(file).href);
+  } catch { /* annotation is never load-bearing */ }
+}
+
 function readStdin() {
   return new Promise((resolve) => {
     let input = '';
@@ -37,8 +64,28 @@ function readStdin() {
 
 function block(message, details = {}) {
   hookLog('foreground-process-gate', 'PreToolUse', 'block', details);
+
+  let mitigation = '';
+  try {
+    if (mitigator) {
+      // details.kind already distinguishes the two refusals, so the rule id is
+      // taken from it rather than parsed out of the message — guard-mitigator
+      // keys on (rule id, argv shape) and explicitly forbids reading wording.
+      mitigation = mitigator.mitigationLine(mitigator.mitigate(
+        {
+          rule: `foreground-process-gate-${details.kind || 'unknown'}`,
+          cmd: blockSubject,
+          cwd: process.cwd(),
+          dir: mitigator.blockLedgerDir(),
+          sessionId: process.env.LIFEAI_SESSION_ID,
+        },
+        { evaluate: null },   // a headed-browser refusal has no command to re-evaluate
+      ));
+    }
+  } catch { /* annotation is never load-bearing */ }
+
   process.stdout.write(JSON.stringify({
-    systemMessage: `HARD BLOCK — Foreground process launch rejected.\n\n${message}`,
+    systemMessage: `HARD BLOCK — Foreground process launch rejected.\n\n${message}${mitigation ? `\n\n${mitigation}` : ''}`,
   }));
   process.exit(1);
 }
@@ -72,11 +119,19 @@ function checkPlaywright(command) {
   }
 }
 
+let blockSubject = '';
+
 async function main() {
   let raw;
   try { raw = JSON.parse(await readStdin()); } catch { process.exit(0); }
   const command = toolText(raw);
   if (!command) pass({ reason: 'no-command' });
+
+  // Preload BEFORE any check can block, so block() stays synchronous. The
+  // subject is the command itself, so repeated attempts at the SAME shape
+  // register as repeats rather than as unrelated events.
+  await loadMitigator();
+  blockSubject = command;
 
   checkPlaywright(command);
 
