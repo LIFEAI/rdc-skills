@@ -334,6 +334,7 @@ skills/
   lifeai-brochure-author/SKILL.md (brochure JSX authoring)
   new-model/SKILL.md   (reference model registration gate)
   onramp/SKILL.md      (Place Fund phase-1 enrollment)
+  open/SKILL.md        (orient first: position, target, harness shape)
   overnight/SKILL.md   (unattended multi-epic supervisor)
   package-design/SKILL.md (module boundary and export-surface review)
   pattern-advisor/SKILL.md (design pattern suggestions, advisory only)

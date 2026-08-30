@@ -1,6 +1,6 @@
 {
   "name": "rdc",
-  "version": "0.35.11",
+  "version": "0.35.12",
   "description": "RDC typed-agent dispatch skill suite for Claude Code — plan, build, review, overnight unattended builds with work-item tracking and TDD enforcement.",
   "author": {
     "name": "LIFEAI",
@@ -2054,6 +2054,48 @@
       "enabled_default": true,
       "codeflow_required": false,
       "purpose": "turns a pattern-advisor recommendation (or a solid-validator/architecture-reviewer finding) into a concrete..."
+    },
+    "open": {
+      "name": "open",
+      "slash": "rdc:open",
+      "category": "dev-loop",
+      "usage": "rdc:open [<slug>]",
+      "args": {
+        "positional": [
+          {
+            "name": "slug",
+            "required": false,
+            "description": "registry slug to resolve; omit for position only",
+            "accepts": "string"
+          }
+        ],
+        "flags": []
+      },
+      "requires": [
+        "supabase",
+        "git"
+      ],
+      "produces": [],
+      "default_model": "haiku",
+      "triggers": [
+        "where am i",
+        "orient",
+        "what is this slug",
+        "open the target",
+        "before i start"
+      ],
+      "follows": [],
+      "leads_to": [
+        "flow",
+        "plan",
+        "build",
+        "deploy"
+      ],
+      "sandbox_aware": false,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false,
+      "purpose": "orient before working: position, target from the registry, and the harness shape"
     }
   },
   "commands_meta": {
