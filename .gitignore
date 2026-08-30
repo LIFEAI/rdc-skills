@@ -56,3 +56,7 @@ dist/
 # git-rev-parse fallback. npm-installed copies still get it stamped fresh at
 # pack time regardless of gitignore.
 git-sha.json
+
+# Machine-local PM2 process definition — unregistered by design.
+# Deployment config lives in the Supabase registry (app_deployments), not a file.
+ecosystem.local.config.cjs
