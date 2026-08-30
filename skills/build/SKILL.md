@@ -76,14 +76,14 @@ Read the task title and description, then:
    ```sql
    SELECT get_work_items_by_epic('<epic-id>');
    ```
-   - Read `design_review_state` and `status` for every executable child.
-   - Only `automatic_approved`, `human_approved`, or legacy `not_required` rows may be considered for dispatch.
-   - For `pending`, `needs_human`, or `rejected`, write an `admission_refocus` receipt, keep the child blocked, and route it to the reviewer/planner. **Do not dispatch it, retry it, or call the epic complete.**
+   - Read `design_review_required`, `design_review_state`, and `status` for every executable child.
+   - Ordinary rows (`design_review_required = false`) may be considered for dispatch regardless of a legacy state. Only an explicitly opted-in row requires `automatic_approved` or `human_approved`.
+   - For an explicitly opted-in row in `pending`, `needs_human`, or `rejected`, write an `admission_refocus` receipt, keep the child blocked, and route it to the reviewer/planner. **Do not dispatch it, retry it, or call the epic complete.**
 
 1a. **Run the durable CodeFlow supervisor before each wave and after every gate-changing action.**
    - Invoke `runOrchestrator()` with the project manifest, `SupabaseStateStore`, and the real phase dispatcher. It is the sole authority for resuming/refocusing a phase DAG; do not reconstruct waves by hand from task prose.
-   - A returned `admission_refocus` or `pipeline_blocked` is a durable hold, not a failed attempt to work around. Preserve its task state and route the required Design Review or validator closure.
-   - Only a returned `pipeline_complete` whose phase tasks are all design-review admitted **and** durably `done` permits an epic completion claim. If the project lacks a real dispatcher/manifest, report `BLOCKED: CodeFlow supervisor entrypoint unavailable` rather than emulating completion.
+   - A returned `admission_refocus` or `pipeline_blocked` is a durable hold, not a failed attempt to work around. Preserve its task state and route an explicitly requested Design Review or validator closure.
+   - Only a returned `pipeline_complete` whose phase tasks are durably `done` permits an epic completion claim. If the project lacks a real dispatcher/manifest, report `BLOCKED: CodeFlow supervisor entrypoint unavailable` rather than emulating completion.
 
    **Read the epic's `plan_ref`, `spec_ref`, `architecture_ref`, and `scoping_statement`** (columns on the epic row). `scoping_statement` bounds what this build may touch. If `architecture_ref` is set, this epic crosses an architectural boundary — read that doc now, before classifying or dispatching any task, and carry it into every agent prompt below.
 
