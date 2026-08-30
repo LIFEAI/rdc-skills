@@ -53,6 +53,54 @@ const os        = require('os');
 const { execFileSync } = require('child_process');
 const hookLog   = require('./hook-logger');
 
+/**
+ * The mitigator — OPTIONAL, because this hook crosses a repo boundary.
+ *
+ * EVERY BLOCK ROUTES THROUGH THE MITIGATOR (operator: "any block"). Audited
+ * 2026-08-30: 9 PreToolUse hooks wired, only the two guard dispatchers called
+ * mitigate(), so seven families refused with no repeat count and no
+ * classification.
+ *
+ * This file is the reason that matters most. Its unreadable-message refusal
+ * fired TWICE in one session on `git commit -F "$SP/msg.txt"` — a path the
+ * check cannot resolve because it holds a shell variable, not because anything
+ * was wrong with the message. Two identical refusals, no repeat count, nothing
+ * to distinguish "you keep doing this" from "this rule keeps being wrong". That
+ * is exactly the signal the mitigator exists to raise, and this hook could not
+ * raise it.
+ *
+ * Ships in rdc-skills and installs to ~/.claude/hooks, where lifeai-env may not
+ * exist, so the import is best-effort and its absence is not an error.
+ */
+let mitigator = null;
+let blockSubject = '';
+async function loadMitigator() {
+  try {
+    const envRoot = process.env.LIFEAI_ENV || 'C:/Dev/lifeai-env';
+    const file = path.join(envRoot, 'hooks', 'lib', 'guard-mitigator.mjs');
+    if (!fs.existsSync(file)) return;          // no lifeai-env here — that is fine
+    mitigator = await import(require('node:url').pathToFileURL(file).href);
+  } catch { /* annotation is never load-bearing */ }
+}
+
+/** One emit path for both refusals, so an annotation cannot be added to one and forgotten on the other. */
+function denyWith(rule, reason) {
+  let mitigation = '';
+  try {
+    if (mitigator) {
+      mitigation = mitigator.mitigationLine(mitigator.mitigate(
+        { rule, cmd: blockSubject, cwd: process.cwd(), dir: mitigator.blockLedgerDir(), sessionId: process.env.LIFEAI_SESSION_ID },
+        { evaluate: null },   // a commit-message refusal has no command to re-evaluate
+      ));
+    }
+  } catch { /* annotation is never load-bearing */ }
+  process.stdout.write(JSON.stringify({
+    decision: 'block',
+    reason: mitigation ? `${reason}\n\n${mitigation}` : reason,
+  }));
+  return process.exit(0);
+}
+
 const MARKER_FILE = path.join(
   process.env.USERPROFILE || process.env.HOME || os.homedir(),
   '.claude',
@@ -330,14 +378,13 @@ async function preToolUse(raw) {
   // for the wrong thing.
   if (!readable) {
     hookLog('require-work-item', 'PreToolUse', 'block-unreadable', {});
-    process.stdout.write(JSON.stringify({
-      decision: 'block',
-      reason: '⛔ [require-work-item] The commit message arrives on stdin, so this check cannot read it '
+    return denyWith(
+      'require-work-item-unreadable',
+      '⛔ [require-work-item] The commit message arrives on stdin, so this check cannot read it '
         + 'and will not guess. Nothing is wrong with your message — it is unverifiable from here. '
         + 'Re-run with the message where the check can see it: `git commit -F <path>` (a file), '
         + 'a heredoc (`git commit -F - <<\'EOF\' … EOF`), or `-m "<type>(<scope>): …"`.',
-    }));
-    return process.exit(0);
+    );
   }
 
   if (CONVENTIONAL_TYPES.test(msg.trim()) || UUID_PATTERN.test(msg) || ISSUE_REF.test(msg)) {
@@ -349,14 +396,13 @@ async function preToolUse(raw) {
   // or none declared at all) requires a work item and none was referenced —
   // this used to print a sentence and let the commit through regardless.
   hookLog('require-work-item', 'PreToolUse', 'block', { msg: msg.slice(0, 80) });
-  process.stdout.write(JSON.stringify({
-    decision: 'block',
-    reason: '⛔ [require-work-item] No work item reference or conventional commit type, and the current '
+  return denyWith(
+    'require-work-item',
+    '⛔ [require-work-item] No work item reference or conventional commit type, and the current '
       + 'flow requires one (build/refactor/overnight, or no flow declared). Add a Work-Item UUID or '
       + '#issue ref to the message, use fix(<scope>): ..., or declare a flow that does not need one '
       + '(rdc-flow.mjs: plan/design/collab) if this genuinely ships no trackable work.',
-  }));
-  return process.exit(0);
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -374,6 +420,12 @@ async function main() {
 
   let raw;
   try { raw = JSON.parse(input); } catch { return process.exit(0); }
+
+  // Preload BEFORE any refusal can fire, so denyWith() stays synchronous. The
+  // subject is the command, so repeated refusals of the SAME shape register as
+  // repeats — which is the whole point for this hook in particular.
+  await loadMitigator();
+  blockSubject = String(raw?.tool_input?.command || '');
 
   const event = raw.hook_event_name || raw.hookEventName || 'PreToolUse';
 
