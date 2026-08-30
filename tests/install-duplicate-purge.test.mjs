@@ -23,8 +23,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const require = createRequire(import.meta.url);
-const { isRdcSkillDuplicate, cleanUserSkills, cleanGlobalSkillsRoot, shippedSkillNames } =
-  require(join(REPO_ROOT, 'scripts', 'install-rdc-skills.js'));
+const {
+  isRdcSkillDuplicate, cleanUserSkills, cleanGlobalSkillsRoot, shippedSkillNames,
+  isProvablyOurRdcSkill, rdcQuarantineDir,
+} = require(join(REPO_ROOT, 'scripts', 'install-rdc-skills.js'));
 
 const MARKER = 'guides/output-contract.md';
 let sandbox;
@@ -130,5 +132,50 @@ assert.ok(shipped.has('build'), 'expected "build" among shipped skill names');
 // ── 7. absent directory is not an error ──────────────────────────────────────
 assert.equal(cleanUserSkills(join(tmpdir(), 'rdc-purge-does-not-exist')), 0);
 assert.equal(cleanGlobalSkillsRoot(join(tmpdir(), 'rdc-purge-does-not-exist')), 0);
+
+// ── 8. C2 REGRESSION: a user's own skill is never irrecoverably deleted ──────
+//
+// Found by independent code review and proven against the real module. Signal 3
+// is "shipped name AND body cites guides/output-contract.md" — but that marker
+// is a DOCUMENTATION PATH that CLAUDE.md and AGENTS.md tell every agent to
+// follow, and 14 of the shipped names are bare generic words (build, report,
+// status, design, open, edit, plan, deploy, help, watch, convert, release,
+// collab, review). A user skill called "report" that cites the output contract
+// matched, and was rmSync'd recursively with no backup and no log.
+//
+// It must still be MOVED (it does shadow a shipped skill), but it must be
+// recoverable, and the entry must not be classed as provably ours.
+{
+  const root = fresh();
+  const d = skillDir(root, 'report',
+    fm('report', 'My own reporting skill. House style: follow .rdc/guides/output-contract.md.'));
+
+  assert.equal(isProvablyOurRdcSkill(d, join(d, 'SKILL.md')), false,
+    "a user's own skill citing the output contract must NOT be classed as provably ours");
+
+  const removed = cleanUserSkills(root);
+  assert.equal(removed, 1, 'it still shadows a shipped skill, so it is dealt with');
+  assert.equal(existsSync(d), false, 'moved out of the load path');
+
+  const quarantined = join(rdcQuarantineDir(root), 'report');
+  assert.equal(existsSync(quarantined), true,
+    'RECOVERABLE: it must be in quarantine, never deleted');
+  assert.equal(existsSync(join(quarantined, 'SKILL.md')), true, 'contents preserved intact');
+  rmSync(root, { recursive: true, force: true });
+}
+
+// ── 9. provably-ours entries ARE deleted outright, not quarantined ───────────
+// Quarantine is for uncertainty. A legacy rdc:-prefixed copy is unambiguous, and
+// leaving it in a sibling directory would just be litter.
+{
+  const root = fresh();
+  const d = skillDir(root, 'rdc-plan', fm('rdc:plan'));
+  assert.equal(isProvablyOurRdcSkill(d, join(d, 'SKILL.md')), true);
+  assert.equal(cleanUserSkills(root), 1);
+  assert.equal(existsSync(d), false);
+  assert.equal(existsSync(join(rdcQuarantineDir(root), 'rdc-plan')), false,
+    'provably ours is deleted, not quarantined');
+  rmSync(root, { recursive: true, force: true });
+}
 
 console.log('install-rdc-skills duplicate-purge test — PASS');

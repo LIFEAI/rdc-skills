@@ -417,7 +417,16 @@ function shippedSkillNames() {
         }
       }
     }
-  } catch { /* no skills/ dir — every check below simply returns false */ }
+  } catch { /* no skills/ dir — handled by the emptiness check below */ }
+  // H5: an EMPTY set silently collapses isRdcSkillDuplicate back to the legacy
+  // rdc: prefix test — i.e. back to the exact dead predicate this whole change
+  // exists to fix, reporting "0 removed", indistinguishable from success. Say so
+  // rather than returning quietly; that is the same reasoning applied to the
+  // post-purge verifier.
+  if (_shippedSkillNames.size === 0) {
+    console.warn('  ! shippedSkillNames() is EMPTY — skills/ missing or unreadable. '
+      + 'Duplicate detection is degraded to the legacy rdc: prefix only.');
+  }
   return _shippedSkillNames;
 }
 
@@ -431,6 +440,63 @@ function resolvesInsideOurSkills(candidate) {
     return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Is this entry PROVABLY ours, as opposed to merely suspect?
+ *
+ * Only two signals are unambiguous:
+ *   1. the legacy `rdc:` frontmatter prefix — no user names a skill that
+ *   2. it resolves inside our own skills/ tree — then it IS our file
+ *
+ * The third signal (shipped name + output-contract marker) is NOT proof: the
+ * marker is a documentation path every agent is told to follow, and 14 of the
+ * shipped names are bare generic words. A user skill called "report" that cites
+ * the output contract matches it. That entry gets quarantined, never deleted.
+ */
+function isProvablyOurRdcSkill(candidate, skillFile) {
+  const fm = readFrontmatter(skillFile);
+  if (fm.name && fm.name.startsWith('rdc:')) return true;
+  return resolvesInsideOurSkills(candidate);
+}
+
+/** Where quarantined entries go. Printed, never silently removed. */
+function rdcQuarantineDir(userSkillsDir) {
+  return path.join(userSkillsDir, '.rdc-quarantine');
+}
+
+/**
+ * Remove a duplicate — or, when we cannot prove it is ours, move it aside and
+ * say so. Returns 1 if the entry was dealt with, 0 if it was left alone.
+ *
+ * The log line is not decoration. The previous version deleted inside
+ * try{}catch{} and reported only a count, so a wrongly-removed user skill left
+ * no trace at all — indistinguishable from having removed nothing.
+ */
+function disposeRdcDuplicate(candidate, skillFile, { isDir, log = console.log } = {}) {
+  if (!isRdcSkillDuplicate(candidate, skillFile)) return 0;
+
+  if (isProvablyOurRdcSkill(candidate, skillFile)) {
+    try {
+      if (isDir) fs.rmSync(candidate, { recursive: true, force: true });
+      else fs.unlinkSync(candidate);
+      return 1;
+    } catch { return 0; }
+  }
+
+  // Suspect only. Quarantine, and name the path so it can be put back.
+  try {
+    const parent = path.dirname(candidate);
+    const qdir = rdcQuarantineDir(parent);
+    fs.mkdirSync(qdir, { recursive: true });
+    const dest = path.join(qdir, path.basename(candidate));
+    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+    fs.renameSync(candidate, dest);
+    log(`      quarantined (name matches a shipped skill, but provenance unproven): ${candidate} -> ${dest}`);
+    return 1;
+  } catch {
+    return 0;
   }
 }
 
@@ -475,17 +541,13 @@ function cleanUserSkills(userSkillsDir) {
         if (fs.existsSync(p)) { skillFile = p; break; }
       }
       if (!skillFile) continue;
-      if (isRdcSkillDuplicate(candidate, skillFile)) {
-        try { fs.rmSync(candidate, { recursive: true, force: true }); removed++; } catch {}
-      }
+      removed += disposeRdcDuplicate(candidate, skillFile, { isDir: true });
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
       // ANY .md file at this level — including skill.md / SKILL.md / README.md
       // if their frontmatter declares an rdc:* skill. A previous version skipped
       // those names; that left an orphan rdc:build copy at user/skill.md which
       // registered as a duplicate "user" skill.
-      if (isRdcSkillDuplicate(candidate, candidate)) {
-        try { fs.unlinkSync(candidate); removed++; } catch {}
-      }
+      removed += disposeRdcDuplicate(candidate, candidate, { isDir: false });
     }
   }
   return removed;
@@ -500,9 +562,7 @@ function cleanGlobalSkillsRoot(skillsDir) {
     if (entry.name === 'user') continue; // handled separately
     const candidate = path.join(skillsDir, entry.name);
     if (entry.isFile() && entry.name.endsWith('.md')) {
-      if (isRdcSkillDuplicate(candidate, candidate)) {
-        try { fs.unlinkSync(candidate); removed++; } catch {}
-      }
+      removed += disposeRdcDuplicate(candidate, candidate, { isDir: false });
     }
   }
   return removed;
@@ -879,10 +939,7 @@ function registerCodexTarget(targetDir) {
       fs.rmSync(candidate, { recursive: true, force: true });
       removed++;
     } else {
-      if (isRdcSkillDuplicate(candidate, path.join(candidate, 'SKILL.md'))) {
-        fs.rmSync(candidate, { recursive: true, force: true });
-        removed++;
-      }
+      removed += disposeRdcDuplicate(candidate, path.join(candidate, 'SKILL.md'), { isDir: true });
     }
   }
 
@@ -1469,7 +1526,7 @@ async function main() {
 // scripts/probe-installed-hooks.mjs verify the real install path instead of
 // re-implementing it — a probe that copies its own way proves nothing about what
 // ships. Without this guard, requiring the module would run a full install.
-module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, syncMarketplaceCheckout, RDC_ENV_HOOK_TIMEOUT_SEC, isRdcSkillDuplicate, cleanUserSkills, cleanGlobalSkillsRoot, shippedSkillNames };
+module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, syncMarketplaceCheckout, RDC_ENV_HOOK_TIMEOUT_SEC, isRdcSkillDuplicate, cleanUserSkills, cleanGlobalSkillsRoot, shippedSkillNames, isProvablyOurRdcSkill, disposeRdcDuplicate, rdcQuarantineDir };
 
 if (require.main === module) {
   main().catch(e => { fail(e.message); process.exit(1); });
