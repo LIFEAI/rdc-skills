@@ -369,11 +369,96 @@ function buildPluginCache(cacheDir, version, gitSha) {
   }
 }
 
+// ── Is this entry a duplicate of a skill WE ship? ─────────────────────────────
+//
+// THE PREDICATE THIS REPLACES WAS DEAD. It removed an entry only when its
+// frontmatter name startsWith('rdc:'). Skills were later renamed to bare names
+// (`name: build`, not `name: rdc:build`) — the same rename the marketplace-sync
+// comment below refers to when it describes "/rdc:rdc:plan" appearing beside
+// "/rdc:plan". Measured 2026-08-30: 0 of 44 shipped skills carry an rdc: prefix.
+// So the purge matched nothing, removed nothing, and reported 0 while duplicate
+// registrations kept accumulating. Nothing failed loudly, because a purge that
+// finds nothing and a purge that cannot match anything print the same number.
+//
+// The replacement never keys on a prefix. It asks three independent questions,
+// any one of which is sufficient:
+//
+//   1. LEGACY NAME — the old rdc: prefix, kept so pre-rename installs still get
+//      cleaned. Dropping it would strand exactly the machines this function was
+//      written for.
+//   2. SYMLINK INTO OUR OWN PACKAGE — if the entry resolves to a file inside this
+//      package's skills/ tree, it IS our file, wearing a second name. That is
+//      unambiguous and survives any future rename.
+//   3. SHIPPED NAME + OUR MARKER — the name matches one we ship AND the body
+//      carries the output-contract line every rdc skill opens with. Name alone
+//      is deliberately NOT enough: a user skill legitimately called "build" must
+//      survive, and on this machine ~/.claude/skills holds clauth, coolify-*,
+//      leaflet-maps and notebooklm — none of which may ever be touched.
+//
+// Signal 3 covers 43 of 44 shipped skills; behavior-audit lacks the marker and
+// is caught by signal 2 when symlinked. A skill that is neither symlinked nor
+// marked is deliberately left alone — under-removing is recoverable, deleting a
+// user's own work is not.
+let _shippedSkillNames = null;
+function shippedSkillNames() {
+  if (_shippedSkillNames) return _shippedSkillNames;
+  _shippedSkillNames = new Set();
+  const dir = path.join(repoRoot, 'skills');
+  try {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue;
+      _shippedSkillNames.add(e.name);
+      for (const sf of ['SKILL.md', 'skill.md']) {
+        const p = path.join(dir, e.name, sf);
+        if (fs.existsSync(p)) {
+          const fm = readFrontmatter(p);
+          if (fm.name) _shippedSkillNames.add(fm.name);
+          break;
+        }
+      }
+    }
+  } catch { /* no skills/ dir — every check below simply returns false */ }
+  return _shippedSkillNames;
+}
+
+const RDC_SKILL_MARKER = 'guides/output-contract.md';
+
+function resolvesInsideOurSkills(candidate) {
+  try {
+    const real = fs.realpathSync(candidate);
+    const ours = fs.realpathSync(path.join(repoRoot, 'skills'));
+    const rel = path.relative(ours, real);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  } catch {
+    return false;
+  }
+}
+
+function isRdcSkillDuplicate(candidate, skillFile) {
+  const fm = readFrontmatter(skillFile);
+
+  // 1. legacy rdc: prefix — pre-rename installs
+  if (fm.name && fm.name.startsWith('rdc:')) return true;
+
+  // 2. it literally is our file, reached by another path
+  if (resolvesInsideOurSkills(candidate)) return true;
+
+  // 3. our name AND our marker — both, never name alone
+  if (fm.name && shippedSkillNames().has(fm.name)) {
+    try {
+      if (fs.readFileSync(skillFile, 'utf8').includes(RDC_SKILL_MARKER)) return true;
+    } catch { /* unreadable → not a duplicate we are confident about */ }
+  }
+
+  return false;
+}
+
 // ── User-skills cleanup ───────────────────────────────────────────────────────
 // Older installer versions wrote skill files directly to ~/.claude/skills/user/.
 // Claude Code loads that directory AND the plugin cache, so any rdc skills left
 // there produce duplicate registrations and break the resolver.
-// This function nukes any entry whose frontmatter name starts with "rdc:".
+// It delegates to isRdcSkillDuplicate() above — a prefix test alone has not
+// matched anything since skills were renamed to bare names.
 // Scans BOTH the immediate dir and nested .md files (e.g. `user/skill.md`,
 // `user/rdc-build/SKILL.md`) so pre-plugin orphans are caught regardless of
 // naming convention.
@@ -390,8 +475,7 @@ function cleanUserSkills(userSkillsDir) {
         if (fs.existsSync(p)) { skillFile = p; break; }
       }
       if (!skillFile) continue;
-      const fm = readFrontmatter(skillFile);
-      if (fm.name && fm.name.startsWith('rdc:')) {
+      if (isRdcSkillDuplicate(candidate, skillFile)) {
         try { fs.rmSync(candidate, { recursive: true, force: true }); removed++; } catch {}
       }
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
@@ -399,8 +483,7 @@ function cleanUserSkills(userSkillsDir) {
       // if their frontmatter declares an rdc:* skill. A previous version skipped
       // those names; that left an orphan rdc:build copy at user/skill.md which
       // registered as a duplicate "user" skill.
-      const fm = readFrontmatter(candidate);
-      if (fm.name && fm.name.startsWith('rdc:')) {
+      if (isRdcSkillDuplicate(candidate, candidate)) {
         try { fs.unlinkSync(candidate); removed++; } catch {}
       }
     }
@@ -417,8 +500,7 @@ function cleanGlobalSkillsRoot(skillsDir) {
     if (entry.name === 'user') continue; // handled separately
     const candidate = path.join(skillsDir, entry.name);
     if (entry.isFile() && entry.name.endsWith('.md')) {
-      const fm = readFrontmatter(candidate);
-      if (fm.name && fm.name.startsWith('rdc:')) {
+      if (isRdcSkillDuplicate(candidate, candidate)) {
         try { fs.unlinkSync(candidate); removed++; } catch {}
       }
     }
@@ -797,8 +879,7 @@ function registerCodexTarget(targetDir) {
       fs.rmSync(candidate, { recursive: true, force: true });
       removed++;
     } else {
-      const fm = readFrontmatter(path.join(candidate, 'SKILL.md'));
-      if (fm.name && fm.name.startsWith('rdc:')) {
+      if (isRdcSkillDuplicate(candidate, path.join(candidate, 'SKILL.md'))) {
         fs.rmSync(candidate, { recursive: true, force: true });
         removed++;
       }
@@ -1331,8 +1412,11 @@ async function main() {
             ? ['SKILL.md','skill.md'].map(s => path.join(p, s)).find(fs.existsSync)
             : (f.endsWith('.md') ? p : null);
           if (!skillFile) return false;
-          const fm = readFrontmatter(skillFile);
-          return fm.name && fm.name.startsWith('rdc:');
+          // Must use the SAME predicate the purge uses. When this asked a
+          // different (and dead) question, the purge removed nothing and this
+          // confirmed nothing was left — the two agreed, and agreement between
+          // a broken fix and a broken check is indistinguishable from success.
+          return isRdcSkillDuplicate(p, skillFile);
         })
       : [];
     if (stillThere.length === 0) {
@@ -1385,7 +1469,7 @@ async function main() {
 // scripts/probe-installed-hooks.mjs verify the real install path instead of
 // re-implementing it — a probe that copies its own way proves nothing about what
 // ships. Without this guard, requiring the module would run a full install.
-module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, syncMarketplaceCheckout, RDC_ENV_HOOK_TIMEOUT_SEC };
+module.exports = { copyHookFiles, assertHooksLoadable, registerCodexTarget, syncMarketplaceCheckout, RDC_ENV_HOOK_TIMEOUT_SEC, isRdcSkillDuplicate, cleanUserSkills, cleanGlobalSkillsRoot, shippedSkillNames };
 
 if (require.main === module) {
   main().catch(e => { fail(e.message); process.exit(1); });
