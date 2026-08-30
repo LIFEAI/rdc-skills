@@ -20,6 +20,8 @@
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -31,10 +33,27 @@ function assert(name, condition, detail = '') {
   else process.stdout.write(`  ok  ${name}\n`);
 }
 
+/**
+ * Every spawn gets an ISOLATED block ledger.
+ *
+ * This suite deliberately drives blocking fixtures, and the hook now records
+ * each refusal through the guard mitigator. Without an override it writes the
+ * REAL session ledger under %TEMP%/lifeai-guard-blocks — measured 2026-08-30,
+ * which already held this suite's fixtures ("npx playwright test --headed" and
+ * friends). A few suite runs cross REPEAT_THRESHOLD, after which a genuine
+ * --headed block reports "RULE DEFECT SUSPECTED" against a rule that is working
+ * perfectly. Test runs must never be able to discredit a live guard.
+ *
+ * lifeai-env's own guard tests carry this isolation plus a regression assertion
+ * that the live ledger is untouched; these two hooks shipped without either.
+ */
+const LEDGER = mkdtempSync(join(tmpdir(), 'fpg-ledger-'));
+
 function runGate(command) {
   const res = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
     encoding: 'utf8',
+    env: { ...process.env, LIFEAI_GUARD_BLOCK_DIR: LEDGER, RDC_TEST: '1' },
   });
   const blocked = res.status === 1;
   return { blocked, stdout: res.stdout, status: res.status };

@@ -66,11 +66,24 @@ function makeRepo() {
   return { dir, head };
 }
 
+/**
+ * Isolated block ledger — see the same note in foreground-process-gate.test.mjs.
+ *
+ * This hook records refusals through the guard mitigator, which keys on
+ * (rule id, argv shape) and escalates once a shape repeats. Fixtures that
+ * deliberately trigger a refusal would otherwise accumulate in the REAL session
+ * ledger under %TEMP%/lifeai-guard-blocks and eventually make a genuine refusal
+ * report "RULE DEFECT SUSPECTED" against a rule that is working.
+ *
+ * extraEnv still wins, so a case can override either value deliberately.
+ */
+const LEDGER = mkdtempSync(join(tmpdir(), 'rwi-ledger-'));
+
 function runHook(payload, extraEnv = {}) {
   return spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
     encoding: 'utf8',
-    env: { ...process.env, ...extraEnv },
+    env: { ...process.env, LIFEAI_GUARD_BLOCK_DIR: LEDGER, RDC_TEST: '1', ...extraEnv },
   });
 }
 
