@@ -268,21 +268,21 @@ description: rdc:plan (topic) — produce architecture, decisions and an epic wi
        p_scoping_statement := '<one paragraph: what is explicitly in scope and what is explicitly out of scope for this epic>'
      );
      ```
-   - Attach a **Design Review contract** to every executable work package. It must contain registered architecture-evidence reference(s), declared target boundary, and a concrete alignment claim; independently observable acceptance criteria plus required `decomp-*` and `test-*` rows; and estimated files/LOC, declared surfaces, and change kind.
-   - One executable task per work package only through `upsert_admitted_work_item(...)`, never a direct `work_items` write. Supply a stable source fingerprint, the task checklist, and the Design Review contract. `insert_work_item` remains valid for the parent epic only.
-   - Do not invent architecture evidence. Missing or unregistered evidence, broad refactors, multi-surface work, or disproportionate contracts intentionally route to human Design Review.
-   - Read the durable result for each package: `dispatchable: true` / `automatic_approved` may become `todo`; `dispatchable: false` / `needs_human` or `pending` stays `blocked`, gets `needs-human-design-review`, and is reported as held.
+   - One executable task per work package only through `upsert_admitted_work_item(...)`, never a direct `work_items` write. Supply a stable source fingerprint and the task checklist. `insert_work_item` remains valid for the parent epic only.
+   - **Default:** pass `p_design_review := NULL`. Ordinary work is created `todo` / `not_required` and proceeds to the post-build `rdc:review` gate.
+   - **Only when Dave explicitly requests Design Review for a named work package:** attach a Design Review contract with registered architecture-evidence reference(s), declared target boundary, a concrete alignment claim, independently observable acceptance criteria, and estimated files/LOC, declared surfaces, and change kind. Do not infer this request from scope, risk, architecture, or missing evidence.
+   - Read the durable result only for an explicitly opted-in package: `dispatchable: true` / `automatic_approved` may become `todo`; `dispatchable: false` / `needs_human` or `pending` stays `blocked`, gets `needs-human-design-review`, and is reported as held.
    - **Additionally, write decomposition rows as checklist items** on each task, using id format `decomp-<surface>-<slug>`.
      The task checklist MUST include both the atomic `decomp-*` rows and the `test-*` verification rows.
      The `decomp-*` row text must include the route/file, action, expected result, and evidence artifact.
    - **Write test plan items as checklist items** on each task, using id format `test-<type>-<slug>`.
-   - **If (and only if) the epic's `architecture_ref` is set** (this work package crosses an architectural boundary), ALSO write one required `architecture-fidelity-<slug>` checklist row on that task: text names the specific architecture doc + the boundary being touched, e.g. `"implementation matches docs/systems/codeflow/ARCHITECTURE.md § local-index registration"`. This is checked at CLOSE time by `update_work_item_status(..., 'done')`, independently of the Design Review contract's own `dispatchable`/`needs_human` admission check above — the exit gate hard-rejects closure on any task under an architecture_ref epic that lacks this row. Do not add it to tasks under an epic with no `architecture_ref`; that would hold ordinary work for a review it doesn't need.
+   - **If (and only if) the epic's `architecture_ref` is set** (this work package crosses an architectural boundary), ALSO write one required `architecture-fidelity-<slug>` checklist row on that task: text names the specific architecture doc + the boundary being touched, e.g. `"implementation matches docs/systems/codeflow/ARCHITECTURE.md § local-index registration"`. This is checked at CLOSE time by `update_work_item_status(..., 'done')`; it is evidence for `rdc:review`, not an admission hold. Do not add it to tasks under an epic with no `architecture_ref`.
      ```sql
      SELECT upsert_admitted_work_item(
        p_source_fingerprint := 'plan:<epic-id>:wp-2-ast-scanner:v1',
        p_parent_id := '<epic_id>',
        p_title := 'WP-2: AST Scanner',
-       p_description := 'Bounded scanner work package with its durable Design Review contract.',
+       p_description := 'Bounded scanner work package with its implementation and verification checklist.',
        p_checklist := '[
          {"id":"decomp-api-scan-success","text":"api: GET /api/layout/scan?dir=apps/studio/src returns 200 JSON with roots[] and warnings[]; evidence: route probe output","required":true,"checked":false},
          {"id":"test-assert-scanner-filters","text":"assert: scanFile returns only container components","required":true,"checked":false},
@@ -292,11 +292,7 @@ description: rdc:plan (topic) — produce architecture, decisions and an epic wi
          {"id":"tsc-clean","text":"npx tsc --noEmit passes","required":true,"checked":false}
          -- Only add an architecture-fidelity-* row here too if this task's epic has architecture_ref set.
        ]'::jsonb,
-       p_design_review := '{
-         "architecture":{"alignment_claim":"Scanner change stays within the declared analysis boundary.","evidence_refs":["<registered-reference>"],"target_boundaries":["<declared-boundary>"]},
-         "acceptance":{"criteria":["scanner focused test passes"]},
-         "proportionality":{"estimated_files":2,"estimated_loc":180,"declared_surfaces":["<surface>"],"change_kind":"feature"}
-       }'::jsonb
+       p_design_review := NULL  -- Add a contract only for an explicitly requested Design Review.
      );
      ```
    - Agents MUST tick each `decomp-*`, `test-*`, and (when present) `architecture-fidelity-*` checklist item as they implement/verify it via `update_checklist_item(..., p_actor_session_id := '<agent-session-id>', p_actor_role := 'agent')`
@@ -326,7 +322,7 @@ choose the most conservative/reversible approach and document the decision.
 - Each work package must be independently executable by an agent
 - No file overlap between work packages
 - Include test requirements in every work package
-- **No executable work item is dispatchable without a durable Design Review decision; a planner cannot self-approve with prose-only evidence**
+- **Design Review is never inferred.** It is added only for a named work package when Dave explicitly requests it; ordinary work reaches `rdc:review` after implementation.
 - Reference affected CLAUDE.md files in each work package description
 - Reference the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guides/`) for agent context
 - **If a work package involves creating a new deployed app:** the task description MUST say "Use `rdc:deploy new <slug>` — do NOT create the Coolify app manually. Read `docs/runbooks/coolify-app-templates.json` first." Assign it to an `infra` agent. This is a hard rule — manually created apps have consistently been misconfigured.

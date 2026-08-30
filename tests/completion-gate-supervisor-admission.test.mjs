@@ -8,11 +8,12 @@ const served = (name) => {
   return body;
 };
 
-test('live rdc_skill_get planning body creates executable work through the durable admission contract', () => {
+test('live rdc_skill_get planning body makes Design Review explicit opt-in', () => {
   const plan = served('rdc:plan');
   assert.match(plan, /upsert_admitted_work_item/);
-  assert.match(plan, /Design Review contract/);
-  assert.match(plan, /needs_human/);
+  assert.match(plan, /p_design_review := NULL/);
+  assert.match(plan, /Dave explicitly requests Design Review/);
+  assert.match(plan, /ordinary work reaches `rdc:review`/);
   assert.doesNotMatch(plan, /One task per work package via `insert_work_item/);
 });
 

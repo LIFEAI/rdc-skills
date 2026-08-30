@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## v0.35.11 — Design Review is explicit opt-in
+
+### Changed
+- `rdc:plan`, `rdc:build`, and `rdc:overnight` no longer impose a Design
+  Review admission requirement on ordinary work. A named Design Review is
+  created only when Dave explicitly requests it; normal implementation reaches
+  the post-build `rdc:review` gate.
+
+---
+
 ## v0.35.4 — marketplace sync false-positive: untracked file blocked it forever
 
 ### Fixed

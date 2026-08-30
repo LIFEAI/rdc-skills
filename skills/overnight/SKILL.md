@@ -126,7 +126,7 @@ rdc:plan <epic-id> --unattended
 
 Check `PLAN_STATUS.task_count > 0` before continuing.
 If 0 tasks created: escalate via advisor, then skip if still unresolved.
-If `PLAN_STATUS.held_for_design_review > 0`: do not silently promote those tasks to todo. Log the held task IDs and their durable assessment, request human Design Review, and continue only with the independently admitted portion of the epic.
+If `PLAN_STATUS.held_for_design_review > 0`: these are explicitly opted-in Design Review tasks. Do not silently promote them to todo. Log the held task IDs and their durable assessment, request the named review, and continue only with ordinary or already-admitted work.
 
 ### 3c. Build
 
@@ -140,7 +140,7 @@ Agents receive the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guid
 
 After each wave: check `BUILD_STATUS`. If `escalated: true`, log the escalation
 in the overnight doc and continue — don't stop the loop.
-After each wave and after every resumed epic, require the `runOrchestrator()` receipt from `rdc:build`. `admission_refocus` or `pipeline_blocked` means the epic is held for durable Design Review or validator closure; log that state and do not hand-reconstruct a dispatch wave.
+After each wave and after every resumed epic, require the `runOrchestrator()` receipt from `rdc:build`. `admission_refocus` or `pipeline_blocked` means the epic is held for an explicitly requested Design Review or validator closure; log that state and do not hand-reconstruct a dispatch wave.
 
 **Mandatory code-review gate inherited from rdc:build (Step 9b).** Every wave inside `rdc:build` runs a `pr-review-toolkit:code-reviewer` pass before the next wave dispatches. Critical/high findings reopen the affected work items to `todo` and the next wave fixes them. Overnight does not skip or weaken this gate. If a wave's code-review escalates twice, advisor decides; otherwise the loop continues.
 
@@ -151,7 +151,7 @@ rdc:review --unattended
 ```
 
 Check `REVIEW_STATUS.verdict`:
-- `"CLEAN"`: re-run the durable CodeFlow supervisor. Mark an epic `done` only when its receipt is `pipeline_complete` and every executable child is design-review admitted and validator-closed (`status = done`); otherwise preserve the epic/task hold and log `admission_refocus` or `pipeline_blocked`.
+- `"CLEAN"`: re-run the durable CodeFlow supervisor. Mark an epic `done` only when its receipt is `pipeline_complete` and every executable child is validator-closed (`status = done`); otherwise preserve the epic/task hold and log `admission_refocus` or `pipeline_blocked`.
 - `"HAS_ISSUES"` with `escalations > 0`: log issues, push what's clean, continue
 - `"HAS_ISSUES"` with `escalations = 0` (all auto-fixed): push, continue
 
@@ -244,7 +244,7 @@ Provide the advisor with:
 - NEVER let agents overlap on the same files
 - Push after every epic, not just at the end
 - Update Supabase work items in real time throughout
-- **A clean review never overrides a durable Design Review hold, an incomplete checklist, or missing validator closure**
+- **A clean review never overrides an explicitly requested Design Review hold, an incomplete checklist, or missing validator closure**
 - Max 2 hours per epic — if exceeded, skip and log `TIMEOUT`
 - If credential daemon goes down mid-session: write current state to overnight doc, push, exit gracefully
 - If git push fails: log the failure, attempt rebase, retry once — do not force push
