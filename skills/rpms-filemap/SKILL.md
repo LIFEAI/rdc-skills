@@ -1,5 +1,5 @@
 ---
-name: rpms-filemap
+description: "Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root manifest."
 slash: "rdc:rpms-filemap"
 category: "tooling"
 usage: "rdc:rpms-filemap"
@@ -10,12 +10,8 @@ triggers:
   - "context export"
   - "where does this file belong"
   - "where should pm artifacts go"
-description: "rdc:rpms-filemap () — Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root mani..."
 ---
 # RPMS File Map
-> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
-> Return the requested file-map guidance directly; do not dump raw manifests or logs.
-
 > GENERATED FILE - DO NOT HAND-EDIT.
 > Source of truth: `docs/architecture/rpms.locations.json`
 > Regenerate: `pnpm rpms:gen-filemap`
@@ -48,8 +44,8 @@ If you are touching an entity, read its generated `_context.md` before any local
 |----------|------|----|-----|-------------|-------|--------|
 | `session-start.claude-ai.root` | `CLAUDE.ai.md` | `read_only` | One Door | `block_wrong_home`<br />`path_conformance` | repo-root | `active` |
 | `session-start.claude.root` | `CLAUDE.md` | `read_only` | One Door | `block_wrong_home`<br />`path_conformance` | repo-root | `active` |
-| `session-start.decision.spine-lock` | `.rdc/plans/project-relationship-graph-approval.md` | `read_only` | One Spine, One Door | `block_wrong_home`<br />`path_conformance` | .rdc/plans/project-relationship-graph-approval.md | `active` |
-| `session-start.decision.cs2-lock` | `.rdc/plans/mdk-knowledge-decisions-and-workitems-2026-06-02.md` | `read_only` | One Direction, One Door | `block_wrong_home`<br />`path_conformance` | .rdc/plans/mdk-knowledge-decisions-and-workitems-2026-06-02.md | `active` |
+| `session-start.decision.spine-lock` | `.rdc/areas/rdc/project/plans/project-relationship-graph-approval.md` | `read_only` | One Spine, One Door | `block_wrong_home`<br />`path_conformance` | .rdc/areas/rdc/project/plans/project-relationship-graph-approval.md | `active` |
+| `session-start.decision.cs2-lock` | `.rdc/areas/cs2/mdk/plans/mdk-knowledge-decisions-and-workitems-2026-06-02.md` | `read_only` | One Direction, One Door | `block_wrong_home`<br />`path_conformance` | .rdc/areas/cs2/mdk/plans/mdk-knowledge-decisions-and-workitems-2026-06-02.md | `active` |
 | `session-start.glossary.layer-model` | `docs/systems/cs2/LAYER-MODEL-AND-VOCABULARY.md` | `read_only` | One Door | `block_wrong_home`<br />`path_conformance` | docs/systems/cs2/LAYER-MODEL-AND-VOCABULARY.md | `active` |
 
 ### Database Gates
@@ -92,7 +88,8 @@ If you are touching an entity, read its generated `_context.md` before any local
 
 | Artifact | Home | RW | Law | Enforcement | Owner | Status |
 |----------|------|----|-----|-------------|-------|--------|
-| `operational-door.rdc.plans` | `.rdc/plans/**` | `authored` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance` | RDC planning workflow | `active` |
+| `operational-door.rdc.plans` | `.rdc/areas/**/{plans,research,reports,decisions,logs,arch,guides}/**` | `authored` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance` | RDC planning workflow | `active` |
+| `operational-door.rdc.plans.compatibility` | `.rdc/plans/**` | `generated` | One Home Per Fact, One Direction | `allow_declared_home`<br />`path_conformance`<br />Retire only through the approved area-first-v1 activation receipt. | RDC path migration compiler | `active` |
 | `operational-door.rdc.reports` | `.rdc/reports/**` | `generated` | One Direction | `allow_declared_home`<br />`path_conformance` | rdc:report | `active` |
 | `operational-door.rdc.lessons` | `.rdc/lessons/**` | `append_only` | One Direction, One Home Per Fact | `allow_declared_home`<br />`path_conformance` | RDC lesson capture workflow | `active` |
 | `operational-door.rpms-filemap.rule` | `.claude/rules/rpms-filemap.md`<br />created_by: `scripts/rpms/gen-filemap.ts` | `generated` | One Home Per Fact, One Direction, One Door | `block_manual_edit`<br />`projection_drift` | scripts/rpms/gen-filemap.ts | `active` |
@@ -102,6 +99,16 @@ If you are touching an entity, read its generated `_context.md` before any local
 | Artifact | Home | RW | Law | Enforcement | Owner | Status |
 |----------|------|----|-----|-------------|-------|--------|
 | `session-start.app-guide` | `apps/*/CLAUDE.md` | `read_only` | One Door | `block_wrong_home`<br />`path_conformance` | app-local architecture guides | `active` |
+| `session-start.package-guide` | `packages/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | package-local architecture guides | `active` |
+| `session-start.site-guide` | `sites/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | site-local guides | `active` |
+| `session-start.model-guide` | `models/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | model-local guides | `active` |
+| `session-start.mcp-server-guide` | `mcp-servers/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | mcp-server guides | `active` |
+| `session-start.worker-guide` | `workers/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | worker guides | `active` |
+| `session-start.vendor-guide` | `vendor/*/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | vendored third-party — we do not govern its contents | `active` |
+| `docs.index.root` | `docs/INDEX.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | docs maintainers | `active` |
+| `docs.index.marketing-segments` | `apps/rdc-marketing-engine/docs/segments/INDEX.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | rdc-marketing-engine | `active` |
+| `session-start.prototype-guide` | `apps/rdc-website/docs/prototypes/web-of-relation/CLAUDE.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | rdc-website prototypes | `active` |
+| `docs.index.codeflow-research` | `docs/systems/codeflow/research-papers/INDEX.md` | `authored` | One Home Per Fact, One Door | `allow_declared_home`<br />`path_conformance` | codeflow research | `active` |
 
 ## Projection Contract
 
