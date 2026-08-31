@@ -9,6 +9,46 @@ description: rdc:open ([slug]) — orient before working; answers where you are 
 
 # rdc:open — you are here, this is the thing, use this shape
 
+## Run the script. Do not re-derive this by hand.
+
+```bash
+node C:/Dev/rdc-harness/bin/rdc-harness.mjs open <slug>
+```
+
+**This file used to describe what `open` answers without ever naming the tool
+that answers it** — zero mentions of `rdc-harness` in 128 lines — so every agent
+reading it re-implemented orientation with `git rev-parse` and `git status`,
+which is precisely the 6%-of-all-tool-calls waste the next section measures. The
+verb has existed the whole time. Corrected 2026-08-31 on operator instruction:
+"open is supposed to be a script, the skill says call the script."
+
+It returns one JSON object. Read it; do not reconstruct it:
+
+```
+opened: true
+handle:  hnd_…            binding: bnd_…
+permittedActions: ["read","write","edit","save"]
+sourceBoundary:   C:/Dev/clauth
+productClass: package     workModel: standalone
+delivery: {production:"registry-release", deploy:false, release:true}
+weDoNotHold: ["subtree","runtime_contract","deployment_record"]
+boundaryNote: "C:/Dev/clauth is the SHARED checkout for a worktree-pooled repo
+               — work belongs in a lane under C:/Dev/clauth.wt, not here"
+```
+
+That is a **scoped grant**, not a readout: `permittedActions` and
+`sourceBoundary` say what you may touch and where. `boundaryNote` is the answer
+to "which checkout do I work in" — it already knows pooled repos want a lane.
+
+**Unresolved is a result, not an error.** `open regen-root` returns
+`weDoNotHold: ["product_class"]`; `open fsm` returns `unknown_slug`. Register the
+target, then open it again — never guess a default and never fall back to
+hand-rolled git.
+
+**Two targets at once is two calls.** Each returns its own `bindingId` and its
+own `sourceBoundary`; nothing is exclusive. Working `clauth` and `rdc-harness`
+together is two opens and two bindings.
+
 ## Why this exists
 
 Orientation ran **3.4× production work** across a measured 36-hour window —
@@ -90,12 +130,16 @@ Downstream verbs re-resolve from the registry by slug.
 
 ## Steps
 
-1. **Position.** Resolve repo, worktree, branch @ sha, upstream, dirty count.
-   Relative paths from here are correct by construction; a hardcoded
-   `C:/Dev/regen-root/...` from a lane points at a *different checkout*.
-2. **Target.** Resolve the slug through the registry, printing runtime, port,
-   host, deploy path and dependents. `monorepo_path` NULL means a standalone
-   repo, not in this tree.
+0. **Call `rdc-harness open <slug>`.** Steps 1–2 are what it returns, not a
+   procedure to perform. Only hand-resolve if the harness is genuinely
+   unavailable, and say so explicitly when you do.
+1. **Position.** Read `sourceBoundary` and `boundaryNote` from the result — they
+   already account for pooled repos and lanes. Relative paths from there are
+   correct by construction; a hardcoded `C:/Dev/regen-root/...` from a lane
+   points at a *different checkout*.
+2. **Target.** Read `productClass`, `workModel`, `delivery` and `weDoNotHold`
+   from the same result. `monorepo_path` NULL means a standalone repo, not in
+   this tree. Do not re-query the registry for facts the handle already carries.
 3. **Harness.** Name the shape the target's class implies:
 
    | class | build | dev | prod |
