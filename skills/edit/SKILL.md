@@ -99,10 +99,16 @@ launch if it is dead.
 - `RDC_TEST=1`: do not force a foreground browser action; report the exact editor URL and whether the target was resolved.
 
 ### 5. Report the result
+- For a changed UI route, run the target project's pinned headless `test:ui`
+  command (or its named route test) after saving. Install Chromium through that
+  project with `pnpm exec playwright install chromium` only if it is absent.
+  The editor preview is an authoring surface, not verification. A route `200`
+  is not visual evidence; retain the Playwright pass/failure artifact.
 - Return a concise line with:
   - the resolved target
   - the editor URL
   - whether the page was opened or only prepared in test mode
+  - the visual-test command and result for a changed UI route
 
 ## Guardrails
 - Do not turn this into a full design audit.

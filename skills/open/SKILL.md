@@ -105,7 +105,15 @@ Downstream verbs re-resolve from the registry by slug.
    | `sites/`, `models/` | static/vite | PM2 @ Vultr | Coolify |
    | standalone | its own tooling | — | Coolify |
 
-4. **State the ground in one line** and start. Do not re-derive it later in the
+4. **Visual-test contract (for an app/site with UI work).** Read the target
+   `package.json` and name its `test:ui` command and Playwright config. A
+   project-owned `@playwright/test` dependency, a headless browser install, and
+   named UI-route tests are required before later work can claim rendered
+   evidence. A global CLI, a route probe, or an editor iframe does not satisfy
+   this contract. If the contract is absent, record it as a build requirement;
+   do not silently substitute a manual visual assertion.
+
+5. **State the ground in one line** and start. Do not re-derive it later in the
    turn.
 
 ## Checklist
@@ -115,6 +123,7 @@ Downstream verbs re-resolve from the registry by slug.
 [ ] target resolved from the registry (or: no slug given, position only)
 [ ] unresolved fields named explicitly, never defaulted
 [ ] harness shape named for the target's class
+[ ] UI target: project-owned Playwright command/config identified (or absence recorded)
 [ ] blockers noted — behind upstream, dirty tree, service down
 ```
 
