@@ -215,7 +215,7 @@ description: rdc:plan (topic) — produce architecture, decisions and an epic wi
    |------|---------------|-------------------|---------|
    | `assert` | Logic is correct | Write a vitest test — input → expected output | `extractCode("```tsx\nfoo\n```") returns "foo"` |
    | `smoke` | It runs without crashing | Run command, check exit code / HTTP status | `tsc --noEmit passes`, `GET /api/layout/scan returns 200` |
-   | `visual` | It looks right | Delegate to UI audit tool with specific checkpoints | `"/layout page renders container tree, not login screen"` |
+   | `visual` | It looks right | Add/run a project-owned, pinned, headless Playwright assertion with a route, state, viewport, and visible expectation | `"/layout desktop loaded state renders container tree, not login screen"` |
    | `contract` | Interface matches spec | Check exports, prop types, response shape | `ScanResult has { roots: ContainerNode[] }` |
 
    **Rules for writing test plan items:**

@@ -165,6 +165,17 @@ description: rdc:review () - [--unattended] — post-build gate over tsc, tests,
    substitutes; missing evidence means `HAS_ISSUES`, never `CLEAN`.
    If verify fails → do NOT emit CLEAN. Loop back, fix, re-run verify.
 
+9a. **Rendered UI gate — execute, do not delegate:**
+
+   For every changed UI route, inspect the target's `package.json` for a
+   project-owned `test:ui` command and pinned `@playwright/test` dependency,
+   then run that command headlessly. It must exercise the named route and state
+   against a fresh app-owned server or documented deploy-equivalent target.
+   A global CLI, route `200`, source inspection, or editor preview is not a
+   substitute. Missing harness or a red route assertion means `HAS_ISSUES`.
+   Preserve Playwright screenshots/traces on failure and quote the passing
+   route-level receipt in the review report.
+
 10. **Fix issues found:**
    - Failing tests → fix and commit
    - Export conflicts → resolve and commit

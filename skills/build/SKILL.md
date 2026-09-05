@@ -497,7 +497,7 @@ Read the task title and description, then:
        TEST PLAN — you MUST implement/verify each of these and tick them off via update_checklist_item(..., p_actor_session_id := '<your-session-id>', p_actor_role := 'agent'):
        - test-assert-xxx: <description> → write a vitest test that proves this
        - test-smoke-xxx: <description> → run the command and confirm the result
-       - test-visual-xxx: <description> → note: delegate to UI audit (you cannot verify this yourself)
+       - test-visual-xxx: <route + state + viewport + visible expectation> → run the project's pinned headless Playwright test and retain its screenshot/trace on failure
        - test-contract-xxx: <description> → verify the export/type/shape exists
        Tick each item as you complete it. Do NOT batch — tick immediately after each verification.
        ```
@@ -537,6 +537,14 @@ Read the task title and description, then:
     construction, or a `/health` probe cannot substitute. If no safe disposable
     environment exists, create one within the work package; do not waive this
     gate or mark the item reviewable.
+  - **Rendered UI gate (hard):** A task that creates or changes a rendered UI
+    route MUST use a project-owned, pinned `@playwright/test` harness. The work
+    package installs the matching Chromium once (`pnpm exec playwright install
+    chromium`), adds/updates a named `test:ui` assertion for every changed route
+    and relevant state, and runs it headlessly against a fresh app-owned test
+    server or an explicitly documented deploy-equivalent target. An HTTP probe,
+    source review, manual editor preview, global Playwright CLI, or a delegated
+    note is not visual evidence. Preserve screenshot/trace on failure.
 
 8. **Post-wave test gate (mandatory):**
    After all agents in a wave complete, before proceeding:
@@ -645,7 +653,10 @@ Read the task title and description, then:
     - **Verifies test plan completion per work item:**
       - For each `test-assert-*` checklist item: confirm a corresponding vitest test exists and passes
       - For each `test-smoke-*` checklist item: run the command and confirm exit code / HTTP status
-      - For each `test-visual-*` checklist item: note as "delegated to UI audit" (validator cannot verify visuals)
+      - For each `test-visual-*` checklist item: run the target's project-owned
+        headless Playwright command; reject the item if the route/state assertion
+        is absent, fails, or relies on a global Playwright install. Retain the
+        route-specific receipt; failure screenshots/traces are the diagnostic artifact.
       - For each `test-contract-*` checklist item: verify the export/type/shape exists in the built code
       - Any unchecked `test-*` item with `required: true` = work item CANNOT be set to `done` (DB enforces this)
     - Sets passing items to `done`, failing items back to `todo` with failure detail
