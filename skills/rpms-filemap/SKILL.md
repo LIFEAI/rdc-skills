@@ -1,4 +1,5 @@
 ---
+name: rpms-filemap
 description: "Generated RPMS file map — RULE #1, canonical homes, and Context Export pointers served from regen-root manifest."
 slash: "rdc:rpms-filemap"
 category: "tooling"
@@ -11,6 +12,11 @@ triggers:
   - "where does this file belong"
   - "where should pm artifacts go"
 ---
+
+> **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
+> Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
+> One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+
 # RPMS File Map
 > GENERATED FILE - DO NOT HAND-EDIT.
 > Source of truth: `docs/architecture/rpms.locations.json`

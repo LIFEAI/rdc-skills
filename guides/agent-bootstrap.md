@@ -119,9 +119,13 @@ pattern happened to catch.
 Playwright must still run headless in agent sessions. Do not use `--headed`,
 `--ui`, `codegen`, `open`, `show-report`, or `PWDEBUG=1`. Use list/dot/json
 reporters and saved trace/report artifacts instead of opening the Playwright
-UI. `foreground-process-gate.js` still hard-blocks this — it was never a
-terminal-launch-primitive question, so narrowing the launch rules above never
-touched it.
+UI. The managed environment guards
+`foreground-process-gate-playwright-headed` and
+`foreground-process-gate-playwright-ui` hard-block interactive forms; they do
+not block a project-owned headless `pnpm test:ui` command. Resolve Playwright
+from the target's pinned `@playwright/test` dependency, install its matching
+Chromium when absent, and run the named route/state test. A global CLI, route
+probe, or editor preview is not rendered evidence.
 
 Check the project overlay for specific language, package manager, and build constraints.
 

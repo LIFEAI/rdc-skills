@@ -36,6 +36,24 @@ LLM reviewer (`pr-review-toolkit:code-reviewer`, or a Codex peer via
 `rdc:co-develop`) — listed at the bottom of this document, not hidden inside
 the tool tables.
 
+## Rendered UI evidence boundary
+
+Rendered UI verification belongs to the target application, not to a global
+browser installation or an interactive connector. A UI-bearing application
+therefore owns a pinned `@playwright/test` dependency, matching browser
+installation, `test:ui` command, and route/state assertions. The test launches
+a fresh app-owned server or the explicitly documented deploy-equivalent target;
+route `200`, source inspection, and an editor iframe remain structural evidence
+only. Headless execution is allowed by the shared environment; interactive
+`--headed`, `--ui`, `codegen`, `open`, `show-report`, and `PWDEBUG=1` are
+blocked by managed guards. Screenshot and trace artifacts are diagnostic output
+on failure, while the passing route assertion is the receipt.
+
+`rdc:open` discovers this contract, `rdc:edit` runs it after a UI change, and
+`rdc:build`/`rdc:review` reject a UI work item that lacks it. This keeps the
+ATF ladder’s visual rung attached to the application that can actually prove
+the rendered behavior.
+
 ## Shared contract
 
 Four tools (SOLID, Clean Code, Patterns, Refactoring) read from one shape:
