@@ -40,6 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { buildHealthPayload } from '@lifeaitools/clauth-surface-sdk';
 
 import {
   listSkills,
@@ -305,7 +306,12 @@ function startHttp() {
     } catch {
       skills = 0;
     }
-    res.json({ status: 'ok', service: 'rdc-skills-mcp', version: pkgVersion(), git_sha: GIT_SHA, skills });
+    res.json({
+      ...buildHealthPayload({ service: 'rdc-skills-mcp', version: pkgVersion(), commands: ['start', 'stop', 'restart'] }),
+      status: 'ok',
+      git_sha: GIT_SHA,
+      skills,
+    });
   });
 
   // Block OAuth discovery so connectors skip OAuth and connect direct — /mcp is open.
