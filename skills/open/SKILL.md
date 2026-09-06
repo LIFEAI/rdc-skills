@@ -11,16 +11,29 @@ description: rdc:open ([slug]) — orient before working; answers where you are 
 
 ## Run the script. Do not re-derive this by hand.
 
+`rdc-harness` ships as a published package — `@lifeai/rdc-harness` on GitHub
+Packages, not npmjs (see `guides/agent-bootstrap.md` for the registry
+precondition). Invoke it through the installed `bin`, never a
+machine-specific checkout path:
+
 ```bash
-node C:/Dev/rdc-harness/bin/rdc-harness.mjs open <slug>
+npx --package=@lifeai/rdc-harness rdc-harness open <slug>
 ```
+
+Only if you are actively developing the harness itself (working ON
+`C:/Dev/rdc-harness`, not just using it) does `node bin/rdc-harness.mjs open
+<slug>` from inside that checkout apply — never bake a `C:/Dev/rdc-harness/...`
+path into this skill as the default invocation; that path exists on exactly
+one machine and defeats the point of a published package.
 
 **This file used to describe what `open` answers without ever naming the tool
 that answers it** — zero mentions of `rdc-harness` in 128 lines — so every agent
 reading it re-implemented orientation with `git rev-parse` and `git status`,
 which is precisely the 6%-of-all-tool-calls waste the next section measures. The
 verb has existed the whole time. Corrected 2026-08-31 on operator instruction:
-"open is supposed to be a script, the skill says call the script."
+"open is supposed to be a script, the skill says call the script." Corrected
+again 2026-09-06: the invocation itself was still a single-machine path even
+after the tool was published — fixed to resolve via the installed package.
 
 It returns one JSON object. Read it; do not reconstruct it:
 

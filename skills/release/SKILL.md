@@ -94,10 +94,11 @@ monorepo subtree, not a standalone repo like this one),
 "Tests/self-test passed" through "Local install/update executed" rows safely:
 real `npm pack`, isolated-prefix install (never the real global store), real
 verify, and `--live` explicitly gating the actual publish. Where applicable,
-`node C:/Dev/rdc-harness/bin/rdc-harness.mjs deploy <slug> [--live]` can supply
-that evidence directly instead of hand-rolling the same pack/install/verify
-cycle. It does **not** replace version bump, tag or push — the harness CLI does
-none of those.
+`npx --package=@lifeai/rdc-harness rdc-harness deploy <slug> [--live]` (the
+published package; see `guides/agent-bootstrap.md` for registry setup) can
+supply that evidence directly instead of hand-rolling the same
+pack/install/verify cycle. It does **not** replace version bump, tag or push
+— the harness CLI does none of those.
 
 ## Resolution Order
 

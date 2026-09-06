@@ -133,8 +133,20 @@ target's own declared build gates, or deploy to dev-PM2/npm-registry, you
 MUST use the real, tested `rdc-harness` CLI instead of hand-rolled bash/curl:
 
 ```bash
-node C:/Dev/rdc-harness/bin/rdc-harness.mjs <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
+npx --package=@lifeai/rdc-harness rdc-harness <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
 ```
+
+`rdc-harness` is distributed as `@lifeai/rdc-harness` on **GitHub Packages**,
+not npmjs (a different registry than `@lifeaitools/rdc-skills`). This needs
+`@lifeai:registry=https://npm.pkg.github.com` mapped in `.npmrc` with a GitHub
+PAT (clauth `github` service — repo/workflow/org scopes) as the registry auth
+token; check whether that mapping is already present (a machine that has
+already published or installed an `@lifeai` package usually has it globally)
+before assuming it needs to be created. Only if you are actively developing
+the harness itself does `node bin/rdc-harness.mjs ...` from inside a
+`C:/Dev/rdc-harness` checkout apply — never hardcode that path as a skill's
+default invocation; it exists on exactly one machine and defeats the point of
+a published package.
 
 One JSON receipt per call, exit 0/1 — use it as evidence for whatever
 checklist/commit step it satisfies. This is a genuinely FORCED requirement,
@@ -144,9 +156,12 @@ policy exists to stop.
 
 This does NOT apply to a skill with no create/open/build/deploy step at all
 (status/report/help/analysis/media/conversation skills) — do not invent one.
-`open`/`edit` require `RDC_HARNESS_ISSUER_SECRET` set explicitly, no default.
-`deploy` has zero Coolify awareness (Coolify stays `rdc:deploy`'s own path)
-and no live co-editing surface outside `site-html`/`site-ts` targets.
+**Corrected 2026-09-06:** `open`/`edit` do NOT require `RDC_HARNESS_ISSUER_SECRET`
+for a local call — a local `open`/`edit` returns a scoped handle (`signed:
+false`) and mints nothing; that env var only matters for an off-box actor
+(e.g. claude.ai) reaching in over the signed-binding path. `deploy` has zero
+Coolify awareness (Coolify stays `rdc:deploy`'s own path) and no live
+co-editing surface outside `site-html`/`site-ts` targets.
 
 ---
 
