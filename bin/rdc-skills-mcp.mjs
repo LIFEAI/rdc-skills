@@ -53,7 +53,7 @@ import { toCloudBody } from '../lib/cloud-rewrite.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
-const PORT = parseInt(process.env.PORT || '3110', 10);
+const PORT = Number.parseInt(process.env.PORT || '3110', 10);
 
 function pkgVersion() {
   try {
@@ -250,6 +250,45 @@ function buildMcpServer() {
       return textResult(JSON.stringify({ query, count: results.length, results }, null, 2));
     },
   );
+
+  // ── Per-skill Prompts ──────────────────────────────────────────────────────
+  // The 3 tools above were the ONLY way to reach a skill: a client had to know
+  // to call rdc_skill_list/search first, then rdc_skill_get by name. Nothing
+  // in the MCP protocol surfaced individual skills as their own first-class,
+  // browsable entities — prompts/list would return zero results, so a host
+  // app (claude.ai's connector UI, any MCP client with a prompt picker) had
+  // nothing to show a user beyond three generic tool names.
+  //
+  // MCP's Prompts primitive exists exactly for this: a named, user-invokable
+  // template a client can list and pick from. Registering every catalog skill
+  // as its own prompt makes each one independently discoverable via
+  // prompts/list, with prompts/get returning the rendered SKILL.md body as
+  // the prompt's message — the same content rdc_skill_get already renders,
+  // reused rather than duplicated. The 3 tools stay for programmatic/agent
+  // callers that already depend on them; this is additive.
+  for (const skill of listSkills()) {
+    srv.registerPrompt(
+      skill.name,
+      {
+        title: skill.slash,
+        description: skill.summary || skill.usage || skill.slash,
+        argsSchema: {
+          args: z.string().optional().describe(`Optional arguments for ${skill.slash}, e.g. the epic id for rdc:build.`),
+        },
+      },
+      async ({ args }) => {
+        const resolved = lastDetectedVariant || 'cloud';
+        const rendered = renderSkill(skill.name, resolved);
+        if (!rendered) {
+          return { messages: [{ role: 'user', content: { type: 'text', text: `Skill '${skill.name}' has no SKILL.md body on disk.` } }] };
+        }
+        const text = args
+          ? `${rendered.header}\n\nARGUMENTS: ${args}\n\n${rendered.body}`
+          : `${rendered.header}\n\n${rendered.body}`;
+        return { messages: [{ role: 'user', content: { type: 'text', text } }] };
+      },
+    );
+  }
 
   return srv;
 }
