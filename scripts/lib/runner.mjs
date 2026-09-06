@@ -70,7 +70,7 @@ function filesModifiedSince(cwd, baseSha) {
   const tracked = gitIn(cwd, ["diff", "--name-only", `${baseSha}..HEAD`]);
   const untracked = gitIn(cwd, ["ls-files", "--others", "--exclude-standard"]);
   const set = new Set();
-  for (const line of (tracked + "\n" + untracked).split(/\r?\n/)) {
+  for (const line of `${tracked}\n${untracked}`.split(/\r?\n/)) {
     const p = line.trim();
     if (p) set.add(p.replace(/\\/g, "/"));
   }
@@ -87,7 +87,17 @@ function writePreconditionFiles(worktreePath, files) {
   }
 }
 
-function spawnHiddenShell(command, args, { cwd, env, timeoutMs }) {
+// Exported so other callers that need the same Windows-safe spawn+quote+timeout
+// behavior (e.g. scripts/rdc-design-compare-cli.mjs dispatching a design brief to
+// both engines) reuse this instead of reimplementing argv quoting. See
+// agent-bootstrap.md §Reuse Existing Subsystem APIs.
+//
+// `stdin`, when provided, is written to the child's stdin and the pipe is then
+// closed — this is how a large prompt (bigger than Windows' ~8191-char command
+// line limit) gets to the child without going through argv at all. When
+// `stdin` is omitted, the child's stdin is closed immediately (`"ignore"`),
+// preserving the exact prior behavior for existing callers (spawnClaude/spawnCodex).
+export function spawnHiddenShell(command, args, { cwd, env, timeoutMs, stdin }) {
   return new Promise((resolve) => {
     let settled = false;
     let stdout = "";
@@ -99,10 +109,15 @@ function spawnHiddenShell(command, args, { cwd, env, timeoutMs }) {
       // which is harmless here. Quote each arg so the shell preserves prompts
       // with spaces/metacharacters as single argv tokens.
       const safeArgs = args.map((arg) => JSON.stringify(String(arg)));
-      child = spawn(command, safeArgs, { cwd, env, shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+      const stdioIn = typeof stdin === "string" ? "pipe" : "ignore";
+      child = spawn(command, safeArgs, { cwd, env, shell: true, windowsHide: true, stdio: [stdioIn, "pipe", "pipe"] });
     } catch (e) {
       resolve({ exit: -1, stdout: "", stderr: `spawn failed: ${e.message}`, timedOut: false });
       return;
+    }
+    if (typeof stdin === "string") {
+      child.stdin.on("error", () => {}); // EPIPE if the child exits before we finish writing
+      child.stdin.end(stdin);
     }
     const timer = setTimeout(() => {
       if (settled) return;
@@ -116,7 +131,7 @@ function spawnHiddenShell(command, args, { cwd, env, timeoutMs }) {
       if (settled) return;
       clearTimeout(timer);
       settled = true;
-      resolve({ exit: -1, stdout, stderr: stderr + `\nspawn error: ${e.message}`, timedOut: false });
+      resolve({ exit: -1, stdout, stderr: `${stderr}\nspawn error: ${e.message}`, timedOut: false });
     });
     child.on("close", (code) => {
       if (settled) return;
@@ -172,7 +187,7 @@ export function parseContentRange(header) {
   const m = header.match(/\/(\d+|\*)\s*$/);
   if (!m) return 0;
   if (m[1] === "*") return 0;
-  const n = parseInt(m[1], 10);
+  const n = Number.parseInt(m[1], 10);
   return Number.isFinite(n) ? n : 0;
 }
 

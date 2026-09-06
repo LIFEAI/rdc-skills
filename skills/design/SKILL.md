@@ -36,6 +36,73 @@ RDC-owned design execution for Studio and LIFEAI interfaces. This skill is the S
 - `rdc:design critique <target>` — UX/design critique
 - `rdc:design polish <target>` — final visual and interaction pass
 - `rdc:design craft <feature>` — shape and build a token-aware UI feature
+- `rdc:design prototype <description>` — build a new UI surface for visual review
+- `rdc:design compare <brief>` — dispatch the same design brief to a Claude-side pass AND a Codex-side pass in parallel, then synthesize a structured comparison (any mode also accepts a trailing `--compare` flag to run the same dual-dispatch before finalizing that mode's output)
+
+## New-Surface Gate — PRODUCT.md / DESIGN.md Before Source Mutation
+
+> Promoted from `rdc:onramp` (Phase 1 disk-tree scaffold + Phase 4 brand-book rubric gate),
+> which is the existing model for this pattern — read `skills/onramp/SKILL.md` §Phase 1.5,
+> §Phase 4.6 if this section is ever unclear. Onramp scoped this to `places/<slug>/`; this
+> section is the same mechanism generalized to any new or reshaped product surface. Approved:
+> Dave, direct instruction, 2026-09-05/06 session — "the existing onramp version is the model;
+> it was simply scoped too narrowly."
+
+**Applies to:** `craft`, `prototype`, and any other mode about to build a **new or reshaped
+product surface** — a new app/site/package root, a new top-level route, or a rename/merge/
+split of an existing screen map. **Does not apply to** `edit`, `audit`, `critique`, `polish`,
+`tokens`, `palette`, `theme`, or `colorize` against an already-documented surface — those
+operate against an existing PRODUCT.md/DESIGN.md, they don't have to create one first.
+
+**Small-fix exemption — same boundary as `rdc:fixit`:** a change touching **fewer than 5
+files** that does **not** introduce a new route, a new top-level screen, or a new app/site
+root is exempt. Anything at or above that, or anything that adds a route/screen/app root
+regardless of file count, is in scope for this gate.
+
+### The gate
+
+Before writing or editing any source file for an in-scope task:
+
+1. **Locate the surface root** — the app/site/package directory, or the repo root for a
+   standalone project (e.g. `C:/Dev/rdc-cde/PRODUCT.md`, not a subdirectory).
+2. **Check for `PRODUCT.md` and `DESIGN.md` at that root.**
+3. **If either is absent, or present but stale against the requested surface** (its screen
+   map / information hierarchy does not cover the screen, route, or object the task is about
+   to add or change) — **refuse to proceed to source mutation.** Create or update the missing
+   or stale document(s) first, using the field lists below. This mirrors onramp's Phase 4
+   rubric row *"DESIGN.md — 24-spread outline, not a stub"* and the Phase 1 gate *"disk:
+   places/<slug>/ exists with all required files"* — a present-but-stub or present-but-stale
+   document fails the gate exactly like an absent one.
+4. Only after both documents exist and are current does the mode proceed to `craft`/
+   `prototype` source work.
+
+### PRODUCT.md — required fields
+
+| Field | Content |
+|---|---|
+| Operator | Who runs/uses this surface day to day |
+| Job-to-be-done | The concrete task the surface exists to complete |
+| Durable objects + authority | The entities the UI reads/writes and who/what owns each one |
+| Screen map | Every screen/route/panel, one row each, with its purpose |
+| Acceptance outcomes | What "this surface works" means, observably |
+
+### DESIGN.md — required fields
+
+| Field | Content |
+|---|---|
+| Dominant visual object | The one element the eye lands on first, per screen |
+| Information hierarchy | What outranks what, and why |
+| Interaction model | How the user acts on the dominant object and its neighbors |
+| Responsive transformation | What changes, collapses, or reflows at narrower widths |
+| Semantic color | Token names mapped to meaning (never raw hex) |
+| References | Existing surfaces/patterns this design borrows from, cited by path |
+| Anti-patterns | What this surface deliberately does NOT do |
+| Visual acceptance criteria | What a reviewer checks to call the visual design done |
+
+**Refusal wording** (use verbatim, adapted to the target): *"BLOCKED: `<surface>` has no
+PRODUCT.md/DESIGN.md at its root (or they are stale against this request). Per the
+new-surface gate, I'm writing/updating those first before touching source."* Then write them,
+then proceed.
 
 ## Required References
 
@@ -168,6 +235,52 @@ Project docs to read for Studio work:
    - For Studio: prefer route smoke checks, token API checks, and browser screenshots when UI changed.
    - For CLI prompt work: run `node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs <command> <brief>` and inspect the generated report under `.rdc/reports/rdc-design-cli/`.
 
+## Design Compare — Claude vs Codex, Dispatched in Parallel
+
+Two AI engines are already wired for dual-dispatch across this fleet — Claude Code and
+Codex (OpenAI/ChatGPT models) — via `codex exec`. This is not a new integration; it is the
+same mechanism `scripts/lib/runner.mjs` already uses to spawn both `claude --print
+--output-format stream-json` and `codex exec --json` against a prompt, and the same one
+CDE's `apps/implementor-manager/src/codex-cli-implementor.ts` uses for a fresh read-only
+planning turn (`codex exec --sandbox read-only --json --output-schema <schema> <prompt>`).
+
+`rdc:design compare <brief>` (or any mode + `--compare`) runs that mechanism against a
+design brief instead of a code-change prompt:
+
+```powershell
+node {RDC_SKILLS_ROOT}/scripts/rdc-design-compare-cli.mjs "<design brief>" [--out <dir>]
+```
+
+This is a **real dispatch**, not a description of one: the script spawns a fresh
+`claude --print` process and a fresh `codex exec --sandbox read-only --json` process **in
+parallel**, both against the identical brief plus the design skill's own operating
+instructions (same construction as `rdc-design-cli.mjs`'s prompt assembly), and both told
+explicitly not to mutate files — this is a proposal pass, not an edit pass. It waits for
+both, extracts each engine's final message, and writes:
+
+```text
+{RDC_SKILLS_ROOT}/.rdc/reports/rdc-design-cli/compare-<timestamp>/
+  claude.md     — Claude's raw design proposal
+  codex.md      — Codex's raw design proposal
+  report.json   — both outputs + timing + exit codes
+```
+
+**After the script returns, the calling agent (not the script) writes the comparison** —
+read both `claude.md` and `codex.md` and produce a structured table, never concatenation:
+
+| Dimension | Claude proposal | Codex proposal | Verdict |
+|---|---|---|---|
+| Dominant visual object | ... | ... | which fits the brief |
+| Information hierarchy | ... | ... | which fits the brief |
+| Interaction model | ... | ... | which fits the brief |
+| Token/brand-system fit | ... | ... | which reuses existing tokens vs invents new ones |
+| Tradeoffs | ... | ... | cost of each approach |
+
+Recommend one, or a hybrid, with the reason stated — never "both are good options."
+
+If `codex` is unreachable (binary missing, non-zero exit), report that plainly and fall
+back to a single-engine pass; do not fabricate a second opinion.
+
 ## Command Menu
 
 | Command | Purpose |
@@ -181,7 +294,9 @@ Project docs to read for Studio work:
 | `audit` | Technical and visual audit |
 | `critique` | UX/design review |
 | `polish` | Final detail pass |
-| `craft` | Shape and build a token-aware interface |
+| `craft` | Shape and build a token-aware interface — gated by New-Surface Gate above |
+| `prototype` | Build a new UI surface for visual review — gated by New-Surface Gate above |
+| `compare` | Dispatch the same design brief to Claude AND Codex in parallel, synthesize a comparison |
 
 ## CLI Helper
 
@@ -191,6 +306,7 @@ Use the local helper to see exactly how much instruction text the skill is gener
 node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs studio "audit the Studio palette page"
 node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs palette "generate a PRT palette workflow"
 node {RDC_SKILLS_ROOT}/scripts/rdc-design-cli.mjs --json theme "RDC earth-forward light theme"
+node {RDC_SKILLS_ROOT}/scripts/rdc-design-compare-cli.mjs "dashboard hero panel for a stewardship dashboard"
 ```
 
 The helper writes logs to:
@@ -199,7 +315,7 @@ The helper writes logs to:
 {RDC_SKILLS_ROOT}/.rdc/reports/rdc-design-cli/
 ```
 
-Each run includes character count, word count, approximate token count, references loaded, and the final prompt text.
+Each run includes character count, word count, approximate token count, references loaded, and the final prompt text. `rdc-design-compare-cli.mjs` writes its dual-engine outputs under `.rdc/reports/rdc-design-cli/compare-<timestamp>/` (see Design Compare above).
 
 ## Boundaries
 
@@ -209,3 +325,7 @@ Each run includes character count, word count, approximate token count, referenc
 - Do not persist Rampa output directly to production without Studio token mapping.
 - Do not fork or ship Palette Designer until its license is verified.
 - Do not use Studio's deprecated `/api/editor/render` route.
+- Do not skip the New-Surface Gate for `craft`/`prototype` work on a new or reshaped
+  surface, even when the requester did not mention PRODUCT.md/DESIGN.md.
+- Do not let `compare` mode's Codex-side pass mutate files — it runs `--sandbox read-only`
+  by design; if a prompt change would lift that, treat it as an architectural change.
