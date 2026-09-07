@@ -137,7 +137,7 @@ target's own declared build gates, or deploy to dev-PM2/npm-registry, you
 MUST use the real, tested `rdc-harness` CLI instead of hand-rolled bash/curl:
 
 ```bash
-npx --package=@lifeai/rdc-harness rdc-harness <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
+npx -y --package=@lifeai/rdc-harness rdc-harness <create|open|edit|build|deploy> <slug> --monorepo-root <your own worktree, never the shared checkout>
 ```
 
 `rdc-harness` is distributed as `@lifeai/rdc-harness` on **GitHub Packages**,
@@ -146,7 +146,11 @@ not npmjs (a different registry than `@lifeaitools/rdc-skills`). This needs
 PAT (clauth `github` service — repo/workflow/org scopes) as the registry auth
 token; check whether that mapping is already present (a machine that has
 already published or installed an `@lifeai` package usually has it globally)
-before assuming it needs to be created. Only if you are actively developing
+before assuming it needs to be created. An `npm` 404 on the package IS that
+missing mapping — do not read it as "the harness is unpublished". Keep the
+`-y`: without it a TTY-attached run stops on npx's `Ok to proceed?` prompt,
+which is the same one-off-published-package form `skills/convert/SKILL.md`
+already documents. Only if you are actively developing
 the harness itself does `node bin/rdc-harness.mjs ...` from inside a
 `C:/Dev/rdc-harness` checkout apply — never hardcode that path as a skill's
 default invocation; it exists on exactly one machine and defeats the point of

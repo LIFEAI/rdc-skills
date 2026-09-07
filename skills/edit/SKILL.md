@@ -17,8 +17,10 @@ description: rdc:edit (target) — open the local website editor for a target
 **This skill is the designated handler `rdc-harness` dispatches to.**
 `packages/work/src/editors.mjs`'s `BY_CLASS` table maps `site-html`/`site-ts`
 product classes to editor id `'rdc:edit'` — when an agent calls
-`npx --package=@lifeai/rdc-harness rdc-harness edit <slug>` (the published
-package; see `guides/agent-bootstrap.md` for registry setup) against a website
+`npx -y --package=@lifeai/rdc-harness rdc-harness edit <slug>` (published on
+GitHub Packages — needs `@lifeai:registry=https://npm.pkg.github.com` in
+`.npmrc`; an `npm` 404 means that mapping is missing. Full setup:
+`{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md`) against a website
 target, its receipt names `editorId: 'rdc:edit'` and an `editableBoundary`.
 This skill IS that handler: resolve the same target, launch/reuse the editor
 host, use the harness's `editableBoundary` as the save boundary if the call

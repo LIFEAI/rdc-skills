@@ -12,12 +12,14 @@ description: rdc:open ([slug]) — orient before working; answers where you are 
 ## Run the script. Do not re-derive this by hand.
 
 `rdc-harness` ships as a published package — `@lifeai/rdc-harness` on GitHub
-Packages, not npmjs (see `guides/agent-bootstrap.md` for the registry
-precondition). Invoke it through the installed `bin`, never a
-machine-specific checkout path:
+Packages, not npmjs. That needs `@lifeai:registry=https://npm.pkg.github.com`
+in `.npmrc`; if `npm` 404s on the package, that mapping is what is missing
+(auth token: the clauth `github` PAT — full setup in
+`.rdc/guides/agent-bootstrap.md`). Invoke it through the installed `bin`,
+never a machine-specific checkout path:
 
 ```bash
-npx --package=@lifeai/rdc-harness rdc-harness open <slug>
+npx -y --package=@lifeai/rdc-harness rdc-harness open <slug>
 ```
 
 Only if you are actively developing the harness itself (working ON
@@ -143,9 +145,10 @@ Downstream verbs re-resolve from the registry by slug.
 
 ## Steps
 
-0. **Call `rdc-harness open <slug>`.** Steps 1–2 are what it returns, not a
-   procedure to perform. Only hand-resolve if the harness is genuinely
-   unavailable, and say so explicitly when you do.
+0. **Call `npx -y --package=@lifeai/rdc-harness rdc-harness open <slug>`.**
+   Steps 1–2 are what it returns, not a procedure to perform. Only
+   hand-resolve if the harness is genuinely unavailable, and say so
+   explicitly when you do.
 1. **Position.** Read `sourceBoundary` and `boundaryNote` from the result — they
    already account for pooled repos and lanes. Relative paths from there are
    correct by construction; a hardcoded `C:/Dev/regen-root/...` from a lane
