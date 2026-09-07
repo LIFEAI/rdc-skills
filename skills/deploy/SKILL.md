@@ -7,6 +7,13 @@ description: rdc:deploy (slug, [action]) — run one command; exit 0 means shipp
 > One command, then one line: the URL on exit 0, or the `DEPLOY-FAILED` block on
 > non-zero. No tool-call narration, no raw JSON dumps, no progress commentary.
 
+> **Sandbox contract:** This skill honors `RDC_TEST=1` per
+> `.rdc/guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Under the flag
+> the run stays read-only — registry read plus health probe — and every
+> mutating step short-circuits: no deploy triggered, no Cloudflare cache purge,
+> no DNS write, no promote to main. `skills/tests/rdc-deploy.test.json` asserts
+> exactly those four absences, so this is an enforced contract, not a promise.
+
 # rdc:deploy — run the program, read the exit code
 
 **This skill is not a procedure. It is one command.**
