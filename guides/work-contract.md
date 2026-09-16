@@ -3,8 +3,10 @@
 > The one home for how an `rdc:*` skill declares work, resolves its target, and
 > proves it is finished. `rdc:open`, `rdc:fixit`, `rdc:build`, `rdc:plan`,
 > `rdc:overnight` and `rdc:review` defer to this file rather than restating it.
-> Runtime: `lifeai-env` ≥ 0.8.248 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
-> on Claude Code and Codex.
+> Runtime: `lifeai-env` ≥ 0.8.251 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
+> on Claude Code and Codex. When a gate prints an `rdc-work` line, run **that
+> line**: it names the installed copy and carries `--session <id>`, which matters
+> in a shell that holds both a Claude and a Codex session id.
 
 ## Why
 
@@ -41,14 +43,37 @@ A row passes only when its command ran and exited 0. **Nothing ticks a row by
 saying so** — there is no free-text evidence path.
 
 Without a contract the start gate (`work-contract-required`) refuses the change
-and prints the exact command, including this session's id.
+and prints the exact command, including this session's id. Plans, reports and
+other documents under `.rdc/`, engine memory and plan files, and anything outside
+a git work tree need no contract; code does, wherever its checkout sits.
+
+### A proof observes, and it can fail
+
+A proof runs through `rdc-work`'s own process, outside the hooks that guard a
+tool call, so `rdc-work` applies both checks itself — at `start`/`add` and again at
+`verify`:
+
+- **The proof policy.** A proof may not change anything: no commit, push, merge,
+  rebase, reset, checkout, stash, tag or branch change; no publish, land, deploy,
+  PM2 or Docker lifecycle; no `rm`/`mv`/`cp`/`touch`/`mkdir`, `sed -i`, redirection
+  into a file, or write request (`curl -X POST`, `-d`). And it must be able to fail:
+  `true`, `exit 0`, a bare `echo`, `… || true` are refused.
+- **The shared guard rules** — the same ones a Bash call meets. A proof they refuse
+  is refused (`( cd dir && cmd )`, not `cd dir && cmd`).
+
+A refused proof is recorded as exit 126 and **never runs**. Prove an action by
+observing its result: a push with `git merge-base --is-ancestor HEAD origin/<branch>`,
+a deploy with a read-only probe, a file with `test -f`.
 
 ## Tier — the agent picks
 
 | `--type` | tier | also |
 |---|---|---|
 | `maintenance`, `hotfix`, `fixit`, `edit` | `todo` | rows only |
-| `build`, `refactor`, `overnight` | `work-item` | `--work-item <uuid>` required; the item's database Definition of Done must close too |
+| `build`, `refactor`, `overnight` | `work-item` | `--work-item <uuid>` required |
+
+Whatever the tier, a work item this session has **claimed** holds Stop until its
+database Definition of Done closes — choosing `todo` does not drop a claimed item's DoD.
 
 A todo contract that grows past ~5 changed files is reported at Stop ("usually
 wants a work item") but never blocked on — the tier is the agent's call. Upgrade
@@ -68,24 +93,39 @@ Coarse rows are still rejected, because they cannot fail: "works", "verified",
 ## Proving, and staleness
 
 ```bash
-node "$LIFEAI_ENV/bin/rdc-work.mjs" verify t2        # one row
-node "$LIFEAI_ENV/bin/rdc-work.mjs" verify --all     # every row, against the code as it stands now
-node "$LIFEAI_ENV/bin/rdc-work.mjs" drop t3 --reason "no dev target exists for this package"
-node "$LIFEAI_ENV/bin/rdc-work.mjs" status           # the checklist Stop will judge
-node "$LIFEAI_ENV/bin/rdc-work.mjs" check            # exit 0 when Stop would pass
+node "$LIFEAI_ENV/bin/rdc-work.mjs" verify t2 --session <id>        # one row
+node "$LIFEAI_ENV/bin/rdc-work.mjs" verify --all --session <id>     # every row, against the code as it stands now
+node "$LIFEAI_ENV/bin/rdc-work.mjs" drop t3 --reason "no dev target exists for this package" --session <id>
+node "$LIFEAI_ENV/bin/rdc-work.mjs" status --session <id>           # the checklist Stop will judge
+node "$LIFEAI_ENV/bin/rdc-work.mjs" check --session <id>            # exit 0 when Stop would pass
 ```
 
-A proof taken **before the session's last edit is stale** — the edit may have broken
-it. Finish every piece of work with `verify --all`. A dropped row is resolved, not
-passed, and stays visible with its reason.
+`--session` is optional when the shell carries exactly one engine's session id;
+every verb prints the id it resolved and where it came from. `--no-db` skips the
+work-item DoD lookup for an offline check — Stop never skips it.
+
+A proof goes **stale** when the session edits after it, or when the content it ran
+against changes by any route — a shell edit, a formatter, a rebase, a pull.
+Committing exactly the proved content does not make it stale. Finish every piece of
+work with `verify --all`. A dropped row is resolved, not passed, and stays visible
+with its reason. Every row prints its proof command beside it, so a weak proof is as
+visible as its claim.
 
 ## Stop
 
-Stop is `rdc-work check`: every row proved after the last edit or dropped with a
-reason, the target's tracked changes committed, and — for a work-item contract —
-its database DoD closed. The block message is the checklist. Enforcement is
-bounded: a Stop held identically three times, or six times in a row, releases,
-and the unproved rows stay in the contract and in the compaction snapshot.
+For a session **holding a contract**, Stop is `rdc-work check`: every row proved
+against the current content or dropped with a reason, the target's tracked changes
+committed, and every claimed work item's database DoD closed. The block message is
+the checklist, with runnable `--session` commands. A database outage is reported,
+not held against the work.
+
+A session with **no contract** — one that only read, planned or answered — still
+gets the evidence checks: tracked changes it left uncommitted, and a claimed work
+item's open DoD. How its final message is worded is never judged.
+
+Enforcement is bounded: a Stop held identically three times, or six times in a row,
+releases, and the unproved rows stay in the contract and in the compaction snapshot.
+A defect in the gate itself — an unreadable contract, an error — reports and never holds.
 
 ## Target resolution — never assume regen-root
 
@@ -127,4 +167,9 @@ contract; a SubagentStop is never held to the parent's whole checklist.
 
 `~/.rdc/work-contract-mode`: `enforce` (default) · `shadow` (log would-blocks only)
 · `off` (previous behaviour). A file, not an environment variable, so an agent
-cannot flip it for itself.
+cannot flip it for itself — and `work-contract-tamper` refuses any agent tool call
+that writes the mode file, a contract, or Stop's breaker state. The operator
+switches the mode from their own terminal.
+
+A worker launched by the Codex Development Environment (CDE) is admitted by CDE's
+own manager and validator; the start gate stands down for it.

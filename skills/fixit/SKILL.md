@@ -64,12 +64,13 @@ command that proves it; the start gate refuses the first edit without one.
 ```bash
 node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type fixit --goal "<the fix, as an outcome>" \
   --row "<the defect is gone> :: <command that exits 0 only when it is>" \
-  --row "shipped :: <command that proves it landed on the integration branch>"
+  --row "shipped :: git fetch -q origin && git merge-base --is-ancestor HEAD origin/<integration>"
 ```
 
 Use the printed `target:` line for the rest of this skill: `{development-branch}`
 is its **integration** branch, and `scripts/land.mjs` is its **ship** route —
-they differ per repository. Finish with `rdc-work verify --all`; Stop checks it.
+they differ per repository. A proof observes and can fail — `rdc-work` refuses one
+that changes anything or cannot fail. Finish with `rdc-work verify --all`; Stop checks it.
 
 ### 3. Write the fixit session marker
 

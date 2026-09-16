@@ -181,15 +181,17 @@ Downstream verbs re-resolve from the registry by slug.
    | `--for` | tier | what it adds |
    |---|---|---|
    | `maintenance`, `hotfix`, `fixit`, `edit` | todo | rows only |
-   | `build`, `refactor`, `overnight` | work-item | `--work-item <uuid>`; its DoD must close too |
+   | `build`, `refactor`, `overnight` | work-item | `--work-item <uuid>` |
 
    ```bash
    node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type <type> --goal "<what done means>" \
-     --row "<step> :: <command that exits 0 when the step is true>"   # one per deliverable
+     --row "<step> :: <read-only command that exits 0 when the step is true>"   # one per deliverable
    ```
 
    Each row carries the command that proves it; a row passes only when that
-   command ran and exited 0. The printed `target:` line is the resolved ship
+   command ran and exited 0. A proof observes and can fail — one that changes
+   anything, or cannot fail, is refused. On every tier, a work item this session
+   has claimed holds Stop until its database DoD closes. The printed `target:` line is the resolved ship
    contract — integration branch and ship route — for this target, so no later
    step assumes regen-root's `develop` or `scripts/land.mjs`. Where the type is
    also a flow state (`maintenance`, `hotfix`, `build`, `refactor`, `overnight`)

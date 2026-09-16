@@ -127,8 +127,9 @@ Read the task title and description, then:
    ```bash
    node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type build --work-item <epic-or-task-uuid> \
      --goal "<what this epic delivers, in one sentence>" \
-     --row "<deliverable> :: <command that exits 0 when it is true>"   # one per deliverable
+     --row "<deliverable> :: <read-only command that exits 0 when it is true>"   # one per deliverable
    ```
+   A proof observes and can fail: `rdc-work` refuses one that commits, pushes, lands, publishes, deploys or writes a file, and one that cannot fail (`true`, `echo`). Prove a landing by observing it (`git merge-base --is-ancestor HEAD origin/<integration>`). Run the gate's printed `rdc-work` lines as printed — they carry `--session`.
    The printed `target:` line is authoritative for the rest of this skill: its **integration** branch replaces every `develop` below, its **ship** route replaces `scripts/land.mjs`. Without a contract the start gate refuses the first write and the first commit.
 
    **Pre-flight gate — run after claiming:**
