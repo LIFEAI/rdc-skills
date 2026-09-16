@@ -3,7 +3,7 @@
 > The one home for how an `rdc:*` skill declares work, resolves its target, and
 > proves it is finished. `rdc:open`, `rdc:fixit`, `rdc:build`, `rdc:plan`,
 > `rdc:overnight` and `rdc:review` defer to this file rather than restating it.
-> Runtime: `lifeai-env` ≥ 0.8.255 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
+> Runtime: `lifeai-env` ≥ 0.8.257 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
 > on Claude Code and Codex. When a gate prints an `rdc-work` line, run **that
 > line**: it names the installed copy and carries `--session <id>`, which matters
 > in a shell that holds both a Claude and a Codex session id.
