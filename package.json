@@ -1,6 +1,6 @@
 {
   "name": "@lifeaitools/rdc-skills",
-  "version": "0.35.24",
+  "version": "0.35.25",
   "description": "RDC typed-agent dispatch skill suite for Claude Code - plan, build, review, overnight builds",
   "keywords": [
     "claude-code",
@@ -55,7 +55,8 @@
     "test:channel-formatter:remote": "node tests/channel-formatter.contract.test.mjs --remote",
     "test:brochure": "node tests/rdc-brochure.test.mjs",
     "mcp": "node bin/rdc-skills-mcp.mjs",
-    "prepack": "node scripts/prepack.mjs"
+    "prepack": "node scripts/prepack.mjs",
+    "test:deploy": "node tests/deploy-updater.test.mjs"
   },
   "dependencies": {
     "@lifeaitools/clauth-surface-sdk": "^0.1.0",
