@@ -69,6 +69,17 @@ A refused proof is recorded as exit 126 and **never runs**. Prove an action by
 observing its result: a push with `git merge-base --is-ancestor HEAD origin/<branch>`,
 a deploy with a read-only probe, a file with `test -f`.
 
+**A proof is a POSIX shell command, on every engine.** `rdc-work` runs it with
+`-c '<proof>'` in Git Bash on Windows and in `/bin/sh` everywhere else (dash on
+Debian and Ubuntu) — whatever shell the agent itself uses. Write plain `sh`: a
+bash-only form (`[[ ]]`, `$RANDOM`, arrays) passes on Windows and fails on Linux.
+`$var`, `"…"` and backticks are expanded by that shell before any program sees
+them. A PowerShell check goes inside single quotes, where POSIX
+expands nothing: `pwsh -NoProfile -Command '(Get-Service x).Status -eq "Running"'`
+— and since that prints `True` or `False` and exits 0 either way, end it with
+`| grep -qx True`, or put the check in a script that exits non-zero, and prove with
+`pwsh -NoProfile -File check.ps1`.
+
 ## Tier — the agent picks
 
 | `--type` | tier | also |

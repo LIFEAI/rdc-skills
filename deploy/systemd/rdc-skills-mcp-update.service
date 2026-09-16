@@ -1,0 +1,15 @@
+[Unit]
+Description=Keep the public RDC Skills MCP on the newest release tag
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/srv/regen/rdc-skills
+# A copy outside the checkout: a rollback to a release that predates the
+# updater must not be able to delete the program doing the rollback.
+ExecStart=/usr/local/libexec/rdc-skills/update-from-tag.sh
+# Proved and failed commits, and install hashes — outside the checkout it judges.
+StateDirectory=rdc-skills-update
+TimeoutStartSec=20min
