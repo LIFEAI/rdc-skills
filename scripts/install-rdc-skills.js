@@ -1277,7 +1277,14 @@ async function main() {
   const pkg     = readJson(path.join(repoRoot, 'package.json'));
   const version = pkg.version || '0.7.0';
   let   gitSha  = '';
-  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim(); } catch {}
+  if (fs.existsSync(path.join(repoRoot, '.git'))) {
+    try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' }).trim(); } catch {}
+  } else {
+    // An npm-installed package has no .git — and `git rev-parse` would walk up into
+    // whatever repository encloses it. The commit is the pack-time stamp instead.
+    gitSha = String(readJson(path.join(repoRoot, 'git-sha.json'))?.sha || '');
+    if (gitSha === 'unknown') gitSha = '';
+  }
 
   // 0.5a. User-skills cleanup — remove any rdc: skills from ~/.claude/skills/user/
   // (older installer versions wrote there; plugin cache is the only authoritative source)

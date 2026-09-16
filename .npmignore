@@ -1,3 +1,11 @@
+# What npm leaves out of the package. When this file exists npm stops reading
+# .gitignore, so it carries every .gitignore rule except ONE: git-sha.json.
+# That stamp (scripts/stamp-git-sha.mjs, written at prepack) is untracked in git
+# on purpose and exists to be SHIPPED — it is how an npm-installed copy, which has
+# no .git, reports the commit it was built from. With .gitignore as the only
+# ignore file it was silently excluded from every tarball.
+# tests/npm-ignore-parity.test.mjs keeps the two files in step.
+
 # Dependencies
 node_modules/
 package-lock.json
@@ -50,14 +58,5 @@ Thumbs.db
 docs/
 dist/
 
-# pack/publish-time artifact (scripts/stamp-git-sha.mjs). Tracking this in git
-# makes checkout-based deployments (e.g. the Vultr rdc-skills-mcp host) report a
-# permanently-stale git_sha in /health, since it wins over the runtime
-# git-rev-parse fallback. It IS shipped in the npm package: .npmignore mirrors
-# this file without this rule (an .npmignore replaces .gitignore for npm, and
-# without one this line kept the stamp out of every tarball).
-git-sha.json
-
 # Machine-local PM2 process definition — unregistered by design.
-# Deployment config lives in the Supabase registry (app_deployments), not a file.
 ecosystem.local.config.cjs
