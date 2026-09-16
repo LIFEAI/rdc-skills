@@ -32,30 +32,11 @@ const REPO_ROOT = resolve(__dirname, "..");
 // ─── Inline validator (mirrors self-test.mjs logic) ────────────────────────
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 
-const GUIDE_BANNED_TERMS = [
-  "@masonator/coolify-mcp",
-  "@masonator",
-  "coolify-mcp",
-  "@regen/brand-studio",
-  "brand-studio",
-];
+// Rules imported from the single home — see scripts/lib/guide-content-rules.mjs for why.
+import { GUIDE_BANNED_TERMS, GUIDE_NEGATION_PATTERNS } from "./lib/guide-content-rules.mjs";
 
-const GUIDE_NEGATION_PATTERNS = [
-  /\bdo not\b/i,
-  /\bnever\b/i,
-  /\bno such\b/i,
-  /\bdoes not exist\b/i,
-  /\bbanned\b/i,
-  /\bnot reference\b/i,
-  /\bnot use\b/i,
-  /\bavoid\b/i,
-  /\bremoved\b/i,
-  /\bdeprecated\b/i,
-  // Markdown table row showing a WRONG→CORRECT mapping (naming-corrections.md pattern)
-  /^\|[^|]*WRONG[^|]*\|/i,
-  // A table row where the term is in the WRONG column (first data column after the | WRONG | header)
-  /^\|\s*(Brand Studio|brand-studio|@regen\/brand-studio|@masonator[^ |]*|coolify-mcp)[^|]*\|\s*\*\*/,
-];
+
+
 
 const KNOWN_CLAUTH_KEYS = new Set([
   "coolify-api",
@@ -183,6 +164,26 @@ const GOOD_DIR = join(REPO_ROOT, "scripts/fixtures/guides-clean");
 const cleanFindings = scanDir(GOOD_DIR, "fixtures");
 const cleanErrors = cleanFindings.filter((f) => f.level === "error");
 assert("scanDir on clean fixture dir returns 0 errors", cleanErrors.length === 0, `got ${cleanErrors.length}`);
+
+// ─── Test 5: a corrections-table row is a correction, under ANY scope prefix ───
+// Regression, 2026-09-16: the exemption listed `@regen/brand-studio`; after the
+// scope rename, `| @lifeai/brand-studio | **@lifeai/studio** |` in
+// naming-corrections.md — a row declaring that name WRONG — failed strict runs.
+console.log("\nTest 5: corrections-table rows are negations regardless of scope");
+const { isNegatedBannedLine } = await import("./lib/guide-content-rules.mjs");
+for (const row of [
+  "| brand-studio | **studio** | 2026-04-24 |",
+  "| @regen/brand-studio | **@regen/studio** | 2026-04-24 |",
+  "| @lifeai/brand-studio | **@lifeai/studio** | 2026-04-24 |",
+  "| @some-future-scope/brand-studio | **@some-future-scope/studio** | 2027-01-01 |",
+]) {
+  assert(`negated: ${row}`, isNegatedBannedLine(row));
+}
+// The structural exemption must not swallow a real instruction.
+assert("NOT negated: an instruction that merely contains the term",
+  !isNegatedBannedLine("Install @lifeai/brand-studio and import it in the app."));
+assert("NOT negated: a table row whose correction cell is not bold",
+  !isNegatedBannedLine("| package | @lifeai/brand-studio | use it |"));
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(60)}`);

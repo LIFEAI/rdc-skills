@@ -56,6 +56,21 @@ SELECT insert_work_item(
 
 Note the returned `id`.
 
+### 2a. Declare the fix and its proof (before touching any code)
+
+A fixit is a todo-tier contract (`guides/work-contract.md`). Every row carries the
+command that proves it; the start gate refuses the first edit without one.
+
+```bash
+node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type fixit --goal "<the fix, as an outcome>" \
+  --row "<the defect is gone> :: <command that exits 0 only when it is>" \
+  --row "shipped :: <command that proves it landed on the integration branch>"
+```
+
+Use the printed `target:` line for the rest of this skill: `{development-branch}`
+is its **integration** branch, and `scripts/land.mjs` is its **ship** route —
+they differ per repository. Finish with `rdc-work verify --all`; Stop checks it.
+
 ### 3. Write the fixit session marker
 
 Write to `{USER_HOME}/.claude/fixit.marker`:

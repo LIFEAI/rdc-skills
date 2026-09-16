@@ -1,6 +1,6 @@
 ---
 name: open
-description: rdc:open ([slug]) — orient before working; answers where you are and what the target is from the registry, then names the harness shape
+description: rdc:open ([slug]) - [--for maintenance|fixit|edit|hotfix|build|refactor] — orient, then declare the work and how each step is proved before changing anything
 ---
 
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
@@ -173,8 +173,32 @@ Downstream verbs re-resolve from the registry by slug.
    this contract. If the contract is absent, record it as a build requirement;
    do not silently substitute a manual visual assertion.
 
-5. **State the ground in one line** and start. Do not re-derive it later in the
-   turn.
+5. **State the ground in one line.** Do not re-derive it later in the turn.
+
+6. **Declare the work — before the first change** (`guides/work-contract.md`).
+   `rdc:open <project> --for <type>` ends here. The type picks the tier:
+
+   | `--for` | tier | what it adds |
+   |---|---|---|
+   | `maintenance`, `hotfix`, `fixit`, `edit` | todo | rows only |
+   | `build`, `refactor`, `overnight` | work-item | `--work-item <uuid>`; its DoD must close too |
+
+   ```bash
+   node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type <type> --goal "<what done means>" \
+     --row "<step> :: <command that exits 0 when the step is true>"   # one per deliverable
+   ```
+
+   Each row carries the command that proves it; a row passes only when that
+   command ran and exited 0. The printed `target:` line is the resolved ship
+   contract — integration branch and ship route — for this target, so no later
+   step assumes regen-root's `develop` or `scripts/land.mjs`. Where the type is
+   also a flow state (`maintenance`, `hotfix`, `build`, `refactor`, `overnight`)
+   the FSM flow is set in the same call.
+
+   Operator, 2026-09-14: *"rdc open website-x for maintenance and it says fsm to
+   be todo list"*. That is this step. Skip it only for a pure conversation turn —
+   the start gate refuses a tracked write or a commit without it anyway, and
+   prints this exact command.
 
 ## Checklist
 
@@ -185,12 +209,16 @@ Downstream verbs re-resolve from the registry by slug.
 [ ] harness shape named for the target's class
 [ ] UI target: project-owned Playwright command/config identified (or absence recorded)
 [ ] blockers noted — behind upstream, dirty tree, service down
+[ ] work declared — rdc-work start, every row with a proof command (or: conversation only)
 ```
 
 ## Related
 
-- `rdc:flow` — declares what KIND of work this is. `rdc:open` says where you are;
-  `rdc:flow` says what you are doing. Both, in that order.
+- `guides/work-contract.md` — the contract this skill opens: rows, tiers, proving,
+  staleness, and what Stop checks.
+- `rdc:flow` — declares what KIND of work this is. `rdc-work start --type` sets it
+  for you when the type is a flow state; use `rdc:flow` directly for `plan`,
+  `design`, `collab`.
 - `rdc:status` — open epics and queue. That is the work; this is the ground.
 - `rdc:deploy` — consumes the source key this skill resolves.
 - `$LIFEAI_ENV/docs/GATES-GUARDS-DENIES.md` — when a guard stops you, that names

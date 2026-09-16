@@ -57,33 +57,13 @@ const REGEN_ROOT = process.env.REGEN_ROOT || "C:/Dev/regen-root";
 
 // Terms that must NOT appear in guide/rule files as positive instructions.
 // A line is flagged only when it does NOT contain a known negation pattern.
-const GUIDE_BANNED_TERMS = [
-  "@masonator/coolify-mcp",
-  "@masonator",
-  "coolify-mcp",
-  "@regen/brand-studio",
-  "brand-studio",
-];
+// Rules imported from the single home — see scripts/lib/guide-content-rules.mjs for why.
+import { GUIDE_BANNED_TERMS, GUIDE_NEGATION_PATTERNS } from "./lib/guide-content-rules.mjs";
+
 
 // Negation patterns — if a line contains one of these, the banned-term
 // occurrence is an explicit "don't use" warning and should NOT be flagged.
-const GUIDE_NEGATION_PATTERNS = [
-  /\bdo not\b/i,
-  /\bnever\b/i,
-  /\bno such\b/i,
-  /\bdoes not exist\b/i,
-  /\bbanned\b/i,
-  /\bnot reference\b/i,
-  /\bnot use\b/i,
-  /\bavoid\b/i,
-  /\bremoved\b/i,
-  /\bdeprecated\b/i,
-  // Markdown table row showing a WRONG→CORRECT mapping (naming-corrections.md pattern)
-  /^\|[^|]*WRONG[^|]*\|/i,
-  // A table row where the term is in the WRONG column (first data column after the | WRONG | header)
-  // Heuristic: line starts with | and the term appears before the first CORRECT value
-  /^\|\s*(Brand Studio|brand-studio|@regen\/brand-studio|@masonator[^ |]*|coolify-mcp)[^|]*\|\s*\*\*/,
-];
+
 
 // Known valid clauth key names. Extend when new keys are added to the vault.
 // Source: C:/Dev/regen-root/.rdc/guides/agent-bootstrap.md credential table

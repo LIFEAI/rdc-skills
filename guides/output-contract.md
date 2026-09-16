@@ -23,6 +23,14 @@ thing they need: **is this working or not, and what step are we on?**
    "Now reading...", "Let me fetch...", "Let me verify...". Tool calls happen
    silently. The checklist is the communication channel.
 
+3a. **Decisions are not narration — say them.** When a step's outcome changes
+   what happens next — a skipped orchestrator, a substituted branch, a held or
+   re-planned task, a pause the skill itself caused, a row dropped — state it in
+   ONE plain sentence at that point, with the reason. A checkbox alone hides it.
+   Added 2026-09-16: "checklist-only" was read as "never explain", and a CDE build
+   paused on an unestablished dispatch path with nothing but checklist state to show
+   why (Codex). Silence about tool calls is the rule; silence about decisions never was.
+
 4. **NO raw tool output in chat.** No MCP JSON, no log dumps, no UUIDs, no
    SQL result tables, no curl bodies — unless a checklist item explicitly asks
    for one (e.g., "show HTTP status"). Everything else is consumed silently and

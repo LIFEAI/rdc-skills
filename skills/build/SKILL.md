@@ -6,6 +6,11 @@ description: rdc:build (epic-id) - [--no-review] — execute a planned epic, the
 > **⚠️ OUTPUT CONTRACT (READ FIRST):** `guides/output-contract.md`
 > Checklist-only output. No tool-call narration. No raw MCP/JSON/log dumps.
 > One checklist upfront, updated in place, shown again at end with a 1-line verdict.
+> A decision that changes what happens next — a skipped orchestrator, a substituted branch, a held task — gets ONE plain sentence, never hidden behind a checkbox.
+
+> **⚠️ WORK CONTRACT (READ SECOND):** `guides/work-contract.md`
+> Declare the build before the first change: `rdc-work start --type build --work-item <uuid> --goal … --row "<step> :: <proof>"`.
+> **This skill is written in regen-root's terms.** `develop`, `{PROJECT_ROOT}/.rdc/guides`, `scripts/land.mjs` and `runOrchestrator()` are regen-root facts, not universal ones — for any other target apply that guide's substitution table to every occurrence below, using the target the contract resolved (`rdc-work status`).
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 
@@ -26,17 +31,19 @@ description: rdc:build (epic-id) - [--no-review] — execute a planned epic, the
 
 ## Agent Types & Guide Files
 
-Every dispatched agent MUST read two files before starting — in this order:
-1. `{PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md` — credentials, git rules, completion report format
-   (fallback: `.rdc/guides/agent-bootstrap.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
-2. `{PROJECT_ROOT}/.rdc/guides/engineering-behavior.md` — assumptions, minimal changes, surgical scope, verification evidence
-   (fallback: `.rdc/guides/engineering-behavior.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
-3. `{PROJECT_ROOT}/.rdc/guides/<type>.md` — role-specific guide
-   (fallback: `.rdc/guides/<type>.md` relative to cwd if `{PROJECT_ROOT}` is not substituted)
+Every dispatched agent MUST read these guides before starting — in this order:
+1. `agent-bootstrap.md` — credentials, git rules, completion report format
+2. `engineering-behavior.md` — assumptions, minimal changes, surgical scope, verification evidence
+3. `<type>.md` — role-specific guide
 
-Include both lines in every agent prompt:
+**Resolve the guides directory from the contract, never from cwd.** `rdc-work status --json` → `contract.target.guides_dir`:
+- present → read `<guides_dir>/<name>.md` (regen-root: `<root>/.rdc/guides`)
+- absent → read the guides shipped with rdc-skills (`guides/<name>.md` in the installed package)
+- **never** fall back to a cwd-relative `.rdc/guides`: when the session was started in one repository and builds another, that path silently loads the wrong repository's rules. That fallback is what imported regen-root's git and deploy assumptions into a CDE build (Codex, 2026-09-16).
+
+Include the resolved paths in every agent prompt:
 ```
-"Read {PROJECT_ROOT}/.rdc/guides/agent-bootstrap.md first (fallback: .rdc/guides/agent-bootstrap.md), then {PROJECT_ROOT}/.rdc/guides/engineering-behavior.md (fallback: .rdc/guides/engineering-behavior.md), then {PROJECT_ROOT}/.rdc/guides/<type>.md (fallback: .rdc/guides/<type>.md) before starting."
+"Read <guides>/agent-bootstrap.md first, then <guides>/engineering-behavior.md, then <guides>/<type>.md before starting. Your target is <root>; its integration branch is <integration>."
 ```
 
 | Agent Type | Guide File | When to dispatch |
@@ -80,10 +87,23 @@ Read the task title and description, then:
    - Ordinary rows (`design_review_required = false`) may be considered for dispatch regardless of a legacy state. Only an explicitly opted-in row requires `automatic_approved` or `human_approved`.
    - For an explicitly opted-in row in `pending`, `needs_human`, or `rejected`, write an `admission_refocus` receipt, keep the child blocked, and route it to the reviewer/planner. **Do not dispatch it, retry it, or call the epic complete.**
 
-1a. **Run the durable CodeFlow supervisor before each wave and after every gate-changing action.**
-   - Invoke `runOrchestrator()` with the project manifest, `SupabaseStateStore`, and the real phase dispatcher. It is the sole authority for resuming/refocusing a phase DAG; do not reconstruct waves by hand from task prose.
+1a. **Run the durable CodeFlow supervisor — where the target has one.**
+
+   **First, decide whether it applies.** The orchestrator needs a phase manifest, and today exactly one exists: `corpus/_shared/build/phase-manifest.json` inside **regen-root** (read by `packages/codeflow/src/orchestrator`). Check the contract's target root:
+
+   | target root contains `corpus/_shared/build/phase-manifest.json` | do this |
+   |---|---|
+   | **yes** (regen-root) | the orchestrator is REQUIRED, exactly as below |
+   | **no** (lifeai-env, rdc-cde, rdc-skills, clauth, …) | it does not apply. Resolve waves from the work items' dependencies (step 6), state it in one sentence — `orchestrator: not applicable, <root> has no phase manifest` — and continue. **This is not a BLOCKED condition.** |
+
+   This used to say "if the project lacks a real dispatcher/manifest, report BLOCKED" while naming a function and no invocation. Every non-regen-root build therefore either stopped or became an infrastructure investigation into how to start work (Codex, building CDE, 2026-09-16). An orchestrator that exists in one repository cannot be a precondition for building every repository.
+
+   When it applies:
+   - Invoke `runOrchestrator()` with the phase manifest, `SupabaseStateStore`, and the real phase dispatcher. It is the sole authority for resuming/refocusing a phase DAG; do not reconstruct waves by hand from task prose.
    - A returned `admission_refocus` or `pipeline_blocked` is a durable hold, not a failed attempt to work around. Preserve its task state and route an explicitly requested Design Review or validator closure.
-   - Only a returned `pipeline_complete` whose phase tasks are durably `done` permits an epic completion claim. If the project lacks a real dispatcher/manifest, report `BLOCKED: CodeFlow supervisor entrypoint unavailable` rather than emulating completion.
+   - Only a returned `pipeline_complete` whose phase tasks are durably `done` permits an epic completion claim. If the manifest exists but the orchestrator itself cannot run, THAT is `BLOCKED: CodeFlow supervisor entrypoint unavailable` — report it rather than emulating completion.
+
+   Either way, the epic's completion claim also requires the session's work contract to pass (`rdc-work check`).
 
    **Read the epic's `plan_ref`, `spec_ref`, `architecture_ref`, and `scoping_statement`** (columns on the epic row). `scoping_statement` bounds what this build may touch. If `architecture_ref` is set, this epic crosses an architectural boundary — read that doc now, before classifying or dispatching any task, and carry it into every agent prompt below.
 
@@ -103,6 +123,14 @@ Read the task title and description, then:
      ```
      This is an atomic Supabase write. A concurrent session that loads the same epic after this point will see `in_progress` and abort. **Do this before any classification, planning, or agent dispatch.**
 
+   **Declare the build — immediately after claiming, before any change** (`guides/work-contract.md`):
+   ```bash
+   node "$LIFEAI_ENV/bin/rdc-work.mjs" start --type build --work-item <epic-or-task-uuid> \
+     --goal "<what this epic delivers, in one sentence>" \
+     --row "<deliverable> :: <command that exits 0 when it is true>"   # one per deliverable
+   ```
+   The printed `target:` line is authoritative for the rest of this skill: its **integration** branch replaces every `develop` below, its **ship** route replaces `scripts/land.mjs`. Without a contract the start gate refuses the first write and the first commit.
+
    **Pre-flight gate — run after claiming:**
 
    | Condition | Action |
@@ -111,7 +139,7 @@ Read the task title and description, then:
    | Tasks exist but all have empty `description` fields | → Invoke `rdc:plan` on this epic. Tasks without descriptions cannot be safely dispatched. |
    | Plan doc missing `## Checklist Decomposition Matrix` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Plan doc missing `## Checklist Quality Gate` with `verdict: PASS` | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
-   | Any implementation task lacks `decomp-*` items, has < 10 attested rows, or leaves a declared surface (screen/api/db/tool) uncovered | → Invoke `rdc:plan` on this epic. Coarse/under-decomposed checklists cannot be safely dispatched. |
+   | Any implementation task lacks `decomp-*` items, leaves a declared surface (screen/api/db/tool) uncovered, or has a deliverable with no row that can fail | → Invoke `rdc:plan` on this epic. Coarse/under-decomposed checklists cannot be safely dispatched. |
    | Any `decomp-*` item lacks route/file, action, expected result, or evidence artifact | → Invoke `rdc:plan` on this epic. Do NOT dispatch agents. |
    | Epic has `architecture_ref` set and any implementation task's checklist lacks a required `architecture-fidelity-*` row | → Invoke `rdc:plan` on this epic. That task will hard-fail the exit gate at close regardless of build quality — catch it here, not after a wasted agent run. |
    | Tasks exist and have descriptions | → Continue with build. |
@@ -236,10 +264,11 @@ Read the task title and description, then:
    - `verdict: PASS`
 
    Required task checklist shape:
-   - Every implementation work item has >= 10 attested `decomp-*`/`test-*` rows and meets the
-     per-surface completeness floors from rdc:plan (each declared surface covered; a multi-surface
-     WP carries the SUM of its surface floors, typically 12-20). A flat 5-6-row checklist for a
-     feature WP is REJECTED — reopen the epic to rdc:plan for full surface-area decomposition.
+   - Every implementation work item covers EVERY surface it declares (screen / api / db / tool)
+     and every handoff, with one row per deliverable that can pass or fail on its own. Coverage
+     is the rule; **there is no minimum row count** (`guides/work-contract.md` § Rows). The
+     per-surface lists in rdc:plan are a decomposition checklist for finding deliverables, not a
+     quota to fill.
    - Every implementation work item has at least one `decomp-*` checklist row and one `test-*` checklist row.
    - Every `decomp-*` row names a concrete route or file path.
    - Every `decomp-*` row names one user/agent action.
@@ -259,10 +288,15 @@ Read the task title and description, then:
    - DB/migration task: at least schema object, relationship/guard, policy/permission, seed/fixture or backfill, and smoke query.
    - Editor/sidebar/CLI workflow: at least start, attach/open, enqueue action, observe result, timeout/error, and live refresh where applicable.
 
-   HARD FLOOR (mirrors rdc:plan): every implementation task carries >= 10 attested rows; a
-   multi-surface WP carries the SUM of its per-surface floors (typically 12-20). A flat 5-6-row
-   feature checklist, or any declared surface (screen/api/db/tool) left uncovered, is a REJECT —
-   reopen to rdc:plan. Every row must name its surface + one verification artifact (attested).
+   HARD GATE (mirrors rdc:plan): any declared surface (screen/api/db/tool) left uncovered, any
+   deliverable with no row that can fail, or any row without its surface + one verification
+   artifact, is a REJECT — reopen to rdc:plan.
+
+   A numeric floor used to sit here ("every task carries >= 10 attested rows; a multi-surface WP
+   carries the SUM of its per-surface floors, typically 12-20"). Removed 2026-09-16: it measured
+   paperwork, not coverage. Building a small CDE increment against it produced 91 checks before a
+   runnable UI existed (Codex). A thin checklist is caught by COVERAGE — an uncovered surface — not
+   by counting; a padded one passed the count and proved nothing extra.
 
    ### ⛔ Deliverable / acceptance check-off table — show BEFORE any implementation
    Before dispatching the first wave, render a deliverable/acceptance table and
@@ -309,7 +343,7 @@ Read the task title and description, then:
     The agent must complete every item on this checklist and return it checked off in AGENT_COMPLETE.
     A checklist with unchecked items = incomplete work. Do not proceed to next wave with unchecked items.
 
-6. **Use the supervisor-resolved waves** — parallelize only phases returned by `runOrchestrator()` after its durable admission check:
+6. **Use the supervisor-resolved waves** — where the orchestrator applies (§1a), parallelize only phases returned by `runOrchestrator()` after its durable admission check; where it does not, derive the same three waves from the work items' declared dependencies:
    - Wave 1: independent tasks (different packages/files)
    - Wave 2: tasks that depend on Wave 1 outputs
    - Wave 3: integration tasks
@@ -325,6 +359,14 @@ Read the task title and description, then:
    Every dispatched agent that may edit or commit MUST receive a unique leased
    worktree. A non-isolated dispatched agent is read-only and may research,
    review, or validate merged source; it may not write.
+
+   **`Agent()`, `isolation: "worktree"` and `max_turns` are Claude Code's dispatch
+   interface.** The requirement is engine-neutral — one leased worktree per writer,
+   read-only for everyone else — but those argument names are not. On an engine
+   whose native dispatch does not accept them (Codex), do not stop to ask:
+   create the writer's worktree yourself from the contract's integration branch
+   (`guides/work-contract.md` § Dispatching writers) and start the writer inside
+   it. The worktree is the requirement; the parameter was only one way to get it.
 
    ### ⛔ Dispatch mode — writers are always isolated
    Isolation is an ownership boundary, not a concurrency optimization. The
@@ -381,15 +423,24 @@ Read the task title and description, then:
    Without `max_turns: 70`, agents hit the default turn cap mid-task and stop.
    `isolation: "worktree"` gives each agent its own git worktree and branch — eliminates push race conditions and index lock contention when multiple agents commit in parallel. The supervisor merges worktree branches after each wave (Step 9).
 
-   ### ✅ PREVENTION FIRST — create worktrees fresh off origin/develop (kills stale-base by construction)
+   ### ✅ PREVENTION FIRST — create worktrees fresh off the INTEGRATION branch (kills stale-base by construction)
+
+   > **`develop` in this section and the HARD GATE below means the contract's
+   > integration branch** (`rdc-work status` → `integration <branch>`, from
+   > `projects.json`). It is `develop` for regen-root and rdc-harness, `main` for
+   > lifeai-env, clauth and rdc-cde, `master` for rdc-skills. Running these commands
+   > literally against a repository with no `origin/develop` fails — which is what a
+   > CDE build hit (Codex, 2026-09-16). Never infer it from `origin/HEAD`: regen-root's
+   > `origin/HEAD` is `main`, and its integration branch is `develop`.
+
    The repeated stale-base failures below come from creating worktrees off a
    local/old ref. Eliminate the failure mode at the source: ALWAYS create agent
-   worktrees with a fresh fetch + `origin/develop` base, e.g.
-   `git fetch origin develop && git worktree add <dir> -b <branch> origin/develop`
-   — or use the canonical launcher `node scripts/wt.mjs add <name>`, which does
-   exactly that. A worktree cut from `origin/develop` HEAD **cannot** be stale.
+   worktrees with a fresh fetch + integration-branch base, e.g.
+   `git fetch origin <integration> && git worktree add <dir> -b <branch> origin/<integration>`
+   — or, in regen-root, the canonical launcher `node scripts/wt.mjs add <name>`, which does
+   exactly that. A worktree cut from `origin/<integration>` HEAD **cannot** be stale.
    The HARD GATE below remains as the blocking backstop (detection), but
-   construction-from-`origin/develop` is the primary defense.
+   construction-from-`origin/<integration>` is the primary defense.
 
    ### ⛔ HARD GATE — Worktree base MUST equal develop HEAD (blocking, not advisory)
    The worktree-isolation harness has shipped worktrees pinned to a STALE base
@@ -646,7 +697,7 @@ Read the task title and description, then:
       state, persisted outputs, and fixture cleanup on the deploy-equivalent
       runtime; an absent harness is a hard rejection.
     - **Verifies checklist decomposition quality per work item before functional validation:**
-      - Every implementation work item has >= 10 attested `decomp-*`/`test-*` items, meets the per-surface completeness floors (each declared surface covered), and no feature WP ships a 5-6-row checklist
+      - Every implementation work item covers every surface it declares, with one row per deliverable that can fail on its own — coverage, not a row count (`guides/work-contract.md` § Rows)
       - Every `decomp-*` item includes route/file, action, expected result, and evidence artifact
       - Any unchecked `decomp-*` item with `required: true` = work item CANNOT be set to `done`
       - Any coarse or non-falsifiable `decomp-*` item = reopen to `todo` with the specific failure

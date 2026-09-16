@@ -11,6 +11,8 @@ description: rdc:overnight ([scope]) — drain the work queue unattended, end to
 
 > **Sandbox contract:** This skill honors `RDC_TEST=1` per `guides/agent-bootstrap.md` § RDC_TEST Sandbox Contract. Destructive external calls short-circuit under the flag.
 
+> **⚠️ WORK CONTRACT:** `guides/work-contract.md`. Each epic this run builds is declared through `rdc:build`'s contract step, and its Stop is that contract's checklist. This skill names regen-root's `develop` and `scripts/land.mjs` throughout; for any other target, apply that guide's substitution table (integration branch, ship route, orchestrator applicability) using the target each contract resolved.
+
 
 # rdc:overnight — Overnight Build Supervisor
 
@@ -140,7 +142,7 @@ Agents receive the relevant guide file from `.rdc/guides/` (fallback: `.rdc/guid
 
 After each wave: check `BUILD_STATUS`. If `escalated: true`, log the escalation
 in the overnight doc and continue — don't stop the loop.
-After each wave and after every resumed epic, require the `runOrchestrator()` receipt from `rdc:build`. `admission_refocus` or `pipeline_blocked` means the epic is held for an explicitly requested Design Review or validator closure; log that state and do not hand-reconstruct a dispatch wave.
+After each wave and after every resumed epic, require the `runOrchestrator()` receipt from `rdc:build` **where the orchestrator applies** — the target contains `corpus/_shared/build/phase-manifest.json` (today: regen-root; see `rdc:build` §1a). Elsewhere, require the contract checklist (`rdc-work check`) instead; an absent orchestrator is not a hold. `admission_refocus` or `pipeline_blocked` means the epic is held for an explicitly requested Design Review or validator closure; log that state and do not hand-reconstruct a dispatch wave.
 
 **Mandatory code-review gate inherited from rdc:build (Step 9b).** Every wave inside `rdc:build` runs a `pr-review-toolkit:code-reviewer` pass before the next wave dispatches. Critical/high findings reopen the affected work items to `todo` and the next wave fixes them. Overnight does not skip or weaken this gate. If a wave's code-review escalates twice, advisor decides; otherwise the loop continues.
 
