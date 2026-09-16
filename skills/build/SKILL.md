@@ -747,4 +747,10 @@ NEVER run pnpm build or pnpm turbo. Use npx vitest run only.
 
 ## Capture lessons (exit step)
 
-Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — write one `.rdc/lessons/<YYYY-MM-DD>-build-<short-slug>.md` per lesson using the schema in that spec. Set `scope` (`simple` | `architectural`) and `status` (`open`, or `applied` if you shipped the fix in this same run, with the commit linked). Commit the lesson file(s) on `develop` alongside the run's other commits, and note "N lessons captured" in your verdict/summary. A run that taught nothing writes nothing — absence is the default.
+Before the final verdict line, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure. If this run taught something non-obvious — a first root-cause theory that turned out wrong, the documented/standard path not working, a missing gate or check that cost a round, or a surprising tool/infra behavior — record each lesson where its fix belongs:
+
+- **Fix encoded in this run** (a guard, test or script shipped, commit linked): the lesson goes in that commit's message. No file, no issue.
+- **Fix not encoded**: submit it to the repository the fix belongs to, which opens one `lesson` + `proposal` issue there (an identical title opens nothing):
+  `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" submit --repo <owning repo slug> --title "…" --what "…" --root-cause "…" --fix "…"`
+
+No lesson file is written. Note "N lessons captured (E encoded, S submitted)" with the issue URLs in your verdict/summary. A run that taught nothing records nothing — absence is the default.

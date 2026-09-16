@@ -1466,4 +1466,4 @@ Append Phase 7 results to ONRAMP-REPORT.md (final section).
 
 ## Capture Lessons
 
-Before the final verdict, follow `.rdc/guides/lessons-learned-spec.md`. Write `.rdc/lessons/<YYYY-MM-DD>-onramp-<slug>.md` if the run taught something non-obvious.
+Before the final verdict, follow `.rdc/guides/lessons-learned-spec.md` § Capture procedure if the run taught something non-obvious. A lesson whose fix shipped as a guard, test or script this run goes in that commit's message; any other lesson is submitted to the repository the fix belongs to — `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" submit --repo <owning repo slug> --title "…" --what "…" --root-cause "…" --fix "…"` opens one `lesson` + `proposal` issue there. No lesson file is written.

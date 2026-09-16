@@ -100,8 +100,8 @@ than glossed:
 The removed prose also carried real, hard-won operational knowledge — the
 `next start` `BUILD_ID` crash-loop, the `media.place.fund` hotlink referer
 allowlist, the `<head>` metadata audit, the lockfile-importer trap on a first
-promote to `main`. That knowledge is in git history for this file and in the
-named `.rdc/lessons/` entries it cited. **It was removed from here because prose
+promote to `main`. That knowledge is in git history for this file, including the
+lessons it cited. **It was removed from here because prose
 that duplicates behaviour drifts from it** — not because it stopped being true.
 Where such a check belongs in the pipeline, it belongs in the program or in the
 manager, where it runs, rather than in a document that hopes to be read.

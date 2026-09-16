@@ -462,7 +462,7 @@ An agreement is a **Decision**. Route it by kind:
 |---|---|
 | Settled decision, constraint, or policy | The governing document — plan / ARCHITECTURE.md / rule. AKG ingests from there. |
 | Work to perform | `insert_work_item` via RPC, per `.claude/rules/work-items-rpc.md` |
-| A genuine hard-won episode (a wrong theory, a surprising infra behaviour) | `.rdc/lessons/` per `guides/lessons-learned-spec.md` |
+| A genuine hard-won episode (a wrong theory, a surprising infra behaviour) | A `lesson` issue in the repository the fix belongs to, per `guides/lessons-learned-spec.md` |
 | A stated, unresolved disagreement | Escalate — Step 6 |
 
 **Do not file a settled agreement as a lesson.** That is the single most common
@@ -576,8 +576,12 @@ and avoids acting on a misread premise (lesson
 ## Capture lessons (exit step)
 
 Before the final verdict line, follow `guides/lessons-learned-spec.md` § Capture
-procedure. Write a lesson only for a genuine **episode** — a first root-cause
+procedure. Record a lesson only for a genuine **episode** — a first root-cause
 theory that proved wrong, a documented path that did not work, a surprising
-tool/infra behaviour. **A settled agreement is not a lesson** (see Step 5). Set
-`scope` and `status`; commit alongside the run's other commits; note "N lessons
-captured" in the verdict. A run that taught nothing writes nothing.
+tool/infra behaviour. **A settled agreement is not a lesson** (see Step 5). A
+lesson whose fix shipped as a guard, test or script this run goes in that
+commit's message; any other lesson is submitted to the repository the fix
+belongs to, as one `lesson` + `proposal` issue:
+`node "$LIFEAI_ENV/bin/rdc-lesson.mjs" submit --repo <owning repo slug> --title "…" --what "…" --root-cause "…" --fix "…"`.
+No lesson file is written. Note "N lessons captured" with the issue URLs in the
+verdict. A run that taught nothing records nothing.

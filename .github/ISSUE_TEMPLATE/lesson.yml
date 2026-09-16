@@ -1,0 +1,56 @@
+name: Lesson learned
+description: A lesson from real work whose fix is not yet encoded as a guard, test or script. An issue proposes; a work item commits.
+title: "[lesson] "
+labels: ["lesson", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        File this in the repository the fix belongs to. Agents submit the same form from any engine:
+
+        `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" submit --repo <slug> --title "..." --what "..." --root-cause "..." --fix "..."`
+
+        A lesson whose fix is already encoded (a guard, test or script shipped with a linked commit) needs no issue; record it in that commit message.
+        Accepting this issue creates a work item and relabels it `accepted`; the fixing commit closes it with `Fixes #N`.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The concrete situation, with evidence (exit code, file:line, command).
+    validations:
+      required: true
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root cause
+      description: The evidenced cause, not a guess.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: The fix or rule
+      description: What should change so this never recurs, as a guard, test, script, or rule line.
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Repository / area
+      description: The repository slug and the area inside it, e.g. `lifeai-env · hooks/lib` or `rdc-skills · skills/build`.
+    validations:
+      required: true
+  - type: input
+    id: encoded
+    attributes:
+      label: Encoded artifact
+      description: The guard, test or script that already enforces part of this fix, if any.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Links to commits, logs, transcripts or work items, one per line.
+    validations:
+      required: false
