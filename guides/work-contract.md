@@ -3,7 +3,7 @@
 > The one home for how an `rdc:*` skill declares work, resolves its target, and
 > proves it is finished. `rdc:open`, `rdc:fixit`, `rdc:build`, `rdc:plan`,
 > `rdc:overnight` and `rdc:review` defer to this file rather than restating it.
-> Runtime: `lifeai-env` ≥ 0.8.251 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
+> Runtime: `lifeai-env` ≥ 0.8.252 (`$LIFEAI_ENV/bin/rdc-work.mjs`), same command
 > on Claude Code and Codex. When a gate prints an `rdc-work` line, run **that
 > line**: it names the installed copy and carries `--session <id>`, which matters
 > in a shell that holds both a Claude and a Codex session id.
@@ -55,9 +55,13 @@ tool call, so `rdc-work` applies both checks itself — at `start`/`add` and aga
 
 - **The proof policy.** A proof may not change anything: no commit, push, merge,
   rebase, reset, checkout, stash, tag or branch change; no publish, land, deploy,
-  PM2 or Docker lifecycle; no `rm`/`mv`/`cp`/`touch`/`mkdir`, `sed -i`, redirection
-  into a file, or write request (`curl -X POST`, `-d`). And it must be able to fail:
-  `true`, `exit 0`, a bare `echo`, `… || true` are refused.
+  migration, PM2/Docker/Kubernetes lifecycle; no `rm`/`mv`/`cp`/`touch`/`mkdir`,
+  `sed -i`, redirection into a file, or write request (`curl -X POST`, `-d`). The
+  command is read the way the shell runs it, so wrapping an action does not hide it —
+  `sh -c '…'`, `cmd /c …`, `npx …`, `node -e "…writeFileSync…"` are judged by what they
+  carry. And it must be able to fail: `true`, `exit 0`, a bare `echo`, `… || true`,
+  `test 1` are refused — and so is `x | tail`, because a pipeline exits with its LAST
+  command (prove with `x` itself, or `x | grep -q <evidence>`).
 - **The shared guard rules** — the same ones a Bash call meets. A proof they refuse
   is refused (`( cd dir && cmd )`, not `cd dir && cmd`).
 
@@ -105,7 +109,8 @@ every verb prints the id it resolved and where it came from. `--no-db` skips the
 work-item DoD lookup for an offline check — Stop never skips it.
 
 A proof goes **stale** when the session edits after it, or when the content it ran
-against changes by any route — a shell edit, a formatter, a rebase, a pull.
+against changes by any route — a shell edit, a formatter, a rebase, a pull, a new
+file.
 Committing exactly the proved content does not make it stale. Finish every piece of
 work with `verify --all`. A dropped row is resolved, not passed, and stays visible
 with its reason. Every row prints its proof command beside it, so a weak proof is as
@@ -114,10 +119,13 @@ visible as its claim.
 ## Stop
 
 For a session **holding a contract**, Stop is `rdc-work check`: every row proved
-against the current content or dropped with a reason, the target's tracked changes
-committed, and every claimed work item's database DoD closed. The block message is
-the checklist, with runnable `--session` commands. A database outage is reported,
-not held against the work.
+against the current content or dropped with a reason; the target's changes committed —
+including new files this session wrote; the changes it wrote in **any other
+repository** committed too (a second repo, a subagent's worktree); and the database DoD
+closed for every work item it claimed or declared. Dropping every row after making
+changes is not a pass — a drop explains, it does not prove. The block message is the
+checklist, with runnable `--session` commands. A database outage is reported, not held
+against the work.
 
 A session with **no contract** — one that only read, planned or answered — still
 gets the evidence checks: tracked changes it left uncommitted, and a claimed work
