@@ -142,9 +142,24 @@ A session with **no contract** — one that only read, planned or answered — s
 gets the evidence checks: tracked changes it left uncommitted, and a claimed work
 item's open DoD. How its final message is worded is never judged.
 
+**Handing the work on.** A session ends one of two ways: the work is proved, or it is
+handed to someone else — the operator stops it, another engine takes over. Say so:
+
+```bash
+node "$LIFEAI_ENV/bin/rdc-work.mjs" handoff --work-item <uuid> --to "<who takes it over>" \
+  --reason "<why this session is not finishing it>" [--note <handoff doc>] --session <id>
+```
+
+That work item's open DoD stops holding this session's Stop and stays visible as
+`[>] handed off … theirs now: <rows>`; it is never counted as proof. Drop the rows this
+session will not prove. Commit or discard your own changes first — a handoff moves the
+obligation, not unsaved work, and uncommitted changes still hold the Stop.
+
 Enforcement is bounded: a Stop held identically three times, or six times in a row,
 releases, and the unproved rows stay in the contract and in the compaction snapshot.
-A defect in the gate itself — an unreadable contract, an error — reports and never holds.
+A released or resolved checklist is shown once, not after every later turn; a changed
+one is shown again. A defect in the gate itself — an unreadable contract, an error —
+reports and never holds.
 
 ## Target resolution — never assume regen-root
 
