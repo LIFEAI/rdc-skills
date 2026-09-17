@@ -72,7 +72,7 @@ for (let i = 0; i < args.length; i++) {
 /**
  * Resolve the regen-root monorepo checkout this run should validate against.
  *
- * 2026-07-26 (lesson 2026-07-26-deploy-worktree-validator-root): hardcoding
+ * 2026-07-26 (retired lesson 2026-07-26-deploy-worktree-validator-root): hardcoding
  * 'C:/Dev/regen-root' made every check run against the main tree even when
  * this validator was invoked from a registered worktree lane
  * (`C:/Dev/regen-root.wt/<lane>`), so a newly-landed app's PUBLISH.md read as

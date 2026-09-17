@@ -47,7 +47,7 @@ Before touching any code, verify the environment is safe:
 1. **Clauth daemon alive AND unlocked:** `/ping` alive is NOT enough — a LOCKED
    vault answers `/ping` but every `/v/<service>` returns nothing, so credentials
    silently resolve empty and a long unattended run fails hours later
-   (lesson 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells).
+   (retired lesson 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells).
    Assert `locked:false` before proceeding:
    ```bash
    curl -s http://127.0.0.1:52437/ping
@@ -58,8 +58,8 @@ Before touching any code, verify the environment is safe:
 2. **Git state clean AND no concurrent committer on shared develop:** Overnight
    shares the `develop` working tree with other cells/sessions. A second session
    committing concurrently can drop a just-committed file during a rebase
-   (lessons 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells,
-   2026-06-17-build-shared-develop-rebase-dropped-committed-file).
+   (retired lessons 2026-06-16-overnight-preflight-clauth-locked-and-shared-develop-cells,
+   retired lesson 2026-06-17-build-shared-develop-rebase-dropped-committed-file).
    ```bash
    git status --short
    git fetch -q origin && git log --oneline @..@{u}   # any rows = origin moved under you

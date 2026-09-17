@@ -390,7 +390,7 @@ Read the task title and description, then:
    ### ⛔ Foreign concurrent session guard — `git status` BEFORE the build
    Worktree isolation protects against THIS build's own agents, not against a
    DIFFERENT session (another cell, a Codex run, a human) already committing on
-   the same shared tree (lesson 2026-06-16-build-concurrent-session-shared-tree-commit-corruption:
+   the same shared tree (retired lesson 2026-06-16-build-concurrent-session-shared-tree-commit-corruption:
    a foreign session's staged-but-uncommitted files were swept into this build's
    commit under the wrong message). Before dispatching any wave, run `git status`
    to detect foreign-dirty files you did not create. If foreign-dirty files are
@@ -572,7 +572,7 @@ Read the task title and description, then:
      rely on hoisted monorepo deps."*
    - **A server/MCP/API task is NOT done without a committed automated test that
      ships in the SAME commit and exercises EVERY surface.** Manual curl / a single
-     `/health` 200 is a proxy, not coverage (lesson 2026-06-10-build-weak-dod-no-tests).
+     `/health` 200 is a proxy, not coverage (retired lesson 2026-06-10-build-weak-dod-no-tests).
      For a collection (MCP skills, API routes, CLI commands): loop over ALL items
      and assert `output == source` — never a single spot check. Wire an npm script
      and run it green before the item leaves `review`. Agent prompt line: *"This

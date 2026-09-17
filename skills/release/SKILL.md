@@ -139,12 +139,12 @@ doc-sync/scope guard to catch contamination. In them:
 - **Pre-tag guard: refuse to tag if `git diff --cached --name-only` includes any
   path outside the declared change set.** A broad add swept 4 pre-existing
   untracked skill files into a tagged release that CI published before anyone
-  noticed (lesson 2026-06-08-release-git-add-all-swept-untracked-wip). Same
+  noticed (retired lesson 2026-06-08-release-git-add-all-swept-untracked-wip). Same
   dirty-tree contamination class as a lockfile generated against a dirty tree.
 
 ## ⛔ Cross-platform prepack + verify the PUBLISHED tarball
 
-- **Prepack must be OS-agnostic.** A bash-style `prepack` chain (`node A || true && node B || true && node stamp`) short-circuits under Windows **cmd.exe** (npm runs lifecycle scripts via cmd, not bash; `true` is not a cmd builtin and `||`/`&&` evaluate differently), so an appended step silently never runs (lesson 2026-06-13-release-windows-cmd-prepack-shortcircuit). When a prepack step must run cross-platform, use a node wrapper / `shx` / `cross-env` — never rely on `|| true` shell semantics that differ between cmd and bash.
+- **Prepack must be OS-agnostic.** A bash-style `prepack` chain (`node A || true && node B || true && node stamp`) short-circuits under Windows **cmd.exe** (npm runs lifecycle scripts via cmd, not bash; `true` is not a cmd builtin and `||`/`&&` evaluate differently), so an appended step silently never runs (retired lesson 2026-06-13-release-windows-cmd-prepack-shortcircuit). When a prepack step must run cross-platform, use a node wrapper / `shx` / `cross-env` — never rely on `|| true` shell semantics that differ between cmd and bash.
 - **Validate the PUBLISHED artifact, not a local Windows `npm pack`.** A local Windows `npm pack` is NOT a faithful rehearsal of the CI (ubuntu/bash) publish. After publish, verify the real tarball:
   ```bash
   npm pack <pkg>@<version>            # downloads the PUBLISHED tarball
