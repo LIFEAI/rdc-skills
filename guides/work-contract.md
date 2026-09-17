@@ -142,18 +142,29 @@ A session with **no contract** — one that only read, planned or answered — s
 gets the evidence checks: tracked changes it left uncommitted, and a claimed work
 item's open DoD. How its final message is worded is never judged.
 
-**Handing the work on.** A session ends one of two ways: the work is proved, or it is
-handed to someone else — the operator stops it, another engine takes over. Say so:
+**Setting work aside.** A session ends one of three ways: the work is proved, it waits,
+or someone else takes it. Say which — never leave the Stop to repeat an open DoD:
 
 ```bash
+# It waits: the database marks the item blocked, with the reason in its notes.
+node "$LIFEAI_ENV/bin/rdc-work.mjs" hold --work-item <uuid> --reason "<why it waits>" --session <id>
+# Pick it up later, from this session or any other: in_progress again, declared on the contract.
+node "$LIFEAI_ENV/bin/rdc-work.mjs" resume --work-item <uuid> --session <id>
+# Someone else takes it:
 node "$LIFEAI_ENV/bin/rdc-work.mjs" handoff --work-item <uuid> --to "<who takes it over>" \
   --reason "<why this session is not finishing it>" [--note <handoff doc>] --session <id>
 ```
 
-That work item's open DoD stops holding this session's Stop and stays visible as
-`[>] handed off … theirs now: <rows>`; it is never counted as proof. Drop the rows this
-session will not prove. Commit or discard your own changes first — a handoff moves the
-obligation, not unsaved work, and uncommitted changes still hold the Stop.
+Only work the session holds — declared with `--work-item`, or claimed — can be set aside.
+A held item's open DoD stops holding the Stop **while the database says `blocked`**; a
+hold the database does not confirm lifts nothing and the Stop says so. A handed-off item
+shows as `[>] handed off … theirs now: <rows>`. Neither is ever counted as proof. Drop the
+rows this session will not prove, and commit or discard your own changes first — setting
+work aside moves the obligation, not unsaved work, and uncommitted changes still hold the Stop.
+
+The held Stop lists only what is still owed: proved and dropped rows are counted, not
+listed, and rows stale only because of a later edit in the same repository collapse to
+one line. An edit in a different repository does not stale this contract's proofs.
 
 Enforcement is bounded: a Stop held identically three times, or six times in a row,
 releases, and the unproved rows stay in the contract and in the compaction snapshot.
