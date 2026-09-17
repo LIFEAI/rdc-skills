@@ -1,6 +1,6 @@
 # RDC Skill Test Suite Matrix
 
-Current coverage: 36 manifests for 36 skill directories.
+Current coverage: 37 manifests for 37 skill directories.
 
 The manifest layer verifies each skill can be started from a realistic caller prompt in an isolated `RDC_TEST=1` sandbox. The acceptance harness can run either Claude (`--engine claude`) or Codex (`--engine codex`) against the same manifests and records the engine stream, extracted tool calls, stdout/stderr artifacts, rendered assistant output, failures, lessons learned, and next build optimizations under `.rdc/reports/`.
 
@@ -14,6 +14,7 @@ The manifest layer verifies each skill can be started from a realistic caller pr
 | `rdc:channel-formatter` | `rdc-channel-formatter.test.json` | Long article to social content pack | `exit_code`, `stdout_contains` | Output contains, output not contains, tool-call routing |
 | `rdc:co-develop` | `rdc-co-develop.test.json` | Coordination status | `commits_made`, `exit_code`, `stdout_contains` | codevelop status, sandbox skip, no chitchat/live-send negative checks |
 | `rdc:collab` | `rdc-collab.test.json` | Claude session relay fixture | `commits_made`, `exit_code`, `stdout_contains` | chitchat/SSE session handling, sandbox skip, and no-reply/no-push negative checks |
+| `rdc:convo` | `rdc-convo.test.json` | Missing-peer plan critique | `exit_code`, `stdout_contains` | Unknown participant response preserved and false agreement/completion negative checks |
 | `rdc:convert` | `rdc-convert.test.json` | Markdown-to-Word conversion fixture | `exit_code`, `stdout_contains` | build-corpus command surface, Word/Markdown flags, and no-GUI/global-install/commit checks |
 | `rdc:deploy` | `rdc-deploy.test.json` | Deployment diagnosis | `commits_made`, `exit_code`, `stdout_contains` | Read-only diagnose output and destructive deploy/DNS negative checks |
 | `rdc:edit` | `rdc-edit.test.json` | Local editor launch | `exit_code`, `stdout_contains` | Resolved target, editor host URL, and no-unknown-target negative checks |
