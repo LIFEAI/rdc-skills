@@ -166,13 +166,13 @@ List the open lesson issues across every registered repository (procedure: `.rdc
 node "$LIFEAI_ENV/bin/rdc-lesson.mjs" list --state open
 ```
 
-A repository it could not list is named on stderr and the command exits 1 — the triage is then incomplete, not empty. Lesson files under `.rdc/` are not read. Cluster open `proposal` issues by area + root-cause similarity (dedupe repeats into one fix; close the duplicates, linking the survivor), and decide each cluster's scope: **simple** (one-file fix, config, grep guard, test) or **architectural** (anything in `.claude/rules/architectural-change-approval.md`; when unsure, architectural).
+Every registered repository is listed, skipped because its issues are switched off (reported), or **NOT listed** — no GitHub repository resolves or the read failed. NOT listed is named on stderr and in `--json` `skipped`, and the command exits 1: the triage is then incomplete, not empty. Cluster open `proposal` issues by area + root-cause similarity (dedupe repeats into one fix; close the duplicates, linking the survivor), take reopened recurrences first (their fix did not hold), and decide each cluster's scope: **simple** (one-file fix, config, grep guard, test) or **architectural** (anything in `.claude/rules/architectural-change-approval.md`; when unsure, architectural).
 
 ### Attended mode (default — a human is present)
 
 For each cluster:
 
-- **simple** → create the work item, run `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" accept <issue> --repo <slug> --work-item <uuid>`, apply the fix as a guard/test/script, commit with `Fixes #N`.
+- **simple** → create the work item, run `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" accept <issue> --repo <slug> --work-item <uuid>`, apply the fix as a guard/test/script, and commit with `Fixes #N`. In regen-root (default branch `main`, integration `develop`) and regen-deploy-mgr (default branch `codex/regen-deploy-mgr-wp1`) `Fixes #N` never reaches the default branch, so once the fix lands run `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" close <issue> --repo <slug> --commit <sha>`.
 - **architectural** → do NOT edit. Present the issue + options via `AskUserQuestion` (per `.claude/rules/architectural-change-approval.md`). On approval, accept it and apply via the correct lifecycle (rdc-skills tag/push for skills; cited commit for rules). If deferred, accept it so the work item carries it.
 - Not worth fixing → close the issue as not planned with a one-line reason.
 
@@ -181,11 +181,15 @@ For each cluster:
 When the weekly triage runs unattended, follow `.rdc/guides/lessons-learned-spec.md` § **Triage procedure — UNATTENDED weekly mode** — do not run `AskUserQuestion`. In brief (the spec is authoritative):
 
 - **Per-difficulty model routing** (reuses the `rdc:build` table): the run is led by `claude-sonnet-5` for clustering + scope/difficulty triage; mechanical apply → `claude-haiku-4-5`; harder multi-file/migration fix → `claude-sonnet-5`; design/architectural fix → `claude-opus-5`.
-- **simple** → accept, apply directly or via `rdc:fixit`, commit with `Fixes #N`.
+- **simple** → accept, apply directly or via `rdc:fixit`, commit with `Fixes #N` or close with `rdc-lesson close` where the default branch is not the integration branch.
 - **architectural with a single clear correct fix** (records an already-learned lesson — e.g. "add a gate", "encode X as a test") → accept, route through `rdc:plan` → `rdc:build` (or `rdc:fixit` if genuinely <5 files).
 - **architectural and genuinely ambiguous** (multiple valid approaches, real tradeoffs) → write a `human_items` row (`item_type='decision'`, with options in `suggested_agent_prompt`, `source_type='lesson'`, `source_fingerprint` = the issue URL for dedupe), accept the issue against a linked `work_item`. Decided in the morning. This is the asynchronous equivalent of the attended interview and honors `.claude/rules/architectural-change-approval.md`.
 
-Issues are closed, never deleted — a closed issue with its fixing commit or won't-fix reason is the audit trail. Report open / accepted / closed-fixed / closed-won't-fix counts, with issue URLs, in the housekeeping report.
+### Conversion backlog — remaining lesson files
+
+List the lesson files still in the project (`.rdc/lessons/*.md`: doc-only and product lessons from before issues). They are a backlog to convert, not a place to capture: with the capacity left after the issues, pick files and encode each as a guard or test, point any live link at that artifact, and delete the file in the same commit (spec § Existing `.rdc/lessons/` files). Nothing new is written there — a new lesson, doc-only included, is an issue.
+
+Issues are closed, never deleted — a closed issue with its fixing commit or won't-fix reason is the audit trail. Report open / recurred / accepted / closed-fixed / closed-won't-fix counts with issue URLs, and backlog files converted / remaining, in the housekeeping report.
 
 ## Rules
 - Never run `pnpm build` — not needed for this audit

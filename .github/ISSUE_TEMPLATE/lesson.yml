@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        File this in the repository the fix belongs to. Agents submit the same form from any engine:
+        File this in the repository the fix belongs to. **If this repository is public, file it in LIFEAI/regen-root with the area naming this repository instead** — a lesson carries hosts, paths and ports, and a public issue cannot be unsaid. Agents submit the same form from any engine:
 
         `node "$LIFEAI_ENV/bin/rdc-lesson.mjs" submit --repo <slug> --title "..." --what "..." --root-cause "..." --fix "..."`
 
