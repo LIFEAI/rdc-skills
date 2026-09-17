@@ -384,6 +384,30 @@
       "codeflow_required": true,
       "purpose": "run a structured agent-to-agent conversation"
     },
+    "convo": {
+      "name": "convo",
+      "slash": "rdc:convo",
+      "category": "dev-loop",
+      "usage": "rdc:convo <template> <topic>",
+      "args": {
+        "positional": [
+          { "name": "template", "required": true, "description": "Discussion type", "accepts": "outcome-exploration | design-comparison | troubleshooting | plan-critique | disagreement-resolution | work-handoff" },
+          { "name": "topic", "required": true, "description": "Bounded question or outcome", "accepts": "text" }
+        ],
+        "flags": []
+      },
+      "requires": [],
+      "produces": ["discussion_record", "decision_record"],
+      "default_model": "inherit",
+      "triggers": ["fair discussion", "attributed peer discussion", "discussion templates", "co-design conversation"],
+      "follows": [],
+      "leads_to": ["rdc:plan", "rdc:build"],
+      "sandbox_aware": true,
+      "output_contract": "guides/output-contract.md",
+      "enabled_default": true,
+      "codeflow_required": false,
+      "purpose": "conduct bounded fair discussion and record decisions using existing peer transports"
+    },
     "convert": {
       "name": "convert",
       "slash": "rdc:convert",

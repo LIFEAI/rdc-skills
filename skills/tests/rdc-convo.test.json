@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "skill": "rdc:convo",
+  "description": "Sandbox discussion preserves missing peer uncertainty and does not dispatch or implement.",
+  "fixture": {
+    "prompt": "rdc:convo plan-critique Evaluate a proposal to mark CDE complete after typecheck alone. No peer response is available. Return the simulated packet and unresolved decision; do not contact peers or edit files.",
+    "env": { "RDC_TEST": "1" }
+  },
+  "assertions": { "exit_code": 0, "stdout_contains": ["UNKNOWN"] },
+  "acceptance": {
+    "output_contains": ["UNKNOWN", "plan-critique"],
+    "output_not_contains": ["Claude agreed", "CDE is complete", "validator passed"]
+  },
+  "teardown": { "reset_branch": true }
+}
