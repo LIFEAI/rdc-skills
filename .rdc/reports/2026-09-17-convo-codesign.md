@@ -1,5 +1,25 @@
 # rdc:convo — attributed co-design and restart record
 
+## Installed disposition — 2026-09-17 03:33 UTC
+
+PR35 merged as d39104709bf0035f84a8001cc6c30e5c5e0d9c13; tagv0.36.0 pushed.
+The existing public MCP tag updater now serves that exact runtime git_sha,
+version0.36.0 and45skills. Connected MCP get returns convo in CLI/cloud; both
+11468-character bodies compare equal to source, including all six templates.
+Remote MCP suite412passed/0failed; HTTP surface40passed/0failed. Independent
+validator repeated local264checks and connected catalog/health readback.
+
+The npm publish workflow35178348993/job105064931579 failed PUT with E404;
+npm0.36.0 is absent. Packing succeeded. Prior0.35.26 workflow also failed this
+way despite that version being available; its publication route is not inferred.
+No publishing permission change or blind rerun was attempted. Installed MCP
+delivery is verified; npm distribution is NOT delivered. Independent validator
+finds the task's invoked installed-skill wording satisfied through MCP, with
+this distribution limitation retained explicitly. Full CDE-Zoe remains active.
+
+The restart instructions below describe the earlier checkpoint; publication is
+now a known separate failure, not a running job. Do not retag or wait on it.
+
 Task: 5f7618b4-cf32-4460-8a3a-761f0161b847. Full CDE-Zoe goal remains active.
 Repo: LIFEAI/rdc-skills; lane feat/cde-zoe-convo; base 31c8a82.
 Authorized coordinator/recorder: Codex, session
