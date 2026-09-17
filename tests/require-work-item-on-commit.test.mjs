@@ -219,8 +219,17 @@ EOF
     ['heredoc with a quoted delimiter passes', 'git commit -F - <<"MSG"\nfix(a): b\nMSG', 'pass'],
     ['heredoc carrying only a UUID passes', "git commit -F - <<'EOF'\nwip\n\nWork-Item: f27ff5fa-0000-4000-8000-000000000000\nEOF", 'pass'],
     ['-m still passes', 'git commit -m "fix(x): y"', 'pass'],
+    // -m "$(cat <<'EOF' … EOF)" — the -m regex used to match the FIRST
+    // unrelated quote inside the substitution (the heredoc delimiter's own
+    // opening quote) and return early with literal shell text as the
+    // "message", never reaching the heredoc fallback below. Same defect
+    // class as the 2026-08-29 fix, one wrapper layer further out. Filed as
+    // regen-root#243.
+    ['-m "$(cat <<EOF …)" substitution passes', "git commit -m \"$(cat <<'EOF'\nfix(guards): correct the heredoc substitution match\n\nBody line two.\nEOF\n)\"", 'pass'],
+    ['-m "$(cat <<-EOF …)" dash-form substitution passes', "git commit -m \"$(cat <<-'EOF'\nfix(a): b\nEOF\n)\"", 'pass'],
     // Negative controls — reading the message is not a bypass.
     ['heredoc without a type or UUID still blocks', "git commit -F - <<'EOF'\nrandom words\nEOF", 'block'],
+    ['-m "$(cat <<EOF …)" without a type or UUID still blocks', "git commit -m \"$(cat <<'EOF'\nrandom words\nEOF\n)\"", 'block'],
     ['a bare commit still blocks', 'git commit', 'block'],
     // Honest about what it cannot see, rather than calling it absent.
     ['a real stdin pipe reports unreadable', 'cat msg.txt | git commit -q -F -', 'unreadable'],

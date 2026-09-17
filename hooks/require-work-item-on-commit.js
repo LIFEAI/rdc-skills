@@ -156,6 +156,17 @@ function isGitCommit(command) {
 function extractCommitMessage(command) {
   const cmd = String(command || '');
 
+  // `-m "$(cat <<'EOF' … EOF)"` / `-m "$(cat <<-'EOF' … EOF)"`: the plain -m
+  // regexes below match the FIRST unrelated quote inside the substitution
+  // (the opening `'` of `<<'EOF'` reads as a closing delimiter to the
+  // non-greedy pattern) and return early with literal shell text as the
+  // "message" -- before the heredoc fallback ever runs. This is the same
+  // defect class the 2026-08-29 fix addressed for a bare heredoc, just one
+  // wrapper layer further out: detect the substitution shape first and
+  // extract from its OWN heredoc body.
+  const mSub = cmd.match(/-m\s+"\$\(\s*cat\s+<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1\s*\n([\s\S]*?)\n[ \t]*\2\s*\)"/);
+  if (mSub) return { message: mSub[3], readable: true };
+
   const msgMatch = cmd.match(/-m\s+["']([^"']+)["']/s) ||
                    cmd.match(/-m\s+"([\s\S]+?)"\s*(?:&&|$)/);
   if (msgMatch) return { message: msgMatch[1], readable: true };
